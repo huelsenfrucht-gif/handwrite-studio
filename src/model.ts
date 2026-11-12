@@ -7,14 +7,15 @@ export type Paper = 'lined' | 'grid' | 'blank';
 export type Settings = { size: number; lineHeight: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number };
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
 export type Annotation = { id: string; page: number; points: Stroke; color: string; width: number };
-export type Note = { id: string; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; updated: string };
+export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };
+export type Note = { id: string; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
 export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string };
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();
 export const defaultSettings: Settings = { size: 27, lineHeight: 43, variation: 25, color: '#263e62', penWidth: 1.7, paper: 'lined', profileId: 'demo', seed: 42 };
-export function newNote(title = 'Unbenanntes Dokument'): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings }, edits: {}, annotations: [], updated: new Date().toISOString() }; }
+export function newNote(title = 'Unbenanntes Dokument'): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');
   note.text = note.renderedText = 'Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.';

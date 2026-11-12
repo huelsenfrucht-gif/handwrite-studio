@@ -1,5 +1,5 @@
 import { demoGlyphs } from './demo';
-import { PAGE, type Note, type Profile, type PlacedGlyph, type Glyph, type Stroke } from './model';
+import { PAGE, type Drawing, type Note, type Profile, type PlacedGlyph, type Glyph, type Stroke } from './model';
 import { composeWord, profileStyle } from './contextual';
 export function random(seed: number) { let a=seed|0; return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;}; }
 export const missingGlyph: Glyph = {source:'demo',advance:58,strokes:[[{x:5,y:12},{x:46,y:12},{x:46,y:79},{x:5,y:79},{x:5,y:12}],[{x:12,y:22},{x:39,y:69}]]};
@@ -32,8 +32,12 @@ export function layout(note: Note, profiles: Profile[]) {
      x+=advance;wordOffset+=glyph.advance;
    }
  }
- const lastInk=note.annotations.reduce((n,a)=>Math.max(n,a.page),0);
+ const lastInk=[...note.annotations,...(note.drawings||[])].reduce((n,a)=>Math.max(n,a.page),0);
  return {glyphs,pages:Math.max(page+1,lastInk+1),missing:[...missing],fallback:[...fallback],originalWords,contextualWords};
+}
+export function resolvedDrawing(d:Drawing): Stroke[] {
+ if(d.deleted)return [];
+ return d.strokes.filter((_,i)=>!d.hiddenStrokes?.includes(i)).map(s=>s.map(p=>({...p,x:d.x+p.x*d.scale,y:d.y+p.y*d.scale})));
 }
 export function resolvedStrokes(g:PlacedGlyph,note:Note): {strokes:Stroke[];color:string} {
  const edit=note.edits[g.id];return {strokes:edit?.deleted?[]:g.strokes.filter((_,i)=>!edit?.hiddenStrokes?.includes(i)).map(s=>s.map(p=>({...p,x:p.x+(edit?.dx||0),y:p.y+(edit?.dy||0)}))),color:edit?.color||note.settings.color};

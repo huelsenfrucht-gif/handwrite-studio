@@ -32,6 +32,7 @@ describe('document layout and editing',()=>{
  it('reports unlearned personal characters and unsupported symbols separately',()=>{const n=newNote();n.settings.profileId=profile.id;n.renderedText='meine Z 🦋';const r=layout(n,[profile]);expect(r.originalWords).toBe(1);expect(r.fallback).toContain('Z');expect(r.fallback).not.toContain('m');expect(r.missing).toContain('🦋');});
  it('keeps original word boundaries connected after variation transforms',()=>{const n=newNote();n.settings.profileId=profile.id;n.settings.variation=100;n.renderedText='meine';const r=layout(n,[profile]);for(let i=0;i<4;i++){const a=r.glyphs[i].strokes.at(-1)!.at(-1)!,b=r.glyphs[i+1].strokes[0][0];expect(Math.hypot(a.x-b.x,a.y-b.y)).toBeLessThan(.001);}});
  it('exports moved ink and erases only the targeted stroke',()=>{const n=newNote();n.renderedText='i';const g=layout(n,[]).glyphs[0];expect(g.strokes.length).toBe(2);n.edits[g.id]={dx:30,dy:-8,hiddenStrokes:[1],color:'#ff0000'};const r=resolvedStrokes(g,n);expect(r.strokes).toHaveLength(1);expect(r.strokes[0][0].x).toBeCloseTo(g.strokes[0][0].x+30);const svg=makeSVG(n,[],0);expect(svg).toContain('stroke="#ff0000"');expect(svg).not.toContain('<text');});
+ it('includes a drawing-only page in pagination',()=>{const n=newNote();n.drawings=[{id:'diagram',name:'Zelle',page:3,strokes:[wave],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2}];expect(layout(n,[]).pages).toBe(4);});
 });
 describe('photo vectorization',()=>{
  const raster=(w:number,h:number,predicate:(x:number,y:number)=>boolean)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=predicate(x,y)?0:255;data[i+3]=255;}return data;};
@@ -40,7 +41,7 @@ describe('photo vectorization',()=>{
  it('rejects empty crops',()=>{expect(()=>vectorize(raster(20,20,()=>false),20,20,155)).toThrow('Keine dunklen Striche');});
 });
 describe('portable backup validation',()=>{
- it('round-trips real word training, edits and annotations',()=>{const lib=initialLibrary();lib.profiles=[profile];lib.notes[0].settings.profileId=profile.id;lib.notes[0].annotations=[{id:'a',page:0,points:wave,color:'#123456',width:2}];expect(validateLibrary(JSON.parse(JSON.stringify(lib)))).toEqual(lib);});
+ it('round-trips real word training, edits, annotations and vector drawings',()=>{const lib=initialLibrary();lib.profiles=[profile];lib.notes[0].settings.profileId=profile.id;lib.notes[0].annotations=[{id:'a',page:0,points:wave,color:'#123456',width:2}];lib.notes[0].drawings=[{id:'diagram',name:'Zelle',page:0,strokes:[wave,[{x:5,y:5}]],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2,hiddenStrokes:[1]}];expect(validateLibrary(JSON.parse(JSON.stringify(lib)))).toEqual(lib);});
  it('rejects malicious colors, invalid references, bad cuts, and non-finite positions',()=>{
   const a=initialLibrary();a.notes[0].settings.color='red"/><script>';expect(()=>validateLibrary(a)).toThrow();
   const b=initialLibrary();b.notes[0].settings.profileId='missing';expect(()=>validateLibrary(b)).toThrow();
@@ -50,6 +51,7 @@ describe('portable backup validation',()=>{
 });
 describe('PDF export',()=>{
  it('creates valid multi-page vector PDF output with edits applied',async()=>{const {createPDF}=await import('../src/export');const n=newNote('Export-Test');n.renderedText=('Ein Wort pro Zeile.\n').repeat(70);n.edits['0']={deleted:true};n.annotations=[{id:'manual',page:0,color:'#123456',width:2,points:[{x:100,y:200},{x:150,y:220}]}];const pdf=await createPDF(n,[]);expect(pdf.getNumberOfPages()).toBe(layout(n,[]).pages);expect(pdf.getNumberOfPages()).toBeGreaterThan(1);const data=pdf.output();expect(data.startsWith('%PDF-')).toBe(true);expect(data).toContain('/Title (Export-Test)');expect(data).not.toContain('/Subtype /Image');});
+ it('keeps imported drawings as vector paths in PDF and editable SVG groups',async()=>{const {createPDF}=await import('../src/export');const n=newNote('Zeichnung');n.drawings=[{id:'diagram',name:'Zelle',page:0,strokes:[wave,[{x:5,y:5},{x:9,y:8}]],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2,hiddenStrokes:[1]}];const svg=makeSVG(n,[],0),group=svg.match(/<g id="drawing-diagram"[\s\S]*?<\/g>/)?.[0]||'';expect(group).toContain('translate(20 30) scale(0.5)');expect(group.match(/<path/g)?.length).toBe(1);const pdf=await createPDF(n,[]);expect(pdf.output()).not.toContain('/Subtype /Image');});
 });
 describe('learned fragment transition directions',()=>{
  it('preserves endpoint positions and follows the observed pen tangents',async()=>{const {connect}=await import('../src/joins');const result=connect({point:{x:20,y:60,p:.2},tangent:{x:1,y:-1}},{point:{x:0,y:50,p:.8},tangent:{x:1,y:1}},40);expect(result[0]).toEqual({x:20,y:60,p:.2});expect(result.at(-1)).toEqual({x:40,y:50,p:.8});expect(result[1].y).toBeLessThan(60);expect(result.at(-2)!.y).toBeLessThan(50);});
