@@ -1,9 +1,18 @@
 import { PAGE, pathData, type Note, type Profile, type Library } from './model';
 import { layout, resolvedDrawing, resolvedStrokes } from './engine';
+type JsPDFConstructor=typeof import('jspdf').jsPDF;
+async function loadJsPDF():Promise<JsPDFConstructor>{
+ try{return(await import('jspdf')).jsPDF;}catch(primaryError){
+  const root=window as typeof window&{jspdf?:{jsPDF:JsPDFConstructor}};
+  if(root.jspdf?.jsPDF)return root.jspdf.jsPDF;
+  await new Promise<void>((resolve,reject)=>{const old=document.querySelector<HTMLScriptElement>('script[data-jspdf-fallback]');if(old){old.addEventListener('load',()=>resolve(),{once:true});old.addEventListener('error',()=>reject(primaryError),{once:true});return;}const script=document.createElement('script');script.src='/vendor/jspdf.umd.min.js';script.dataset.jspdfFallback='true';script.onload=()=>resolve();script.onerror=()=>reject(primaryError);document.head.appendChild(script);});
+  if(!root.jspdf?.jsPDF)throw primaryError;return root.jspdf.jsPDF;
+ }
+}
 export function download(data:Blob|string,name:string,type='application/json') {const blob=data instanceof Blob?data:new Blob([data],{type}); const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 export function safeName(name:string){return (name.replace(/[^\p{L}\p{N}\-_ ]/gu,'').trim()||'Dokument').slice(0,80);}
 export function exportBackup(library:Library){download(JSON.stringify(library),`Handwrite-Studio-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
-export async function createPDF(note:Note,profiles:Profile[]){const {jsPDF}=await import('jspdf');const {glyphs,pages}=layout(note,profiles);const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});const ratio=595.28/PAGE.width;
+export async function createPDF(note:Note,profiles:Profile[]){const jsPDF=await loadJsPDF(),{glyphs,pages}=layout(note,profiles);const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});const ratio=595.28/PAGE.width;
  for(let page=0;page<pages;page++){
   if(page)pdf.addPage();pdf.setFillColor('#ffffff');pdf.rect(0,0,595.28,841.89,'F');pdf.setLineWidth(.35);pdf.setDrawColor('#dce4e8');
   const spacing=note.settings.paper==='grid'?20:note.settings.lineHeight;
