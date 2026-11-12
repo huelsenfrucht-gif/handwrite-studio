@@ -10,7 +10,7 @@ Node.js 22 oder neuer. `npm ci`, dann `npm run dev`. Produktionsbuild: `npm run 
 
 - Zusammenhängende Wortproben per Stift oder Foto aufnehmen, beschriften und analysieren.
 - Fotovektorisierung mittels Schwellwert, Skelettierung und Pfadverfolgung. Buchstabengrenzen sind korrigierbar.
-- Bekannte Wörter behalten ihre ursprüngliche Geometrie. Neue Wörter verwenden bevorzugt lange gelernte Wortteile und kontextbezogene Formen. Fragmentübergänge werden angenähert.
+- Bekannte Wörter behalten ihre ursprüngliche Geometrie. Neue Wörter verwenden bevorzugt lange gelernte Wortteile und kontextbezogene Formen. Fragmentübergänge werden anhand der beobachteten Strichrichtungen angenähert.
 - Dokumente, lokale IndexedDB-Speicherung, Sicherungsimport/-export, Auswahl, Verschieben, Radieren einzelner Striche, zusätzliche Stiftnotizen und Rückgängig/Wiederholen.
 - Mehrseitiger Vektor-PDF-Export, SVG-Export der aktuellen Seite, Papier- und Stifteinstellungen.
 - PWA mit lokalem Offline-Cache nach vollständigem ersten Laden.
@@ -29,4 +29,4 @@ Optional eigene Supabase-Instanz einrichten, `supabase.sql` ausführen und `.env
 
 ## Prüfungen
 
-16 automatisierte Tests prüfen Geometrieerhalt, Wiederverwendung zusammenhängender Fragmente, Seitenumbrüche, reproduzierbare Erzeugung, fehlende Zeichen, Radieren/Verschieben, Foto-Skelettierung, Sicherungsvalidierung und mehrseitige Vektor-PDF-Ausgabe. Browserprüfungen umfassen Stifteingabe, Fototraining mit synthetischem Bild, Speicherung nach Neuladen und PDF-Download. Diese Prüfungen belegen keine persönliche Schriftähnlichkeit und ersetzen keinen Test auf echter iPad-/Apple-Pencil-Hardware.
+18 automatisierte Tests prüfen Geometrieerhalt, Wiederverwendung zusammenhängender Fragmente, Seitenumbrüche, reproduzierbare Erzeugung, fehlende Zeichen, Radieren/Verschieben, Foto-Skelettierung, Sicherungsvalidierung und mehrseitige Vektor-PDF-Ausgabe. Browserprüfungen umfassen Stifteingabe, Fototraining mit synthetischem Bild, Speicherung nach Neuladen und PDF-Download. Diese Prüfungen belegen keine persönliche Schriftähnlichkeit und ersetzen keinen Test auf echter iPad-/Apple-Pencil-Hardware.

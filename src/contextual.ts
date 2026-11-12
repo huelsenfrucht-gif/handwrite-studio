@@ -1,3 +1,4 @@
+import { endpoints, connect, type Endpoint } from './joins';
 import { type Glyph, type Point, type Profile, type Stroke } from './model';
 import { demoGlyphs } from './demo';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';metrics:{slant:number;baselineSpread:number;joining:number;spacing:number}};
@@ -72,12 +73,11 @@ export function composeWord(text:string,profile:Profile,rand:()=>number):WordRes
  if(style.joining>.25)for(let i=0;i<glyphs.length-1;i++){
   if(origins[i]&&origins[i+1]&&origins[i]!.word===origins[i+1]!.word&&origins[i]!.index+1===origins[i+1]!.index)continue;
   const a=glyphs[i],b=glyphs[i+1];if(a.source==='demo'||b.source==='demo')continue;
-  const exits=a.strokes.flatMap(s=>[s[0],s.at(-1)!]).filter(p=>p.x>a.advance-5&&p.y>25&&p.y<95);
-  const entries=b.strokes.flatMap(s=>[s[0],s.at(-1)!]).filter(p=>p.x<5&&p.y>25&&p.y<95);
-  if(!exits.length||!entries.length)continue;let best:{a:Point;b:Point;distance:number}|undefined;
-  for(const p of exits)for(const q of entries){const distance=Math.abs(p.y-q.y);if(!best||distance<best.distance)best={a:p,b:q,distance};}if(!best||best.distance>45)continue;
-  const gap=5,start=best.a,end={...best.b,x:best.b.x+a.advance+gap};const join:Stroke=[];
-  for(let k=0;k<=12;k++){const t=k/12,u=1-t;join.push({x:u*u*u*start.x+3*u*u*t*(start.x+5)+3*u*t*t*(end.x-5)+t*t*t*end.x,y:u*u*u*start.y+3*u*u*t*(start.y+3)+3*u*t*t*(end.y+3)+t*t*t*end.y,p:.4});}
+  const exits=endpoints(a.strokes,'exit').filter(e=>e.point.x>a.advance-5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
+  const entries=endpoints(b.strokes,'entry').filter(e=>e.point.x<5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
+  if(!exits.length||!entries.length)continue;let best:{a:Endpoint;b:Endpoint;distance:number;score:number}|undefined;
+  for(const p of exits)for(const q of entries){const distance=Math.abs(p.point.y-q.point.y),score=distance+8*(1-p.tangent.x*q.tangent.x-p.tangent.y*q.tangent.y);if(!best||score<best.score)best={a:p,b:q,distance,score};}if(!best||best.distance>45)continue;
+  const gap=5,join=connect(best.a,best.b,a.advance+gap);
   glyphs[i]={...a,advance:a.advance+gap,strokes:[...a.strokes,join]};
  }
  return {glyphs,learned,kind:words.length?'contextual':'letters'};
