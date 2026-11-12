@@ -12,14 +12,15 @@ Node.js 22 oder neuer. `npm ci`, dann `npm run dev`. Produktionsbuild: `npm run 
 - Fotovektorisierung mittels Schwellwert, Skelettierung und Pfadverfolgung. Buchstabengrenzen sind korrigierbar.
 - Bekannte Wörter behalten ihre ursprüngliche Geometrie. Neue Wörter verwenden bevorzugt lange gelernte Wortteile und kontextbezogene Formen. Fragmentübergänge werden anhand der beobachteten Strichrichtungen angenähert.
 - Dokumente, lokale IndexedDB-Speicherung, Sicherungsimport/-export, Auswahl, Verschieben, Radieren einzelner Striche, zusätzliche Stiftnotizen und Rückgängig/Wiederholen.
-- Mehrseitiger Vektor-PDF-Export, SVG-Export der aktuellen Seite, Papier- und Stifteinstellungen.
+- Nativer `.goodnotes`-Export mit radierbaren Tintenstrichen sowie mehrseitiger Vektor-PDF-Export, SVG-Export der aktuellen Seite, Papier- und Stifteinstellungen.
 - PWA mit lokalem Offline-Cache nach vollständigem ersten Laden.
+- Keine Anmeldung erforderlich: Die App startet direkt und speichert standardmäßig lokal im Browser.
 
 ## Grenzen und noch offene Abnahme
 
 Diese Implementierung ist ein geometrisches, beispielbasiertes Verfahren, kein neuronal trainierter Handschrift-Klon. Die persönlichen Realismus-Anforderungen sind noch nicht mit echten Schreibproben des Nutzers überprüft. Neue Wortkombinationen können sichtbare Übergänge enthalten. Die automatische Transkription kompletter freier Notizseiten ist nicht implementiert: Wörter werden ausgewählt und manuell zugeordnet. Druck und Schreibreihenfolge lassen sich aus Fotos nicht rekonstruieren; die Ausgabe verwendet eine konstante Strichstärke.
 
-PDF-Inhalte werden in Goodnotes nicht zu nativen radierbaren Stiftstrichen. Ein nativer `.goodnotes`-Export ist nicht implementiert. Siehe https://support.goodnotes.com/hc/en-us/articles/7353717816463-Import-files-into-Goodnotes .
+Der `.goodnotes`-Export schreibt Handschrift und Zeichnungen als native, radierbare Tintenstriche in ein rückentwickeltes Dateiformat. Da die verwendete, unabhängig geprüfte Vorlage jeweils eine Seite enthält, werden mehrseitige Dokumente als ZIP mit einer `.goodnotes`-Datei pro Seite ausgegeben. PDF bleibt die stabile Wahl zum Teilen und Drucken; PDF-Inhalte sind nach dem Goodnotes-Import nicht als einzelne Tintenstriche radierbar. Der Goodnotes-Export basiert auf dem MIT-lizenzierten Inkly-Ansatz; siehe `docs/THIRD_PARTY_NOTICES.md`.
 
 ## Speicherung und Supabase
 
@@ -29,4 +30,4 @@ Optional eigene Supabase-Instanz einrichten, `supabase.sql` ausführen und `.env
 
 ## Prüfungen
 
-18 automatisierte Tests prüfen Geometrieerhalt, Wiederverwendung zusammenhängender Fragmente, Seitenumbrüche, reproduzierbare Erzeugung, fehlende Zeichen, Radieren/Verschieben, Foto-Skelettierung, Sicherungsvalidierung und mehrseitige Vektor-PDF-Ausgabe. Browserprüfungen umfassen Stifteingabe, Fototraining mit synthetischem Bild, Speicherung nach Neuladen und PDF-Download. Diese Prüfungen belegen keine persönliche Schriftähnlichkeit und ersetzen keinen Test auf echter iPad-/Apple-Pencil-Hardware.
+27 automatisierte Tests prüfen Geometrieerhalt, Wiederverwendung zusammenhängender Fragmente, Seitenumbrüche, reproduzierbare Erzeugung, fehlende Zeichen, Radieren/Verschieben, Foto-Skelettierung, Sicherungsvalidierung, mehrseitige Vektor-PDF-Ausgabe und die Struktur nativer Goodnotes-Dateien. Browserprüfungen umfassen Stifteingabe, Fototraining mit synthetischem Bild, Speicherung nach Neuladen sowie PDF- und `.goodnotes`-Downloads. Der erzeugte Goodnotes-Download wurde zusätzlich mit einem unabhängigen Parser gelesen; alle 1.156 Teststriche hatten konsistente Punkt- und Segmentzähler. Diese Prüfungen belegen keine persönliche Schriftähnlichkeit und ersetzen keinen Test auf echter iPad-/Apple-Pencil-Hardware.
