@@ -1,4 +1,5 @@
 import { type Library, initialLibrary } from './model';
+import { recalibrateWord } from './contextual';
 const DB='handwrite-studio';
 async function db(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('library');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 export async function loadLibrary():Promise<Library>{const d=await db();try{return await new Promise((resolve,reject)=>{const r=d.transaction('library').objectStore('library').get('current');r.onsuccess=()=>{try{resolve(r.result?validateLibrary(r.result):initialLibrary());}catch(e){reject(e);}};r.onerror=()=>reject(r.error);});}finally{d.close();}}
@@ -29,5 +30,6 @@ export function validateLibrary(value:unknown):Library {
   if(n.drawings!==undefined){if(!Array.isArray(n.drawings)||n.drawings.length>1000)return fail();for(const d of n.drawings)if(!d||!str(d.id,100)||!str(d.name,100)||!num(d.page,0,1000)||!Number.isInteger(d.page)||!Array.isArray(d.strokes)||!d.strokes.length||d.strokes.length>20000||!d.strokes.every(stroke)||!num(d.x,-10000,10000)||!num(d.y,-10000,10000)||!num(d.scale,.001,100)||!num(d.width,1,10000)||!num(d.height,1,10000)||!color(d.color)||!num(d.penWidth,.5,20)||(d.deleted!==undefined&&typeof d.deleted!=='boolean')||(d.hiddenStrokes!==undefined&&(!Array.isArray(d.hiddenStrokes)||!d.hiddenStrokes.every(x=>num(x,0,100000)&&Number.isInteger(x)))))return fail();}
  }
  if(points>2000000||!v.notes.some(n=>n.id===v.activeId))return fail();
+ for(const p of v.profiles)if(p.words)p.words=p.words.map(recalibrateWord);
  return v;
 }

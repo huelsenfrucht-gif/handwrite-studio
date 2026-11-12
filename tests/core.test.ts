@@ -1,7 +1,7 @@
 import { describe,expect,it } from 'vitest';
 import { initialLibrary,newNote,type Profile,type Stroke } from '../src/model';
 import { layout,random,resolvedStrokes } from '../src/engine';
-import { analyzeWord,composeWord,sliceStrokes } from '../src/contextual';
+import { analyzeWord,composeWord,recalibrateWord,sliceStrokes } from '../src/contextual';
 import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
 import { makeSVG } from '../src/export';
@@ -26,6 +26,16 @@ describe('connected handwriting',()=>{
  });
  it('refuses unlabelled sentences and blank drawings',()=>{expect(()=>analyzeWord([wave],'two words','pen','x')).toThrow();expect(()=>analyzeWord([],'word','pen','x')).toThrow();});
  it('detects connected writing and retains pressure measurements',()=>{expect(word.metrics.joining).toBeGreaterThan(.7);expect(word.strokes[0][0].p).toBe(.2);expect(word.cuts).toHaveLength(6);});
+ it('normalizes lowercase bodies by x-height instead of total word height',()=>{
+  const draw=(text:string,tops:number[],bottoms:number[])=>analyzeWord(Array.from(text).map((_,i)=>[{x:i*28,y:bottoms[i]},{x:i*28+8,y:tops[i]},{x:i*28+20,y:bottoms[i]}]),text,'pen',text);
+  const plain=draw('minimum',Array(7).fill(40),Array(7).fill(90));
+  const mixed=draw('floppy',[10,10,40,40,40,40],[90,90,90,120,120,120]);
+  const plainBody=Math.max(...plain.strokes[0].map(p=>p.y))-Math.min(...plain.strokes[0].map(p=>p.y));
+  const mixedBody=Math.max(...mixed.strokes[2].map(p=>p.y))-Math.min(...mixed.strokes[2].map(p=>p.y));
+  expect(plain.metrics.xHeight).toBe(52);expect(mixed.metrics.xHeight).toBe(52);expect(Math.abs(mixedBody/plainBody-1)).toBeLessThan(.1);expect(mixed.strokes[3].at(-1)!.y).toBeGreaterThan(80);
+ });
+ it('clamps unreliable character slices so a photo cannot explode to giant letters',()=>{const sample=analyzeWord([[{x:0,y:0},{x:12,y:100}],[{x:14,y:48},{x:25,y:50}],[{x:28,y:0},{x:45,y:100}]],'Aim','photo','clamped');const ys=sample.strokes.flat().map(p=>p.y);expect(Math.max(...ys)-Math.min(...ys)).toBeLessThan(150);expect(sample.metrics.quality).toBeLessThan(1);});
+ it('upgrades old total-height samples once without changing modern samples',()=>{const old=structuredClone(word);delete old.normalization;const upgraded=recalibrateWord(old);expect(upgraded.normalization).toBe(3);expect(upgraded.metrics.baseline).toBe(80);expect(recalibrateWord(upgraded)).toBe(upgraded);});
 });
 describe('document layout and editing',()=>{
  it('paginates long notes without dropping characters',()=>{const n=newNote();n.renderedText=('Ein langer Text mit Umlauten äöü und Zahlen 123.\n').repeat(160);const r=layout(n,[]);expect(r.pages).toBeGreaterThan(3);expect(r.glyphs).toHaveLength(Array.from(n.renderedText.replace(/\s/g,'')).length);expect(r.glyphs.every(g=>g.x>=70&&g.y>=70)).toBe(true);});
@@ -37,8 +47,9 @@ describe('document layout and editing',()=>{
 });
 describe('photo vectorization',()=>{
  const raster=(w:number,h:number,predicate:(x:number,y:number)=>boolean)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=predicate(x,y)?0:255;data[i+3]=255;}return data;};
- it('extracts a centreline from a thick photographed stroke',()=>{const paths=vectorize(raster(50,60,(x,y)=>x>=20&&x<=27&&y>7&&y<52),50,60,155);const pts=paths.flat();expect(pts.length).toBeGreaterThan(20);expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeLessThan(3);});
+ it('extracts a simplified centreline from a thick photographed stroke',()=>{const paths=vectorize(raster(50,60,(x,y)=>x>=20&&x<=27&&y>7&&y<52),50,60,155);const pts=paths.flat();expect(Math.max(...pts.map(p=>p.y))-Math.min(...pts.map(p=>p.y))).toBeGreaterThan(30);expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeLessThan(3);});
  it('preserves closed loops',()=>{const paths=vectorize(raster(60,60,(x,y)=>{const d=Math.hypot(x-30,y-30);return d>14&&d<20;}),60,60,155);expect(paths.flat().length).toBeGreaterThan(60);});
+ it('rejects uneven paper shadows while preserving darker handwriting',()=>{const w=240,h=80,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,bg=145+80*x/w,ink=(x>20&&x<210&&Math.abs(y-(38+12*Math.sin(x/13)))<3);data[i]=data[i+1]=data[i+2]=ink?35:bg;data[i+3]=255;}const paths=vectorize(data,w,h,165),pts=paths.flat();expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeGreaterThan(170);expect(paths.length).toBeLessThan(80);expect(pts.every(p=>p.y>15&&p.y<65)).toBe(true);});
  it('rejects empty crops',()=>{expect(()=>vectorize(raster(20,20,()=>false),20,20,155)).toThrow('Keine dunklen Striche');});
 });
 describe('portable backup validation',()=>{
