@@ -22,11 +22,9 @@ Diese Implementierung ist ein geometrisches, beispielbasiertes Verfahren, kein n
 
 Der `.goodnotes`-Export schreibt Handschrift und Zeichnungen als native, radierbare Tintenstriche in ein rückentwickeltes Dateiformat. Da die verwendete, unabhängig geprüfte Vorlage jeweils eine Seite enthält, werden mehrseitige Dokumente als ZIP mit einer `.goodnotes`-Datei pro Seite ausgegeben. PDF bleibt die stabile Wahl zum Teilen und Drucken; PDF-Inhalte sind nach dem Goodnotes-Import nicht als einzelne Tintenstriche radierbar. Der Goodnotes-Export basiert auf dem MIT-lizenzierten Inkly-Ansatz; siehe `docs/THIRD_PARTY_NOTICES.md`.
 
-## Speicherung und Supabase
+## Speicherung ohne Konto
 
-Ohne Konfiguration bleiben Daten lokal im Browser. Fotos werden nicht dauerhaft gespeichert oder hochgeladen. Regelmäßig die Studio-Sicherung herunterladen, insbesondere vor dem Löschen von Browserdaten.
-
-Optional eigene Supabase-Instanz einrichten, `supabase.sql` ausführen und `.env.example` als `.env.local` mit URL und öffentlichem Anon-Key ausfüllen. Niemals Service-Role-Schlüssel im Frontend verwenden. Die optionale Cloud-Funktion erstellt ausdrücklich ausgelöste Gesamtsicherungen, keine automatische konfliktauflösende Synchronisierung. Die Cloud-Funktion ist ohne eine eingerichtete Instanz nicht end-to-end geprüft.
+Alle Daten bleiben lokal im Browser. Fotos werden nicht dauerhaft gespeichert oder hochgeladen. Es gibt derzeit weder Anmeldung noch Konto. Regelmäßig die Studio-Sicherung herunterladen, insbesondere vor dem Löschen von Browserdaten.
 
 ## Prüfungen
 
