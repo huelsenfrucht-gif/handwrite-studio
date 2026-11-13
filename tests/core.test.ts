@@ -1,7 +1,7 @@
 import { describe,expect,it } from 'vitest';
 import { initialLibrary,newNote,type Profile,type Stroke } from '../src/model';
 import { layout,random,resolvedStrokes } from '../src/engine';
-import { analyzeWord,composeWord,recalibrateWord,sliceStrokes } from '../src/contextual';
+import { analyzeWord,composeWord,recalibrateWord,relabelWord,sliceStrokes } from '../src/contextual';
 import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
 import { makeSVG } from '../src/export';
@@ -25,6 +25,8 @@ describe('connected handwriting',()=>{
   expect(strokes).toHaveLength(2);expect(strokes[0][0]).toEqual({x:0,y:12.5,p:.5});expect(strokes[0].at(-1)?.x).toBe(50);expect(strokes[1][0].x).toBe(50);expect(strokes[1].at(-1)?.x).toBe(0);
  });
  it('refuses unlabelled sentences and blank drawings',()=>{expect(()=>analyzeWord([wave],'two words','pen','x')).toThrow();expect(()=>analyzeWord([],'word','pen','x')).toThrow();});
+ it('uses recognizer-aligned character cuts when supplied',()=>{const sample=analyzeWord([wave],'abcd','photo','aligned',[0,50,130,240,320]);expect(sample.cuts.map(c=>Math.round(c/sample.cuts.at(-1)!*320))).toEqual([0,50,130,240,320]);});
+ it('keeps recognizer-aligned cuts when the user corrects equal-length OCR text',()=>{const sample=analyzeWord([wave],'Nopoleon','photo','aligned',[0,40,80,120,160,200,240,280,320]);const corrected=relabelWord(sample,'Napoleon');expect(corrected.cuts).toEqual(sample.cuts);expect(corrected.text).toBe('Napoleon');});
  it('detects connected writing and retains pressure measurements',()=>{expect(word.metrics.joining).toBeGreaterThan(.7);expect(word.strokes[0][0].p).toBe(.2);expect(word.cuts).toHaveLength(6);});
  it('normalizes lowercase bodies by x-height instead of total word height',()=>{
   const draw=(text:string,tops:number[],bottoms:number[])=>analyzeWord(Array.from(text).map((_,i)=>[{x:i*28,y:bottoms[i]},{x:i*28+8,y:tops[i]},{x:i*28+20,y:bottoms[i]}]),text,'pen',text);
@@ -49,7 +51,9 @@ describe('photo vectorization',()=>{
  const raster=(w:number,h:number,predicate:(x:number,y:number)=>boolean)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=predicate(x,y)?0:255;data[i+3]=255;}return data;};
  it('extracts a simplified centreline from a thick photographed stroke',()=>{const paths=vectorize(raster(50,60,(x,y)=>x>=20&&x<=27&&y>7&&y<52),50,60,155);const pts=paths.flat();expect(Math.max(...pts.map(p=>p.y))-Math.min(...pts.map(p=>p.y))).toBeGreaterThan(30);expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeLessThan(3);});
  it('preserves closed loops',()=>{const paths=vectorize(raster(60,60,(x,y)=>{const d=Math.hypot(x-30,y-30);return d>14&&d<20;}),60,60,155);expect(paths.flat().length).toBeGreaterThan(60);});
+ it('smooths pixel staircases into sub-pixel pen trajectories',()=>{const paths=vectorize(raster(70,70,(x,y)=>Math.abs(y-(15+x*.55))<3),70,70,155),longest=paths.sort((a,b)=>b.length-a.length)[0];expect(longest.length).toBeGreaterThan(20);expect(longest.some(p=>p.x%1!==0||p.y%1!==0)).toBe(true);});
  it('rejects uneven paper shadows while preserving darker handwriting',()=>{const w=240,h=80,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,bg=145+80*x/w,ink=(x>20&&x<210&&Math.abs(y-(38+12*Math.sin(x/13)))<3);data[i]=data[i+1]=data[i+2]=ink?35:bg;data[i+3]=255;}const paths=vectorize(data,w,h,165),pts=paths.flat();expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeGreaterThan(170);expect(paths.length).toBeLessThan(80);expect(pts.every(p=>p.y>15&&p.y<65)).toBe(true);});
+ it('fills broad dark ink before thinning instead of tracing both outlines',()=>{const w=100,h=70,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,ink=x>12&&x<88&&Math.abs(y-35)<=5;data[i]=data[i+1]=data[i+2]=ink?25:155;data[i+3]=255;}const paths=vectorize(data,w,h,165),long=paths.filter(p=>Math.max(...p.map(q=>q.x))-Math.min(...p.map(q=>q.x))>60);expect(long).toHaveLength(1);expect(long[0].reduce((n,p)=>n+p.y,0)/long[0].length).toBeCloseTo(35,0);});
  it('rejects empty crops',()=>{expect(()=>vectorize(raster(20,20,()=>false),20,20,155)).toThrow('Keine dunklen Striche');});
 });
 describe('portable backup validation',()=>{

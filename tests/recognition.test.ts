@@ -1,10 +1,15 @@
 import {expect,it} from 'vitest';
 import {decodeCTC} from '../src/import/ctc';
+import {buildBloomFilter,buildGermanLexicon,correctGermanWord} from '../src/import/lexicon';
 it('preserves repeated letters separated by blanks and word-space alignment',()=>{
  const alphabet='ab ',ids=[1,1,0,1,3,3,2,0],data=ids.flatMap(id=>Array.from({length:4},(_,c)=>c===id?8:-8));
  const result=decodeCTC(data,ids.length,4,alphabet);expect(result.text).toBe('aa b');expect(result.characters[0].start).toBe(0);expect(result.characters[0].end).toBe(2);expect(result.characters[1].start).toBe(3);expect(result.characters[2].end).toBe(6);expect(result.characters.every(c=>c.confidence>.99)).toBe(true);
 });
 it('rejects mismatched output rather than teaching incorrectly labelled ink',()=>{expect(()=>decodeCTC([1,2],1,3,'ab')).toThrow();});
+it('averages repeated CTC evidence instead of reporting only the luckiest frame',()=>{const logits=[0,8,-8,0,.2,-8,8,0,-8,0,8,-8],result=decodeCTC(logits,4,3,'ab');expect(result.text).toBe('aa');expect(result.characters[0].confidence).toBeLessThan(.8);});
+it('corrects plausible German OCR confusions but leaves short or exact words alone',()=>{const lexicon=buildGermanLexicon('napoleon\tnapoleon\nmetternich\tmetternich\nneuordnung\tneuordnung\nund\tund\n','und\nnapoleon\nmetternich\nneuordnung\n');expect(correctGermanWord('Nopoleon',lexicon).text).toBe('Napoleon');expect(correctGermanWord('Melternich',lexicon).text).toBe('Metternich');expect(correctGermanWord('und',lexicon).text).toBe('und');expect(correctGermanWord('im',lexicon).text).toBe('im');});
+it('accepts valid inflected German forms from the compact membership filter',()=>{const lexicon=buildGermanLexicon('gehen\tVerb\n','gehen\n');lexicon.bloom=buildBloomFilter(['Anlass','verhandeln'],256);expect(correctGermanWord('Anlass',lexicon)).toMatchObject({text:'Anlass',distance:0,known:true});expect(correctGermanWord('verhandeln',lexicon)).toMatchObject({distance:0,known:true});});
+it('does not trust short abbreviations only because the large word-form filter contains them',()=>{const lexicon=buildGermanLexicon('im\tPräposition\n','im\n');lexicon.bloom=buildBloomFilter(['pol','deu'],256);expect(correctGermanWord('im',lexicon).known).toBe(true);expect(correctGermanWord('pol',lexicon).known).toBe(false);expect(correctGermanWord('Deu',lexicon).known).toBe(false);});
 import {segmentPage} from '../src/import/segment';
 function page(w:number,h:number,rects:number[][]){const pixels=new Uint8ClampedArray(w*h*4).fill(255);for(const [x,y,rw,rh] of rects)for(let yy=y;yy<y+rh;yy++)for(let xx=x;xx<x+rw;xx++){const i=(yy*w+xx)*4;pixels[i]=pixels[i+1]=pixels[i+2]=20;}return pixels;}
 it('finds separate text lines and ignores dense horizontal ruling',()=>{const data=page(400,200,[[25,25,90,12],[140,25,80,12],[25,80,100,15],[155,80,70,15],[0,120,400,1]]);const lines=segmentPage(data,400,200);expect(lines).toHaveLength(2);expect(lines[0].y).toBeLessThan(25);expect(lines[1].y).toBeGreaterThan(60);});
