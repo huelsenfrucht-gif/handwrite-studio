@@ -33,6 +33,24 @@ container and set `ALLOWED_ORIGINS` to the exact public app origin. Do not enabl
 request-body logging: the selected style crops are intentionally processed only
 in memory.
 
+## Serverless GPU deployment with Modal
+
+Modal can build the included Dockerfile, attach an L4 GPU only while requests are
+running and expose the FastAPI app through HTTPS. From this directory:
+
+```sh
+python -m pip install modal
+modal setup
+modal deploy modal_app.py
+```
+
+The command prints the permanent web-function URL. Build the frontend with that
+origin as `VITE_SYNTHESIS_API`. `modal_app.py` restricts browser access to the
+production Handwrite Studio origin and runs one generation request per container
+at a time because the model is deliberately serialized. Modal currently requires
+a valid payment method for GPU functions; review its current usage limits and
+spending cap before deployment.
+
 ## Endpoints
 
 - `GET /healthz` reports readiness and the selected device.

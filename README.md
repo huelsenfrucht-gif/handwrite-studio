@@ -57,6 +57,10 @@ npm run build
 Einrichtung des Python-Dienstes ist in [`inference/README.md`](inference/README.md)
 beschrieben.
 
+Für den produktiven Serverless-Betrieb liegt zusätzlich ein Modal-Adapter in
+`inference/modal_app.py`. Er verwendet den gleichen geprüften FastAPI-Dienst und
+skaliert die GPU bei Leerlauf auf null.
+
 ## Datenschutz ohne Anmeldung
 
 OCR und Seitenauswertung laufen lokal. Die importierten Originalseiten werden
