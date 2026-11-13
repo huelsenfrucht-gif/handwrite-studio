@@ -12,8 +12,10 @@ Required environment variables:
 - `PORT`: defaults to `8501` in the container.
 
 No user account or database is used. A CUDA GPU is recommended for production.
-Set `VITE_SYNTHESIS_API` to this service's HTTPS origin when building the web
-app.
+Set either `VITE_SYNTHESIS_API` to this service's HTTPS origin or
+`VITE_SYNTHESIS_SPACE` to the public Hugging Face Space id when building the
+web app. The large model stays on the server and is not bundled into the web or
+App Store client.
 
 ## Local run
 
@@ -33,7 +35,26 @@ container and set `ALLOWED_ORIGINS` to the exact public app origin. Do not enabl
 request-body logging: the selected style crops are intentionally processed only
 in memory.
 
-## Serverless GPU deployment with Modal
+## Free test deployment with Hugging Face ZeroGPU
+
+The ready-to-publish Gradio bundle lives in `huggingface_space/`. It exposes the
+same response shape through a named `/generate` endpoint and uses the official
+`@spaces.GPU` allocation mechanism. After creating a free Hugging Face account:
+
+```sh
+python -m pip install huggingface_hub
+hf auth login
+python huggingface_space/deploy.py ACCOUNT/handwrite-studio-diffusionpen
+```
+
+Then choose **ZeroGPU** in the Space hardware settings and build the frontend
+with `VITE_SYNTHESIS_SPACE=ACCOUNT/handwrite-studio-diffusionpen`. Do not choose
+a paid GPU. The deploy script intentionally does not request hardware itself.
+Public visitors do not need to sign in. When their daily free quota is exhausted
+the request fails instead of creating a charge. This quota makes ZeroGPU suitable
+for development and limited testing, not unlimited App Store production traffic.
+
+## Optional paid serverless deployment with Modal
 
 Modal can build the included Dockerfile, attach an L4 GPU only while requests are
 running and expose the FastAPI app through HTTPS. From this directory:

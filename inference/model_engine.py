@@ -43,10 +43,12 @@ class GeneratedWord:
 
 class DiffusionPenEngine:
     def __init__(self) -> None:
-        self.device = "mps" if torch.backends.mps.is_available() else "cuda:0" if torch.cuda.is_available() else "cpu"
+        requested_device = os.getenv("DIFFUSIONPEN_DEVICE", "").strip()
+        self.device = requested_device or ("mps" if torch.backends.mps.is_available() else "cuda:0" if torch.cuda.is_available() else "cpu")
         self.model_path = Path(os.getenv("DIFFUSIONPEN_MODEL_PATH", ROOT / "diffusionpen_iam_model_path"))
         self.style_path = Path(os.getenv("DIFFUSIONPEN_STYLE_PATH", ROOT / "style_models" / "iam_style_diffusionpen.pth"))
-        self.sd_path = Path(os.getenv("DIFFUSIONPEN_SD_PATH", ROOT / "stable-diffusion-v1-5"))
+        # Accept either the local Docker image path or a Hugging Face model id.
+        self.sd_path = os.getenv("DIFFUSIONPEN_SD_PATH", str(ROOT / "stable-diffusion-v1-5"))
         self.args = SimpleNamespace(device=self.device, img_size=(64, 256), channels=4, emb_dim=320, num_heads=4, num_res_blocks=1, interpolation=False, mix_rate=None, latent=True, color=True)
         self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((.5, .5, .5), (.5, .5, .5))])
         self.tokenizer = self.unet = self.vae = self.scheduler = self.style_extractor = None

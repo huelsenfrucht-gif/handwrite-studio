@@ -53,13 +53,16 @@ npm test
 npm run build
 ```
 
-`VITE_SYNTHESIS_API` muss auf den HTTPS-Ursprung des Modellservers zeigen. Die
-Einrichtung des Python-Dienstes ist in [`inference/README.md`](inference/README.md)
-beschrieben.
+Für die kostenlose Testbereitstellung zeigt `VITE_SYNTHESIS_SPACE` auf die ID
+des öffentlichen Hugging-Face-ZeroGPU-Space. Alternativ zeigt
+`VITE_SYNTHESIS_API` auf den HTTPS-Ursprung eines eigenen Modellservers. Die
+Einrichtung ist in [`inference/README.md`](inference/README.md) beschrieben.
 
-Für den produktiven Serverless-Betrieb liegt zusätzlich ein Modal-Adapter in
-`inference/modal_app.py`. Er verwendet den gleichen geprüften FastAPI-Dienst und
-skaliert die GPU bei Leerlauf auf null.
+Das große Modell wird nicht in die Web- oder spätere App-Store-App eingebaut.
+Die Clients bleiben klein und sprechen nur mit der austauschbaren Modell-API.
+Der kostenlose ZeroGPU-Betrieb besitzt ein tägliches Kontingent und eignet sich
+daher für Entwicklung und begrenzte öffentliche Tests. Dauerhafter Betrieb mit
+vielen Nutzern benötigt später eigene oder kostenpflichtige GPU-Kapazität.
 
 ## Datenschutz ohne Anmeldung
 
@@ -73,6 +76,10 @@ Browser, bis die lokalen Browserdaten gelöscht werden.
 Für einen fremdbetriebenen Modellserver gelten zusätzlich dessen
 Datenschutzbedingungen. Bei eigener Bereitstellung sollte kein Request-Logging
 für Upload-Inhalte aktiviert werden.
+
+Die öffentliche ZeroGPU-Variante kann ohne Besucher-Anmeldung verwendet werden.
+Wenn ihr kostenloses Tageskontingent aufgebraucht ist, stoppt die Generierung mit
+einer Fehlermeldung; die Anwendung löst niemals automatisch eine Zahlung aus.
 
 ## Qualität und Grenzen
 

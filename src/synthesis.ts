@@ -4,7 +4,10 @@ import {cleanWordRaster} from './import/raster';
 import {vectorize} from './vectorize';
 
 const endpoint=(import.meta.env.VITE_SYNTHESIS_API||'').replace(/\/$/,'');
-export const synthesisAvailable=Boolean(endpoint);
+const space=(import.meta.env.VITE_SYNTHESIS_SPACE||'').trim();
+export const synthesisAvailable=Boolean(endpoint||space);
+
+type SynthImage={text:string;image:string};
 
 export function extractSynthWords(text:string,profile:Profile){
  const human=new Set((profile.words||[]).filter(w=>!w.synthetic).map(w=>w.text));
@@ -25,12 +28,30 @@ async function imageSample(text:string,dataUrl:string):Promise<WordSample>{
  return {...sample,synthetic:true,raster:{data:ink.toDataURL('image/png'),x:0,y:92-rasterHeight,width:sample.width,height:rasterHeight}};
 }
 
+async function directGenerate(words:string[],images:string[],signal?:AbortSignal):Promise<SynthImage[]>{
+ const form=new FormData();form.set('texts',JSON.stringify(words));for(const [index,image] of images.entries()){const response=await fetch(image,{signal}),blob=await response.blob();form.append('references',blob,`stil-${index+1}.png`);}
+ const response=await fetch(`${endpoint}/v1/generate`,{method:'POST',body:form,signal});if(!response.ok){let detail='';try{detail=(await response.json()).detail||'';}catch{}throw new Error(detail||`Modellserver antwortet mit ${response.status}.`);}
+ const result=await response.json() as {images?:SynthImage[]};if(!Array.isArray(result.images)||result.images.length!==words.length)throw new Error('Der Modellserver hat keine vollständige Handschrift geliefert.');
+ return result.images;
+}
+
+async function spaceGenerate(words:string[],images:string[],signal?:AbortSignal):Promise<SynthImage[]>{
+ signal?.throwIfAborted();
+ const [{Client,handle_file},blobs]=await Promise.all([import('@gradio/client'),Promise.all(images.map(async image=>(await fetch(image,{signal})).blob()))]);
+ const app=await Client.connect(space);signal?.throwIfAborted();
+ try{
+  const result=await app.predict('/generate',[JSON.stringify(words),blobs.map(blob=>handle_file(blob))]);signal?.throwIfAborted();
+  const data=result.data as unknown[];const value=data[0] as {images?:SynthImage[]}|string;
+  const parsed=typeof value==='string'?JSON.parse(value) as {images?:SynthImage[]}:value;
+  if(!Array.isArray(parsed?.images)||parsed.images.length!==words.length)throw new Error('Der kostenlose Modellserver hat keine vollständige Handschrift geliefert.');
+  return parsed.images;
+ }catch(error){const message=(error as Error).message||String(error);if(/quota|GPU task|exceeded|limit/i.test(message))throw new Error('Das kostenlose GPU-Tageslimit ist gerade aufgebraucht. Morgen funktioniert es wieder; es entstehen keine Kosten.');throw error;}
+}
+
 export async function synthesizeWords(text:string,profile:Profile,signal?:AbortSignal){
- if(!endpoint)throw new Error('Der realistische Handschriftgenerator ist auf diesem Server noch nicht verbunden.');
+ if(!endpoint&&!space)throw new Error('Der realistische Handschriftgenerator ist auf diesem Server noch nicht verbunden.');
  if((profile.styleImages||[]).length<1)throw new Error('Bitte importiere zuerst Handschriftseiten. Daraus werden fünf Stilwörter gewählt.');
  const words=extractSynthWords(text,profile);if(!words.length)return [];
- const form=new FormData();form.set('texts',JSON.stringify(words));for(const [index,image] of profile.styleImages!.entries()){const response=await fetch(image,{signal}),blob=await response.blob();form.append('references',blob,`stil-${index+1}.png`);}
- const response=await fetch(`${endpoint}/v1/generate`,{method:'POST',body:form,signal});if(!response.ok){let detail='';try{detail=(await response.json()).detail||'';}catch{}throw new Error(detail||`Modellserver antwortet mit ${response.status}.`);}
- const result=await response.json() as {images?:{text:string;image:string}[]};if(!Array.isArray(result.images)||result.images.length!==words.length)throw new Error('Der Modellserver hat keine vollständige Handschrift geliefert.');
- return Promise.all(result.images.map(item=>imageSample(item.text,item.image)));
+ const generated:SynthImage[]=[];for(let start=0;start<words.length;start+=8){const batch=words.slice(start,start+8);generated.push(...await (space?spaceGenerate(batch,profile.styleImages!,signal):directGenerate(batch,profile.styleImages!,signal)));}
+ return Promise.all(generated.map(item=>imageSample(item.text,item.image)));
 }
