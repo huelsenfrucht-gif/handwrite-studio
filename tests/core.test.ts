@@ -6,6 +6,8 @@ import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
 import { makeSVG } from '../src/export';
 import {extractSynthWords} from '../src/synthesis';
+import {editDistance} from '../src/synthesis';
+import {selectStyleImages} from '../src/import/style';
 import JSZip from 'jszip';
 const wave:Stroke=Array.from({length:161},(_,i)=>({x:i*2,y:60+30*Math.sin(i/8),p:.2+i/300}));
 const word=analyzeWord([wave],'meine','pen','sample');
@@ -41,6 +43,8 @@ describe('connected handwriting',()=>{
  it('upgrades old total-height samples once without changing modern samples',()=>{const old=structuredClone(word);delete old.normalization;const upgraded=recalibrateWord(old);expect(upgraded.normalization).toBe(3);expect(upgraded.metrics.baseline).toBe(80);expect(recalibrateWord(upgraded)).toBe(upgraded);});
  it('preserves a generated word as one visible raster while retaining hidden editable ink',()=>{const generated={...analyzeWord([wave],'deine','photo','generated'),synthetic:true,raster:{data:'data:image/png;base64,AA==',x:0,y:20,width:250,height:70}},p:Profile={id:'ai',name:'AI',created:'',glyphs:{},words:[generated]},out=composeWord('deine',p,random(1));expect(out.glyphs[0].raster).toEqual(generated.raster);expect(out.glyphs.every(g=>g.hiddenByRaster)).toBe(true);expect(out.glyphs.flatMap(g=>g.strokes).length).toBeGreaterThan(0);const n=newNote();n.settings.profileId=p.id;n.renderedText='deine';const rendered=layout(n,[p]);expect(rendered.rasterWords).toBe(1);expect(makeSVG(n,[p],0)).toContain('<image id="ai-word-');});
  it('requests only unseen multi-character words from the synthesis model',()=>{expect(extractSynthWords('meine neue neue Idee 7',profile)).toEqual(['neue','Idee']);});
+ it('scores OCR candidates by the actual target spelling',()=>{expect(editDistance('handschrift','handschrift')).toBe(0);expect(editDistance('handschrift','hanschrift')).toBe(1);expect(editDistance('abc','xyz')).toBe(3);});
+ it('chooses diverse flowing style references instead of five OCR ties',()=>{const candidates=Array.from({length:6},(_,i)=>{const sample={...word,id:`s${i}`,text:['anna','anna','otto','freiheit','europa','minimum'][i],metrics:{...word.metrics,quality:.8,joining:i===0?.1:.9}};return{id:`c${i}`,text:sample.text,image:`image-${i}`,confidence:.98,sample,selected:true,page:'p'};});const images=selectStyleImages(candidates);expect(images).toHaveLength(5);expect(images).not.toContain('image-0');expect(new Set(images).size).toBe(5);});
 });
 describe('document layout and editing',()=>{
  it('paginates long notes without dropping characters',()=>{const n=newNote();n.renderedText=('Ein langer Text mit Umlauten äöü und Zahlen 123.\n').repeat(160);const r=layout(n,[]);expect(r.pages).toBeGreaterThan(3);expect(r.glyphs).toHaveLength(Array.from(n.renderedText.replace(/\s/g,'')).length);expect(r.glyphs.every(g=>g.x>=70&&g.y>=70)).toBe(true);});

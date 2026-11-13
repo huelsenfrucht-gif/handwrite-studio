@@ -26,7 +26,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/v1/generate")
-async def generate(texts: str = Form(...), references: list[UploadFile] = File(...)) -> dict[str, object]:
+async def generate(texts: str = Form(...), references: list[UploadFile] = File(...), variants: int = Form(2)) -> dict[str, object]:
     try:
         requested = json.loads(texts)
     except json.JSONDecodeError as exc:
@@ -35,6 +35,8 @@ async def generate(texts: str = Form(...), references: list[UploadFile] = File(.
         raise HTTPException(400, "Bitte 1–40 Wörter mit jeweils 2–24 Buchstaben oder Zahlen senden.")
     if not 1 <= len(references) <= 5:
         raise HTTPException(400, "Bitte 1–5 Stilreferenzen senden.")
+    if not 1 <= variants <= 4:
+        raise HTTPException(400, "Bitte 1–4 Varianten anfordern.")
     samples: list[bytes] = []
     for upload in references:
         content = await upload.read()
@@ -48,7 +50,8 @@ async def generate(texts: str = Form(...), references: list[UploadFile] = File(.
     seed = int.from_bytes(os.urandom(4), "big")
     async with generation_lock:
         try:
-            words = await run_in_threadpool(engine.generate, requested, samples, seed, int(os.getenv("DDIM_STEPS", "20")))
+            expanded = [word for word in requested for _ in range(variants)]
+            words = await run_in_threadpool(engine.generate, expanded, samples, seed, int(os.getenv("DDIM_STEPS", "24")))
         except Exception as exc:
             raise HTTPException(503, f"Handschriftmodell nicht bereit: {exc}") from exc
     result = []

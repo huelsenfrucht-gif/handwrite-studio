@@ -8,7 +8,7 @@ also derives an editable centerline approximation for the Goodnotes export.
 Required environment variables:
 
 - `ALLOWED_ORIGINS`: comma-separated public app origins.
-- `DDIM_STEPS`: defaults to `20`; `12` is faster, `32` is sharper.
+- `DDIM_STEPS`: defaults to `24`; `16` is faster, `32` is sharper.
 - `PORT`: defaults to `8501` in the container.
 
 No user account or database is used. A CUDA GPU is recommended for production.
@@ -75,8 +75,10 @@ spending cap before deployment.
 ## Endpoints
 
 - `GET /healthz` reports readiness and the selected device.
-- `POST /v1/generate` accepts `texts` as a JSON array and one to five
-  `references` multipart image files. It accepts at most 40 words per request.
+- `POST /v1/generate` accepts `texts` as a JSON array, one to five
+  `references` and `variants` from 1–4. It accepts at most 40 words per request.
+  The client requests two candidates and re-reads them with an independent HTR
+  model so the more legible whole-word result is retained.
 
 The official DiffusionPen checkpoint was trained on IAM and therefore does not
 learn German umlaut dots or `ß` from its training images. The service feeds a

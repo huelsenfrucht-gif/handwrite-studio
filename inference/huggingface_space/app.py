@@ -72,20 +72,23 @@ def _parse_texts(texts: str) -> list[str]:
     return requested
 
 
-def _duration(texts: str, _references: list[str] | None) -> int:
+def _duration(texts: str, _references: list[str] | None, variants: int) -> int:
     try:
         count = min(8, max(1, len(json.loads(texts))))
     except Exception:
         count = 1
-    return min(120, 30 + math.ceil(count / 4) * 18)
+    return min(120, 30 + math.ceil(count * max(1, min(4, variants)) / 4) * 18)
 
 
 @spaces.GPU(duration=_duration)
-def generate(texts: str, references: list[str] | None) -> dict[str, object]:
+def generate(texts: str, references: list[str] | None, variants: int) -> dict[str, object]:
     requested = _parse_texts(texts)
     samples = _read_references(references)
+    if not 1 <= variants <= 4:
+        raise gr.Error("Bitte 1–4 Varianten anfordern.")
     seed = int.from_bytes(os.urandom(4), "big")
-    words = engine.generate(requested, samples, seed, int(os.getenv("DDIM_STEPS", "20")))
+    expanded = [word for word in requested for _ in range(variants)]
+    words = engine.generate(expanded, samples, seed, int(os.getenv("DDIM_STEPS", "24")))
     result: list[dict[str, str]] = []
     for word in words:
         output = BytesIO()
@@ -104,6 +107,7 @@ demo = gr.Interface(
     inputs=[
         gr.Textbox(value='["Hallo", "Handschrift"]', label="Wörter als JSON"),
         gr.File(file_count="multiple", file_types=["image"], type="filepath", label="1–5 Stilwörter"),
+        gr.Slider(1, 4, value=2, step=1, label="Varianten je Wort"),
     ],
     outputs=gr.JSON(label="Ergebnis"),
     title="Handwrite Studio DiffusionPen",
