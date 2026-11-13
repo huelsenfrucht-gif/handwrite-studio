@@ -1,4 +1,4 @@
-import { smooth, type Stroke } from './model';
+import type { Stroke } from './model';
 const neighbor8=(i:number,width:number)=>[i-width,i-width+1,i+1,i+width+1,i+width,i+width-1,i-1,i-width-1];
 // Zhang–Suen thinning, followed by graph tracing. Output is an approximation of
 // the centreline; photographs cannot recover original stroke order or pressure.
@@ -47,7 +47,11 @@ export function vectorize(rgba:Uint8ClampedArray, width:number,height:number,thr
   // Collapse collinear skeleton pixels. The shape stays identical, but the
   // resulting Goodnotes document is much lighter and easier to edit.
   const simple=points.filter((p,k)=>{if(k===0||k===points.length-1)return true;const a=points[k-1],b=points[k+1];return (p.x-a.x)*(b.y-p.y)!==(p.y-a.y)*(b.x-p.x);});
-  paths.push(simple.length>=3?smooth(simple):simple);
+  // Keep the photographed centreline exactly on the detected pixels.  A
+  // Catmull-Rom pass is useful for ordered pen input, but a skeleton graph has
+  // branches with no original pen order; smoothing those branches overshoots
+  // corners and turns real letters into hooks, boxes and large loops.
+  paths.push(simple);
  };
  for(let i=0;i<bin.length;i++)if(bin[i]){const ns=adjacent(i);if(!ns.length)paths.push([{x:i%width,y:Math.floor(i/width),p:.5}]);else if(ns.length!==2)for(const n of ns)if(!edges.has(key(i,n)))trace(i,n);}
  for(let i=0;i<bin.length;i++)if(bin[i])for(const n of adjacent(i))if(!edges.has(key(i,n)))trace(i,n);

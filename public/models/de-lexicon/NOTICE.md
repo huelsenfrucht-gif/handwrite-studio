@@ -15,3 +15,8 @@ handwriting is sent to an external service.
 [`enz/german-wordlist`](https://github.com/enz/german-wordlist), licensed under
 CC0 1.0. The application uses it only to recognize valid German word forms;
 the full source word list is not shipped to browsers.
+
+`context-frequency.txt` is the German 50,000-word frequency list from
+[`hermitdave/FrequencyWords`](https://github.com/hermitdave/FrequencyWords),
+generated from OpenSubtitles 2018 and licensed CC BY-SA 4.0. It broadens local
+OCR suggestions, especially for common names and conversational vocabulary.

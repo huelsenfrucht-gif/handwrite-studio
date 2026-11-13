@@ -1,31 +1,91 @@
 # Handwrite Studio
 
-React-/TypeScript-Web-App für persönliche Handschrift als bearbeitbare Vektorstriche.
-
-## Start
-
-Node.js 22 oder neuer. `npm ci`, dann `npm run dev`. Produktionsbuild: `npm run build`; Tests: `npm test`.
+Handwrite Studio erkennt Wörter aus fotografierten Notizseiten und erzeugt neue
+Texte in einer daraus gelernten, realistischen Handschrift. Die Web-App benötigt
+kein Benutzerkonto.
 
 ## Funktionsumfang
 
-- Zusammenhängende Wortproben per Stift oder Foto aufnehmen, beschriften und analysieren.
-- Fotovektorisierung mittels Schwellwert, Skelettierung und Pfadverfolgung. Buchstabengrenzen sind korrigierbar.
-- Bekannte Wörter behalten ihre ursprüngliche Geometrie. Neue Wörter verwenden bevorzugt lange gelernte Wortteile und kontextbezogene Formen. Fragmentübergänge werden anhand der beobachteten Strichrichtungen angenähert.
-- Dokumente, lokale IndexedDB-Speicherung, Sicherungsimport/-export, Auswahl, Verschieben, Radieren einzelner Striche, zusätzliche Stiftnotizen und Rückgängig/Wiederholen.
-- Nativer `.goodnotes`-Export mit radierbaren Tintenstrichen sowie mehrseitiger Vektor-PDF-Export, SVG-Export der aktuellen Seite, Papier- und Stifteinstellungen.
-- PWA mit lokalem Offline-Cache nach vollständigem ersten Laden.
-- Keine Anmeldung erforderlich: Die App startet direkt und speichert standardmäßig lokal im Browser.
+- Ordner-, Bild- und PDF-Import mit lokaler Seitensegmentierung und deutscher
+  Handschrifterkennung im Browser.
+- Sicherheitsstufen für OCR-Ergebnisse: klare Treffer werden vorausgewählt,
+  unsichere Wörter bleiben zur Kontrolle sichtbar.
+- Automatische Auswahl von bis zu fünf geeigneten Original-Wortbildern als
+  Stilreferenzen. Einzelne Buchstaben müssen nicht mehrfach abgeschrieben werden.
+- Neue, zusammenhängende Wortbilder über das offizielle
+  [DiffusionPen](https://github.com/koninik/DiffusionPen)-Modell statt durch das
+  Aneinanderreihen isolierter Zeichen.
+- Dokumenteditor mit Linienpapier, Auswahl, Verschieben, Radieren, Stiftnotizen
+  und Rückgängig/Wiederholen.
+- PDF- und SVG-Export mit dem realistischen erzeugten Wortbild. Der native
+  Goodnotes-Export verwendet eine aus dem Wortbild abgeleitete, radierbare
+  Mittellinien-Annäherung.
+- Lokale Dokument- und Profilspeicherung per IndexedDB sowie Sicherungsimport und
+  -export.
 
-## Grenzen und noch offene Abnahme
+## Architektur
 
-Diese Implementierung ist ein geometrisches, beispielbasiertes Verfahren, kein neuronal trainierter Handschrift-Klon. Die persönlichen Realismus-Anforderungen sind noch nicht mit echten Schreibproben des Nutzers überprüft. Neue Wortkombinationen können sichtbare Übergänge enthalten. Die automatische Transkription kompletter freier Notizseiten ist nicht implementiert: Wörter werden ausgewählt und manuell zugeordnet. Druck und Schreibreihenfolge lassen sich aus Fotos nicht rekonstruieren; die Ausgabe verwendet eine konstante Strichstärke.
+Die React-/TypeScript-App führt OCR, Korrektur und Dokumentbearbeitung lokal im
+Browser aus. Nur bei der Erzeugung neuer Wörter sendet sie den gewünschten Text
+und höchstens fünf ausgewählte Wortausschnitte an den zustandslosen
+DiffusionPen-Dienst. Der Dienst verarbeitet sie im Arbeitsspeicher, speichert sie
+nicht und gibt transparente PNG-Wortbilder zurück. Es gibt weder Benutzerkonto
+noch Datenbank.
 
-Der `.goodnotes`-Export schreibt Handschrift und Zeichnungen als native, radierbare Tintenstriche in ein rückentwickeltes Dateiformat. Da die verwendete, unabhängig geprüfte Vorlage jeweils eine Seite enthält, werden mehrseitige Dokumente als ZIP mit einer `.goodnotes`-Datei pro Seite ausgegeben. PDF bleibt die stabile Wahl zum Teilen und Drucken; PDF-Inhalte sind nach dem Goodnotes-Import nicht als einzelne Tintenstriche radierbar. Der Goodnotes-Export basiert auf dem MIT-lizenzierten Inkly-Ansatz; siehe `docs/THIRD_PARTY_NOTICES.md`.
+Ohne konfigurierten Modellserver bleibt die lokale Erkennung und Bearbeitung
+verfügbar; die realistische KI-Neuerzeugung benötigt jedoch den Dienst aus
+`inference/`.
 
-## Speicherung ohne Konto
+## Lokaler Start
 
-Alle Daten bleiben lokal im Browser. Fotos werden nicht dauerhaft gespeichert oder hochgeladen. Es gibt derzeit weder Anmeldung noch Konto. Regelmäßig die Studio-Sicherung herunterladen, insbesondere vor dem Löschen von Browserdaten.
+Voraussetzung ist Node.js 22 oder neuer.
 
-## Prüfungen
+```sh
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-27 automatisierte Tests prüfen Geometrieerhalt, Wiederverwendung zusammenhängender Fragmente, Seitenumbrüche, reproduzierbare Erzeugung, fehlende Zeichen, Radieren/Verschieben, Foto-Skelettierung, Sicherungsvalidierung, mehrseitige Vektor-PDF-Ausgabe und die Struktur nativer Goodnotes-Dateien. Browserprüfungen umfassen Stifteingabe, Fototraining mit synthetischem Bild, Speicherung nach Neuladen sowie PDF- und `.goodnotes`-Downloads. Der erzeugte Goodnotes-Download wurde zusätzlich mit einem unabhängigen Parser gelesen; alle 1.156 Teststriche hatten konsistente Punkt- und Segmentzähler. Diese Prüfungen belegen keine persönliche Schriftähnlichkeit und ersetzen keinen Test auf echter iPad-/Apple-Pencil-Hardware.
+Tests und Produktionsbuild:
+
+```sh
+npm test
+npm run build
+```
+
+`VITE_SYNTHESIS_API` muss auf den HTTPS-Ursprung des Modellservers zeigen. Die
+Einrichtung des Python-Dienstes ist in [`inference/README.md`](inference/README.md)
+beschrieben.
+
+## Datenschutz ohne Anmeldung
+
+OCR und Seitenauswertung laufen lokal. Die importierten Originalseiten werden
+nicht an den Modellserver geschickt. Für eine Worterzeugung übermittelt die App
+nur den eingegebenen Text und höchstens fünf automatisch gewählte
+Original-Wortausschnitte. Der mitgelieferte Dienst verarbeitet diese Daten
+zustandslos und ohne Datenbank. Dokumente und das Handschriftprofil bleiben im
+Browser, bis die lokalen Browserdaten gelöscht werden.
+
+Für einen fremdbetriebenen Modellserver gelten zusätzlich dessen
+Datenschutzbedingungen. Bei eigener Bereitstellung sollte kein Request-Logging
+für Upload-Inhalte aktiviert werden.
+
+## Qualität und Grenzen
+
+Mit zwei echten deutschen Notizseiten wurden 367 Wortbilder verarbeitet: 182
+klare Kandidaten wurden sicher vorausgewählt, 185 bewusst zur Prüfung gelassen
+und kein Wort verursachte einen Verarbeitungsfehler. Der komplette Browserpfad
+vom Originalausschnitt bis zu vier neu generierten, zusammenhängenden Wortbildern
+wurde ebenfalls geprüft.
+
+Handschrifterkennung bleibt grundsätzlich fehleranfällig; unsichere Wörter
+müssen bestätigt oder korrigiert werden. Ein Foto enthält außerdem keine
+ursprünglichen Stiftdruck- oder Zeitinformationen. Deshalb ist der
+Goodnotes-Export eine editierbare Annäherung, während PDF und SVG die sichtbare
+Modellausgabe erhalten.
+
+## Drittanbieter
+
+- DiffusionPen und die zugehörigen Gewichte: siehe `inference/NOTICE.md`.
+- Goodnotes-Schreibansatz: siehe `docs/THIRD_PARTY_NOTICES.md`.
+- Deutsches Kontextlexikon: siehe `public/models/de-lexicon/NOTICE.md`.

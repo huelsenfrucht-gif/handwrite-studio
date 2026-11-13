@@ -1,6 +1,6 @@
 import * as ort from 'onnxruntime-web/wasm';
 import wasmURL from '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm?url';
-import { decodeCTC } from './ctc';
+import { decodeCTCBeam } from './ctc';
 let session:Promise<ort.InferenceSession>|undefined;
 let alphabet='';
 export async function recognizeLine(image:HTMLCanvasElement){
@@ -13,5 +13,5 @@ export async function recognizeLine(image:HTMLCanvasElement){
  for(let i=0;i<pixels.length;i++)pixels[i]=(.2126*data[i*4]+.7152*data[i*4+1]+.0722*data[i*4+2])/255;
  const output=await model.run({image:new ort.Tensor('float32',pixels,[1,1,height,width])});
  const tensor=output.logits,frames=Number(tensor.dims[1]),classes=Number(tensor.dims[2]);
- return {...decodeCTC(tensor.data as Float32Array,frames,classes,alphabet),frames,pixelsPerFrame:image.width*width/target/frames};
+ return {...decodeCTCBeam(tensor.data as Float32Array,frames,classes,alphabet),frames,pixelsPerFrame:image.width*width/target/frames};
 }

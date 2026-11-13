@@ -4,4 +4,6 @@ dist/
 !.env.example
 .DS_Store
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
 .openai/*.tar.gz

@@ -1,7 +1,7 @@
 import { endpoints, connect, type Endpoint } from './joins';
-import { type Glyph, type Point, type Profile, type Stroke } from './model';
+import { type Glyph, type Point, type Profile, type RasterInk, type Stroke } from './model';
 import { demoGlyphs } from './demo';
-export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
+export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
 export type Style={slant:number;baselineSpread:number;joining:number;spacing:number;samples:number};
 const quantile=(values:number[],q:number)=>{const s=[...values].sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(s.length*q))]||0;};
 const median=(values:number[])=>quantile(values,.5);
@@ -38,7 +38,7 @@ export function relabelWord(sample:WordSample,text:string):WordSample{
  return Array.from(text).length===Array.from(sample.text).length?{...sample,text}:analyzeWord(sample.strokes,text,sample.source,sample.id);
 }
 export function recalibrateWord(w:WordSample):WordSample{if(w.normalization===3)return w;const frame=bodyFrame(w.strokes,w.text,w.cuts),scale=Math.max(.25,Math.min(4,52/frame.xHeight)),strokes=w.strokes.map(s=>s.map(p=>({...p,x:p.x*scale,y:(p.y-frame.baseline)*scale+80}))),cuts=w.cuts.map(c=>c*scale),width=w.width*scale;return{...w,normalization:3,strokes,cuts,width,metrics:{...w.metrics,baselineSpread:Math.min(12,w.metrics.baselineSpread*scale),spacing:width/Array.from(w.text).length,baseline:80,xHeight:52,quality:frame.confidence}};}
-export function profileStyle(p:Profile):Style{const words=(p.words||[]).map(recalibrateWord),stat=(key:'slant'|'baselineSpread'|'joining'|'spacing')=>median(words.map(w=>w.metrics[key]));return {slant:stat('slant'),baselineSpread:stat('baselineSpread'),joining:stat('joining'),spacing:stat('spacing'),samples:words.length};}
+export function profileStyle(p:Profile):Style{const words=(p.words||[]).filter(w=>!w.synthetic).map(recalibrateWord),stat=(key:'slant'|'baselineSpread'|'joining'|'spacing')=>median(words.map(w=>w.metrics[key]));return {slant:stat('slant'),baselineSpread:stat('baselineSpread'),joining:stat('joining'),spacing:stat('spacing'),samples:words.length};}
 // Clip segments geometrically, including interpolated boundary intersections.
 export function sliceStrokes(strokes:Stroke[],left:number,right:number):Stroke[]{
  const out:Stroke[]=[];
@@ -51,8 +51,8 @@ export function sliceStrokes(strokes:Stroke[],left:number,right:number):Stroke[]
 }
 export type WordResult={glyphs:Glyph[];kind:'original'|'contextual'|'letters';learned:number};
 export function composeWord(text:string,profile:Profile,rand:()=>number):WordResult {
- const words=(profile.words||[]).map(recalibrateWord),exact=words.filter(w=>w.text===text),chars=Array.from(text);
- if(exact.length){const word=exact[Math.floor(rand()*exact.length)];return {kind:'original',learned:chars.length,glyphs:chars.map((_,i)=>({source:word.source,advance:word.cuts[i+1]-word.cuts[i],strokes:sliceStrokes(word.strokes,word.cuts[i],word.cuts[i+1])}))};}
+ const allWords=(profile.words||[]).map(recalibrateWord),words=allWords.filter(w=>!w.synthetic),exact=allWords.filter(w=>w.text===text),chars=Array.from(text);
+ if(exact.length){const word=exact[Math.floor(rand()*exact.length)];return {kind:'original',learned:chars.length,glyphs:chars.map((_,i)=>({source:word.source,advance:word.cuts[i+1]-word.cuts[i],strokes:sliceStrokes(word.strokes,word.cuts[i],word.cuts[i+1]),...(word.raster?{raster:i===0?word.raster:undefined,hiddenByRaster:true}:{})}))};}
  const style=profileStyle(profile);let learned=0;const glyphs:Glyph[]=[];
  // Dynamic programming favours the longest observed connected letter sequences.
  // A target such as "beschreiben" can reuse the complete original "schreiben",
@@ -84,10 +84,13 @@ export function composeWord(text:string,profile:Profile,rand:()=>number):WordRes
    for(let k=0;k<length;k++){const j=from+k;glyphs.push({source:w.source,advance:w.cuts[j+1]-w.cuts[j],strokes:sliceStrokes(w.strokes,w.cuts[j],w.cuts[j+1])});origins.push({word:w.id,index:j});learned++;}i+=length;
   }else{const c=chars[i],gs=profile.glyphs[c]||demoGlyphs[c];if(profile.glyphs[c]?.length)learned++;let glyph=gs?.[Math.floor(rand()*gs.length)]||{source:'demo' as const,advance:55,strokes:[[{x:3,y:5},{x:45,y:5},{x:45,y:80},{x:3,y:80},{x:3,y:5}]]};if(glyph.source==='demo'&&words.length){const sx=Math.max(.78,Math.min(1.28,style.spacing/52)),shear=style.slant*.45;glyph={...glyph,advance:glyph.advance*sx,strokes:glyph.strokes.map(s=>s.map(p=>({...p,x:p.x*sx+(80-p.y)*shear}))) };}glyphs.push(glyph);origins.push(null);i++;}
  }
- // Join only observed cursive boundaries; never connect separated print samples.
+ // A photo reveals geometry, but not original pen direction. Never invent a
+ // connector between independently photographed fragments: a wrong tangent
+ // creates the hooks and vertical spikes that make generated words illegible.
+ // Direct pen samples retain ordered points, so only those may be joined.
  if(style.joining>.25)for(let i=0;i<glyphs.length-1;i++){
   if(origins[i]&&origins[i+1]&&origins[i]!.word===origins[i+1]!.word&&origins[i]!.index+1===origins[i+1]!.index)continue;
-  const a=glyphs[i],b=glyphs[i+1];if(a.source==='demo'||b.source==='demo')continue;
+  const a=glyphs[i],b=glyphs[i+1];if(a.source==='photo'||b.source==='photo'){const gap=Math.max(3,Math.min(8,style.spacing*.1));glyphs[i]={...a,advance:a.advance+gap};continue;}if(a.source!=='pen'||b.source!=='pen')continue;
   const exits=endpoints(a.strokes,'exit').filter(e=>e.point.x>a.advance-5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
   const entries=endpoints(b.strokes,'entry').filter(e=>e.point.x<5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
   if(!exits.length||!entries.length)continue;let best:{a:Endpoint;b:Endpoint;distance:number;score:number}|undefined;

@@ -1,8 +1,9 @@
 import type { WordSample } from './contextual';
 export type Point = { x: number; y: number; p?: number };
 export type Stroke = Point[];
-export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo' };
-export type Profile = { id: string; name: string; created: string; glyphs: Record<string, Glyph[]>; words?: WordSample[] };
+export type RasterInk = { data: string; x: number; y: number; width: number; height: number };
+export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean };
+export type Profile = { id: string; name: string; created: string; glyphs: Record<string, Glyph[]>; words?: WordSample[]; styleImages?: string[] };
 export type Paper = 'lined' | 'grid' | 'blank';
 export type Settings = { size: number; lineHeight: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number };
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
@@ -10,7 +11,7 @@ export type Annotation = { id: string; page: number; points: Stroke; color: stri
 export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };
 export type Note = { id: string; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
 export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string };
-export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean };
+export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();

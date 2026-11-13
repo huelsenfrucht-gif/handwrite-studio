@@ -15,9 +15,11 @@ export function validateLibrary(value:unknown):Library {
  const stroke=(s:unknown)=>Array.isArray(s)&&s.length>0&&s.length<=100000&&s.every(p=>{points++;return p&&num(p.x,-10000,10000)&&num(p.y,-10000,10000)&&(p.p===undefined||num(p.p,0,1));});
  if(new Set(v.notes.map(n=>n.id)).size!==v.notes.length||new Set(v.profiles.map(p=>p.id)).size!==v.profiles.length)return fail();
  for(const p of v.profiles){if(!p||!str(p.id,100)||p.id==='demo'||!str(p.name,100)||!str(p.created,100)||!p.glyphs||typeof p.glyphs!=='object'||Array.isArray(p.glyphs))return fail();
+  if(p.styleImages!==undefined&&(!Array.isArray(p.styleImages)||p.styleImages.length>5||!p.styleImages.every(image=>str(image,500000)&&/^data:image\/(?:png|jpeg|webp);base64,/.test(image))))return fail();
   if(p.words!==undefined){if(!Array.isArray(p.words)||p.words.length>2000)return fail();
    for(const w of p.words){if(!w||!str(w.id,100)||!str(w.text,24)||!(/^[\p{L}\p{N}]{2,24}$/u.test(w.text))||!['pen','photo'].includes(w.source)||!num(w.width,1,6000)||!Array.isArray(w.strokes)||!w.strokes.length||w.strokes.length>10000||!w.strokes.every(stroke)||!Array.isArray(w.cuts)||w.cuts.length!==Array.from(w.text).length+1||w.cuts[0]!==0||Math.abs(w.cuts.at(-1)!-w.width)>.001||!w.cuts.every((c,i)=>num(c,0,w.width)&&(i===0||c>w.cuts[i-1])))return fail();
-    const m=w.metrics;if(!m||!num(m.slant,-.7,.7)||!num(m.baselineSpread,0,12)||!num(m.joining,0,1)||!num(m.spacing,0,6000))return fail();
+    if(w.synthetic!==undefined&&typeof w.synthetic!=='boolean')return fail();const m=w.metrics;if(!m||!num(m.slant,-.7,.7)||!num(m.baselineSpread,0,12)||!num(m.joining,0,1)||!num(m.spacing,0,6000))return fail();
+    if(w.raster!==undefined&&(!w.synthetic||!w.raster||!str(w.raster.data,500000)||!/^data:image\/png;base64,/.test(w.raster.data)||!num(w.raster.x,-100,6000)||!num(w.raster.y,-100,200)||!num(w.raster.width,1,6000)||!num(w.raster.height,1,200)))return fail();
    }
   }
   for(const [c,gs] of Object.entries(p.glyphs)){if(Array.from(c).length!==1||!Array.isArray(gs)||!gs.length||gs.length>30)return fail();for(const g of gs)if(!g||!['pen','photo','demo'].includes(g.source)||!num(g.advance,1,200)||!Array.isArray(g.strokes)||g.strokes.length>10000||!g.strokes.length||!g.strokes.every(stroke))return fail();}
