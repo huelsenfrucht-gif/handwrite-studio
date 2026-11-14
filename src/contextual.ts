@@ -1,4 +1,3 @@
-import { endpoints, connect, type Endpoint } from './joins';
 import { type Glyph, type Point, type Profile, type RasterInk, type Stroke } from './model';
 import { demoGlyphs } from './demo';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
@@ -50,59 +49,21 @@ export function sliceStrokes(strokes:Stroke[],left:number,right:number):Stroke[]
  }return out;
 }
 export type WordResult={glyphs:Glyph[];kind:'original'|'contextual'|'letters';learned:number};
+function writtenGlyphs(profile:Profile,char:string):Glyph[]{
+ const exact=profile.glyphs[char]?.filter(g=>g.source==='pen')||[];
+ if(exact.length)return exact;
+ const lower=char.toLocaleLowerCase('de-DE');
+ if(char===lower||!/[A-Z]/.test(char))return [];
+ // A capital derived from the user's own lowercase form is deliberately only
+ // a fallback. It remains recognisably theirs and, unlike a demo glyph, never
+ // mixes a foreign typeface into an otherwise personal word.
+ return (profile.glyphs[lower]?.filter(g=>g.source==='pen')||[]).map(g=>({...g,advance:g.advance*1.1,strokes:g.strokes.map(s=>s.map(p=>({...p,x:p.x*1.1,y:80+(p.y-80)*1.3})))}));
+}
 export function composeWord(text:string,profile:Profile,rand:()=>number):WordResult {
- const allWords=(profile.words||[]).map(recalibrateWord),words=allWords.filter(w=>!w.synthetic),exact=allWords.filter(w=>w.text===text),chars=Array.from(text);
- if(exact.length){const word=exact[Math.floor(rand()*exact.length)];return {kind:'original',learned:chars.length,glyphs:chars.map((_,i)=>({source:word.source,advance:word.cuts[i+1]-word.cuts[i],strokes:sliceStrokes(word.strokes,word.cuts[i],word.cuts[i+1]),...(word.raster?{raster:i===0?word.raster:undefined,hiddenByRaster:true}:{})}))};}
- // Photographed centre-lines do not contain the original pen order and caused
- // spikes when fragments from unrelated words were joined. For unseen words,
- // use the preserved raster glyph variants; only direct pen samples may donate
- // connected vector fragments.
- const wordsForFragments=words.filter(word=>word.source==='pen');
- const style=profileStyle(profile);let learned=0;const glyphs:Glyph[]=[];
- // Dynamic programming favours the longest observed connected letter sequences.
- // A target such as "beschreiben" can reuse the complete original "schreiben",
- // not seven independently selected letters. Context scores break fragment ties.
- type Fragment={word:WordSample;from:number;length:number};
- const cost=Array(chars.length+1).fill(-Infinity) as number[];
- const choices:({fragment?:Fragment;length:number}|undefined)[]=Array(chars.length);
- cost[chars.length]=0;
- for(let at=chars.length-1;at>=0;at--){
-  cost[at]=cost[at+1]-4;choices[at]={length:1};
-  for(const word of wordsForFragments){const wc=Array.from(word.text);
-   for(let from=0;from<wc.length;from++){
-    if(wc[from]!==chars[at])continue;let length=0;
-    while(at+length<chars.length&&from+length<wc.length&&chars[at+length]===wc[from+length]){
-     length++;let context=0;
-     if(at===0&&from===0)context+=2;
-     if(at+length===chars.length&&from+length===wc.length)context+=2;
-     if(at>0&&from>0&&chars[at-1]===wc[from-1])context+=2;
-     if(at+length<chars.length&&chars[at+length]===wc[from+length])context+=2;
-     const score=cost[at+length]+length*length+context-2+rand()*.08;
-     if(score>cost[at]){cost[at]=score;choices[at]={fragment:{word,from,length},length};}
-    }
-   }
-  }
- }
- const origins:({word:string;index:number}|null)[]=[];
- for(let i=0;i<chars.length;){const choice=choices[i]!;
-  if(choice.fragment){const {word:w,from,length}=choice.fragment;
-   for(let k=0;k<length;k++){const j=from+k;glyphs.push({source:w.source,advance:w.cuts[j+1]-w.cuts[j],strokes:sliceStrokes(w.strokes,w.cuts[j],w.cuts[j+1])});origins.push({word:w.id,index:j});learned++;}i+=length;
-  }else{const c=chars[i],targetPosition=chars.length===1?'isolated':i===0?'initial':i===chars.length-1?'final':'medial',allPersonal=profile.glyphs[c],penPersonal=allPersonal?.filter(g=>g.source==='pen'),personal=penPersonal?.length?penPersonal:allPersonal,matching=personal?.filter(g=>g.position===targetPosition||(!g.position&&targetPosition==='medial')),gs=matching?.length?matching:(personal||demoGlyphs[c]);if(personal?.length)learned++;let glyph=gs?.[Math.floor(rand()*gs.length)]||{source:'demo' as const,advance:55,strokes:[[{x:3,y:5},{x:45,y:5},{x:45,y:80},{x:3,y:80},{x:3,y:5}]]};if(glyph.source==='demo'&&words.length){const sx=Math.max(.78,Math.min(1.28,style.spacing/52)),shear=style.slant*.45;glyph={...glyph,advance:glyph.advance*sx,strokes:glyph.strokes.map(s=>s.map(p=>({...p,x:p.x*sx+(80-p.y)*shear}))) };}glyphs.push(glyph);origins.push(null);i++;}
- }
- // A photo reveals geometry, but not original pen direction. Never invent a
- // connector between independently photographed fragments: a wrong tangent
- // creates the hooks and vertical spikes that make generated words illegible.
- // Direct pen samples retain ordered points, so only those may be joined.
- if(style.joining>.25)for(let i=0;i<glyphs.length-1;i++){
-  if(origins[i]&&origins[i+1]&&origins[i]!.word===origins[i+1]!.word&&origins[i]!.index+1===origins[i+1]!.index)continue;
-  const a=glyphs[i],b=glyphs[i+1];if(a.source==='photo'||b.source==='photo'){const gap=Math.max(3,Math.min(8,style.spacing*.1));glyphs[i]={...a,advance:a.advance+gap};continue;}if(a.source!=='pen'||b.source!=='pen')continue;
-  const exits=endpoints(a.strokes,'exit').filter(e=>e.point.x>a.advance-5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
-  const entries=endpoints(b.strokes,'entry').filter(e=>e.point.x<5&&e.point.y>25&&e.point.y<95&&e.tangent.x>0);
-  if(!exits.length||!entries.length)continue;let best:{a:Endpoint;b:Endpoint;distance:number;score:number}|undefined;
-  for(const p of exits)for(const q of entries){const distance=Math.abs(p.point.y-q.point.y),score=distance+8*(1-p.tangent.x*q.tangent.x-p.tangent.y*q.tangent.y);if(!best||score<best.score)best={a:p,b:q,distance,score};}if(!best||best.distance>45)continue;
-  const yShift=Math.max(-14,Math.min(14,best.a.point.y-best.b.point.y));let end=i+2;while(end<glyphs.length&&origins[end-1]&&origins[end]&&origins[end-1]!.word===origins[end]!.word&&origins[end-1]!.index+1===origins[end]!.index)end++;for(let j=i+1;j<end;j++)glyphs[j]={...glyphs[j],strokes:glyphs[j].strokes.map(s=>s.map(p=>({...p,y:p.y+yShift})))};
-  const aligned={...best.b,point:{...best.b.point,y:best.b.point.y+yShift}},gap=style.joining>.65?0:Math.min(3,style.spacing*.04),join=connect(best.a,aligned,a.advance+gap);
-  glyphs[i]={...a,advance:a.advance+gap,strokes:[...a.strokes,join]};
- }
- return {glyphs,learned,kind:words.length?'contextual':'letters'};
+ const chars=Array.from(text);let learned=0;
+ const glyphs=chars.map((c,i)=>{const targetPosition=chars.length===1?'isolated':i===0?'initial':i===chars.length-1?'final':'medial',personal=writtenGlyphs(profile,c),matching=personal.filter(g=>g.position===targetPosition||(!g.position&&targetPosition==='medial')),choices=matching.length?matching:(personal.length?personal:demoGlyphs[c]);if(personal.length)learned++;return choices?.[Math.floor(rand()*choices.length)]||{source:'demo' as const,advance:55,strokes:[[{x:3,y:5},{x:45,y:5},{x:45,y:80},{x:3,y:80},{x:3,y:5}]]};});
+ // Every generated word uses one consistent alphabet. Photographed words,
+ // raster snippets and obsolete synthetic words are intentionally never mixed
+ // into the result.
+ return {glyphs,learned,kind:'letters'};
 }
