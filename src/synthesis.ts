@@ -1,14 +1,10 @@
+import * as ort from 'onnxruntime-web';
 import {analyzeWord,type WordSample} from './contextual';
-import {uid,type Profile} from './model';
-import {cleanWordRaster} from './import/raster';
-import {vectorize} from './vectorize';
+import {uid,type Profile,type Stroke} from './model';
 
-const endpoint=(import.meta.env.VITE_SYNTHESIS_API||'').replace(/\/$/,'');
-const space=(import.meta.env.VITE_SYNTHESIS_SPACE||'').trim();
-export const synthesisAvailable=Boolean(endpoint||space);
-
-type SynthImage={text:string;image:string};
-const variants=2;
+const MODEL_ROOT='/models/handwriting-gen';
+type Manifest={format_version:1;model:string;alphabet:string;style_width:number;style_height:number;max_points:number};
+let runtime:Promise<{session:ort.InferenceSession;manifest:Manifest}>|undefined;
 
 const readable=(text:string)=>text.toLocaleLowerCase('de-DE').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').replace(/[^a-z0-9]/g,'');
 export function editDistance(a:string,b:string){const previous=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let diagonal=previous[0];previous[0]=i;for(let j=1;j<=b.length;j++){const above=previous[j],value=Math.min(previous[j]+1,previous[j-1]+1,diagonal+(a[i-1]===b[j-1]?0:1));diagonal=above;previous[j]=value;}}return previous[b.length];}
@@ -18,49 +14,65 @@ export function extractSynthWords(text:string,profile:Profile){
  return [...new Set(text.normalize('NFC').match(/[\p{L}\p{N}]{2,24}/gu)||[])].filter(word=>!human.has(word));
 }
 
-async function imageSample(text:string,dataUrl:string):Promise<WordSample>{
- const image=new Image();image.src=dataUrl;await image.decode();
- // DiffusionPen currently renders 256×64. Trace at twice that resolution so
- // rounded generated ink remains rounded after skeletonisation.
- const scale=Math.max(2,Math.min(4,384/Math.max(image.width,image.height))),canvas=document.createElement('canvas');canvas.width=Math.ceil(image.width*scale)+16;canvas.height=Math.ceil(image.height*scale)+16;const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,canvas.width,canvas.height);context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(image,8,8,image.width*scale,image.height*scale);
- const pixels=context.getImageData(0,0,canvas.width,canvas.height),strokes=vectorize(cleanWordRaster(pixels.data,canvas.width,canvas.height),canvas.width,canvas.height,185),sample=analyzeWord(strokes,text,'photo',uid());
- // Preserve the realistic diffusion result as transparent ink. The skeleton is
- // retained for native-ink export, but it must not replace the visibly better
- // generated word inside the editor/PDF/SVG.
- let left=canvas.width,top=canvas.height,right=0,bottom=0;for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){const i=(y*canvas.width+x)*4,luma=.2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2];if(luma<235){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}}
- left=Math.max(0,left-3);top=Math.max(0,top-3);right=Math.min(canvas.width-1,right+3);bottom=Math.min(canvas.height-1,bottom+3);const width=Math.max(1,right-left+1),height=Math.max(1,bottom-top+1),ink=document.createElement('canvas');ink.width=width;ink.height=height;const inkContext=ink.getContext('2d')!,crop=context.getImageData(left,top,width,height);for(let i=0;i<crop.data.length;i+=4){const luma=.2126*crop.data[i]+.7152*crop.data[i+1]+.0722*crop.data[i+2];crop.data[i]=38;crop.data[i+1]=62;crop.data[i+2]=98;crop.data[i+3]=Math.max(0,Math.min(255,(255-luma)*2));}inkContext.putImageData(crop,0,0);const rasterHeight=Math.max(18,Math.min(100,sample.width*height/width));
- return {...sample,synthetic:true,raster:{data:ink.toDataURL('image/png'),x:0,y:92-rasterHeight,width:sample.width,height:rasterHeight}};
+async function loadRuntime(){
+ if(!runtime)runtime=(async()=>{
+  let response:Response;
+  try{response=await fetch(`${MODEL_ROOT}/manifest.json`,{cache:'force-cache'});}catch{throw new Error('Das lokale Handschriftmodell konnte nicht geladen werden. Prüfe die Internetverbindung für den ersten Start.');}
+  if(!response.ok)throw new Error('Das neue lokale Handschriftmodell ist in dieser Version noch nicht enthalten. Es wird bewusst keine schlechte Ersatzschrift erzeugt.');
+  const manifest=await response.json() as Manifest;
+  if(manifest.format_version!==1||!manifest.model||!manifest.alphabet||manifest.style_width<32||manifest.style_height<16||manifest.max_points<64)throw new Error('Das lokale Handschriftmodell hat ein ungültiges Format.');
+  ort.env.wasm.numThreads=Math.min(2,Math.max(1,navigator.hardwareConcurrency||1));
+  const session=await ort.InferenceSession.create(`${MODEL_ROOT}/${manifest.model}`,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+  return{session,manifest};
+ })().catch(error=>{runtime=undefined;throw error;});
+ return runtime;
 }
 
-async function directGenerate(words:string[],images:string[],signal?:AbortSignal):Promise<SynthImage[]>{
- const form=new FormData();form.set('texts',JSON.stringify(words));form.set('variants',String(variants));for(const [index,image] of images.entries()){const response=await fetch(image,{signal}),blob=await response.blob();form.append('references',blob,`stil-${index+1}.png`);}
- const response=await fetch(`${endpoint}/v1/generate`,{method:'POST',body:form,signal});if(!response.ok){let detail='';try{detail=(await response.json()).detail||'';}catch{}throw new Error(detail||`Modellserver antwortet mit ${response.status}.`);}
- const result=await response.json() as {images?:SynthImage[]};if(!Array.isArray(result.images)||![words.length,words.length*variants].includes(result.images.length))throw new Error('Der Modellserver hat keine vollständige Handschrift geliefert.');
- return result.images;
+async function styleTensor(images:string[],manifest:Manifest){
+ const count=Math.min(5,images.length),size=manifest.style_width*manifest.style_height,data=new Float32Array(count*size);
+ for(let n=0;n<count;n++){
+  const image=new Image();image.src=images[n];await image.decode();
+  const canvas=document.createElement('canvas');canvas.width=manifest.style_width;canvas.height=manifest.style_height;
+  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.fillStyle='white';context.fillRect(0,0,canvas.width,canvas.height);
+  const scale=Math.min(canvas.width/image.width,canvas.height/image.height),w=image.width*scale,h=image.height*scale;context.drawImage(image,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+  const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
+  for(let i=0;i<size;i++){const p=i*4,luma=.2126*pixels[p]+.7152*pixels[p+1]+.0722*pixels[p+2];data[n*size+i]=(255-luma)/255;}
+ }
+ return new ort.Tensor('float32',data,[count,1,manifest.style_height,manifest.style_width]);
 }
 
-async function spaceGenerate(words:string[],images:string[],signal?:AbortSignal):Promise<SynthImage[]>{
- signal?.throwIfAborted();
- const [{Client,handle_file},blobs]=await Promise.all([import('@gradio/client'),Promise.all(images.map(async image=>(await fetch(image,{signal})).blob()))]);
- const app=await Client.connect(space);signal?.throwIfAborted();
+export function decodeStrokeTensor(values:ArrayLike<number>,points:number):Stroke[]{
+ const strokes:Stroke[]=[],limit=Math.min(points,Math.floor(values.length/4));let stroke:Stroke=[],x=0,y=0;
+ for(let i=0;i<limit;i++){
+  const dx=Number(values[i*4]),dy=Number(values[i*4+1]),pressure=Math.max(.05,Math.min(1,Number(values[i*4+2]))),penUp=Number(values[i*4+3])>.5;
+  if(!Number.isFinite(dx)||!Number.isFinite(dy)||Math.abs(dx)>100||Math.abs(dy)>100)continue;
+  x+=dx;y+=dy;stroke.push({x,y,p:pressure});if(penUp&&stroke.length){strokes.push(stroke);stroke=[];}
+ }
+ if(stroke.length)strokes.push(stroke);return strokes.filter(s=>s.length>1);
+}
+
+async function generateOne(word:string,style:ort.Tensor,session:ort.InferenceSession,manifest:Manifest,seed:number):Promise<WordSample>{
+ const chars=Array.from(word.normalize('NFC')),indexes=chars.map(char=>manifest.alphabet.indexOf(char)+1);
+ if(indexes.some(index=>index===0))throw new Error(`„${word}“ enthält ein Zeichen, das das lokale Modell noch nicht kennt.`);
+ const tokens=new BigInt64Array(indexes.map(BigInt)),feeds:Record<string,ort.Tensor>={tokens:new ort.Tensor('int64',tokens,[1,tokens.length]),token_length:new ort.Tensor('int64',new BigInt64Array([BigInt(tokens.length)]),[1]),style,seed:new ort.Tensor('int64',new BigInt64Array([BigInt(seed)]),[1])};
+ const result=await session.run(feeds),output=result.strokes,lengthOutput=result.stroke_length;
+ if(!output||!lengthOutput)throw new Error('Das lokale Modell hat keine Stiftstriche geliefert.');
+ const length=Number((lengthOutput.data as ArrayLike<number|bigint>)[0]),strokes=decodeStrokeTensor(output.data as ArrayLike<number>,Math.min(length,manifest.max_points));
+ if(strokes.flat().length<8)throw new Error(`Das lokale Modell konnte „${word}“ nicht lesbar schreiben.`);
+ return{...analyzeWord(strokes,word,'pen',uid()),synthetic:true};
+}
+
+async function ocrScore(word:string,sample:WordSample){
  try{
-  const result=await app.predict('/generate',[JSON.stringify(words),blobs.map(blob=>handle_file(blob)),variants]);signal?.throwIfAborted();
-  const data=result.data as unknown[];const value=data[0] as {images?:SynthImage[]}|string;
-  const parsed=typeof value==='string'?JSON.parse(value) as {images?:SynthImage[]}:value;
-  if(!Array.isArray(parsed?.images)||![words.length,words.length*variants].includes(parsed.images.length))throw new Error('Der kostenlose Modellserver hat keine vollständige Handschrift geliefert.');
-  return parsed.images;
- }catch(error){const message=(error as Error).message||String(error);if(/quota|GPU task|exceeded|limit/i.test(message))throw new Error('Das kostenlose GPU-Tageslimit ist gerade aufgebraucht. Morgen funktioniert es wieder; es entstehen keine Kosten.');throw error;}
-}
-
-async function chooseLegible(words:string[],candidates:SynthImage[]){
- if(candidates.length===words.length)return candidates;
- try{const {recognizeLine}=await import('./import/recognizer'),chosen:SynthImage[]=[];for(const word of words){const group=candidates.filter(candidate=>candidate.text===word).slice(0,variants);if(!group.length)throw new Error('Kandidat fehlt.');let best=group[0],bestScore=Infinity;for(const candidate of group){const image=new Image();image.src=candidate.image;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0);const result=await recognizeLine(canvas),expected=readable(word),actual=readable(result.text),confidence=result.characters.length?result.characters.reduce((sum,char)=>sum+char.confidence,0)/result.characters.length:0,score=editDistance(expected,actual)/Math.max(1,expected.length)-confidence*.12;if(score<bestScore){best=candidate;bestScore=score;}}chosen.push(best);}return chosen;}catch{return words.map(word=>candidates.find(candidate=>candidate.text===word)).filter((candidate):candidate is SynthImage=>Boolean(candidate));}
+  const {recognizeLine}=await import('./import/recognizer'),points=sample.strokes.flat(),minX=Math.min(...points.map(p=>p.x)),maxX=Math.max(...points.map(p=>p.x)),minY=Math.min(...points.map(p=>p.y)),maxY=Math.max(...points.map(p=>p.y)),scale=Math.min(3,512/Math.max(1,maxX-minX)),canvas=document.createElement('canvas');canvas.width=Math.ceil((maxX-minX)*scale+24);canvas.height=Math.ceil((maxY-minY)*scale+24);const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,canvas.width,canvas.height);context.strokeStyle='black';context.lineWidth=3;context.lineCap='round';context.lineJoin='round';for(const stroke of sample.strokes){context.beginPath();stroke.forEach((p,i)=>(i?context.lineTo((p.x-minX)*scale+12,(p.y-minY)*scale+12):context.moveTo((p.x-minX)*scale+12,(p.y-minY)*scale+12)));context.stroke();}
+  const recognized=await recognizeLine(canvas);return editDistance(readable(word),readable(recognized.text))/Math.max(1,readable(word).length);
+ }catch{return .5;}
 }
 
 export async function synthesizeWords(text:string,profile:Profile,signal?:AbortSignal){
- if(!endpoint&&!space)throw new Error('Der realistische Handschriftgenerator ist auf diesem Server noch nicht verbunden.');
- if((profile.styleImages||[]).length<1)throw new Error('Bitte importiere zuerst Handschriftseiten. Daraus werden fünf Stilwörter gewählt.');
+ if((profile.styleImages||[]).length<1)throw new Error('Bitte importiere zuerst Handschriftseiten. Daraus werden Stilwörter lokal ausgewählt.');
  const words=extractSynthWords(text,profile);if(!words.length)return [];
- const generated:SynthImage[]=[];for(let start=0;start<words.length;start+=4){const batch=words.slice(start,start+4),candidates=await (space?spaceGenerate(batch,profile.styleImages!,signal):directGenerate(batch,profile.styleImages!,signal));generated.push(...await chooseLegible(batch,candidates));}
- return Promise.all(generated.map(item=>imageSample(item.text,item.image)));
+ signal?.throwIfAborted();const {session,manifest}=await loadRuntime(),style=await styleTensor(profile.styleImages!,manifest),generated:WordSample[]=[];
+ for(const word of words){signal?.throwIfAborted();const candidates:WordSample[]=[];for(let variant=0;variant<3;variant++)candidates.push(await generateOne(word,style,session,manifest,crypto.getRandomValues(new Uint32Array(1))[0]));const scores=await Promise.all(candidates.map(candidate=>ocrScore(word,candidate)));generated.push(candidates[scores.indexOf(Math.min(...scores))]);}
+ return generated;
 }

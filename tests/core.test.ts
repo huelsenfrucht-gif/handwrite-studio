@@ -5,7 +5,7 @@ import { analyzeWord,composeWord,recalibrateWord,relabelWord,sliceStrokes } from
 import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
 import { makeSVG } from '../src/export';
-import {extractSynthWords} from '../src/synthesis';
+import {decodeStrokeTensor,extractSynthWords} from '../src/synthesis';
 import {editDistance} from '../src/synthesis';
 import {selectStyleImages} from '../src/import/style';
 import JSZip from 'jszip';
@@ -44,6 +44,7 @@ describe('connected handwriting',()=>{
  it('preserves a generated word as one visible raster while retaining hidden editable ink',()=>{const generated={...analyzeWord([wave],'deine','photo','generated'),synthetic:true,raster:{data:'data:image/png;base64,AA==',x:0,y:20,width:250,height:70}},p:Profile={id:'ai',name:'AI',created:'',glyphs:{},words:[generated]},out=composeWord('deine',p,random(1));expect(out.glyphs[0].raster).toEqual(generated.raster);expect(out.glyphs.every(g=>g.hiddenByRaster)).toBe(true);expect(out.glyphs.flatMap(g=>g.strokes).length).toBeGreaterThan(0);const n=newNote();n.settings.profileId=p.id;n.renderedText='deine';const rendered=layout(n,[p]);expect(rendered.rasterWords).toBe(1);expect(makeSVG(n,[p],0)).toContain('<image id="ai-word-');});
  it('requests only unseen multi-character words from the synthesis model',()=>{expect(extractSynthWords('meine neue neue Idee 7',profile)).toEqual(['neue','Idee']);});
  it('scores OCR candidates by the actual target spelling',()=>{expect(editDistance('handschrift','handschrift')).toBe(0);expect(editDistance('handschrift','hanschrift')).toBe(1);expect(editDistance('abc','xyz')).toBe(3);});
+ it('decodes local model deltas into separate editable pen strokes',()=>{const strokes=decodeStrokeTensor([2,3,.2,0,4,-1,.8,1,1,5,.5,0,3,2,.7,1],4);expect(strokes).toHaveLength(2);expect(strokes[0]).toEqual([{x:2,y:3,p:.2},{x:6,y:2,p:.8}]);expect(strokes[1]).toEqual([{x:7,y:7,p:.5},{x:10,y:9,p:.7}]);});
  it('chooses diverse flowing style references instead of five OCR ties',()=>{const candidates=Array.from({length:6},(_,i)=>{const sample={...word,id:`s${i}`,text:['anna','anna','otto','freiheit','europa','minimum'][i],metrics:{...word.metrics,quality:.8,joining:i===0?.1:.9}};return{id:`c${i}`,text:sample.text,image:`image-${i}`,confidence:.98,sample,selected:true,page:'p'};});const images=selectStyleImages(candidates);expect(images).toHaveLength(5);expect(images).not.toContain('image-0');expect(new Set(images).size).toBe(5);});
 });
 describe('document layout and editing',()=>{

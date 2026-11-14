@@ -9,7 +9,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gradio/client": "^2.8.0",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
