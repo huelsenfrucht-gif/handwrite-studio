@@ -8,11 +8,13 @@ import { makeSVG } from '../src/export';
 import {decodeStrokeTensor,extractSynthWords} from '../src/synthesis';
 import {editDistance} from '../src/synthesis';
 import {selectStyleImages} from '../src/import/style';
+import {CALIBRATION_LINES,extractCalibrationAlphabet} from '../src/calibration';
 import JSZip from 'jszip';
 const wave:Stroke=Array.from({length:161},(_,i)=>({x:i*2,y:60+30*Math.sin(i/8),p:.2+i/300}));
 const word=analyzeWord([wave],'meine','pen','sample');
 const profile:Profile={id:'personal',name:'Meine Handschrift',created:new Date().toISOString(),glyphs:{},words:[word]};
 describe('connected handwriting',()=>{
+ it('extracts all 26 reusable glyphs from the two compact calibration lines',()=>{const lines=CALIBRATION_LINES.map(text=>{let x=10;const strokes:Stroke[]=[];for(const c of text){if(c===' '){x+=34;continue;}strokes.push([{x,y:90},{x:x+7,y:40},{x:x+14,y:90}]);x+=22;}return strokes;});const glyphs=extractCalibrationAlphabet(lines);expect(Object.keys(glyphs).sort().join('')).toBe('abcdefghijklmnopqrstuvwxyz');expect(Object.values(glyphs).every(g=>g.source==='pen'&&g.strokes.flat().length>=2)).toBe(true);});
  it('never inserts a photographed original word into the generated font',()=>{const out=composeWord('meine',profile,random(1));expect(out.kind).toBe('letters');expect(out.glyphs).toHaveLength(5);expect(out.glyphs.every(g=>!g.raster&&g.source==='demo')).toBe(true);});
  it('uses the same captured alphabet for known and unseen words',()=>{const pen={source:'pen' as const,advance:24,strokes:[[{x:0,y:70},{x:10,y:40},{x:20,y:70}]]},p={...profile,glyphs:{m:[pen],e:[pen],i:[pen],n:[pen]}},known=composeWord('meine',p,random(1)),unseen=composeWord('meinen',p,random(1));expect(known.glyphs.every(g=>g.source==='pen')).toBe(true);expect(unseen.glyphs.every(g=>g.source==='pen')).toBe(true);expect(known.glyphs[0]).toEqual(unseen.glyphs[0]);});
  it('interpolates exact clip intersections and preserves reverse pen motion',()=>{
