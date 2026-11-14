@@ -1,6 +1,9 @@
 .guided-training{max-height:94dvh;overflow:auto;overscroll-behavior:contain}
 .guided-training,.guided-training *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .training-pad,.paper{touch-action:none;overscroll-behavior:none}
+.paper.tool-pan{touch-action:pan-x pan-y;cursor:grab;overscroll-behavior:auto}
+.paper.tool-pan:active{cursor:grabbing}
+.zoom-controls input{width:92px;accent-color:#3268ad}
 .calibration-pad-wrap{position:relative}
 .calibration-pad-wrap .clear-line{position:absolute;right:8px;top:8px;margin:0;background:#ffffffdd;border:1px solid #d9e2ea;z-index:2}
 .complete-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}

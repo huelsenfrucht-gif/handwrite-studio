@@ -15,7 +15,7 @@ export type PlacedGlyph = { id: string; char: string; page: number; strokes: Str
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();
-export const defaultSettings: Settings = { size: 27, lineHeight: 43, wordSpacing: 35, variation: 25, color: '#263e62', penWidth: 1.7, paper: 'lined', profileId: 'demo', seed: 42 };
+export const defaultSettings: Settings = { size: 12, lineHeight: 20, wordSpacing: 60, variation: 34, color: '#000000', penWidth: 1.2, paper: 'lined', profileId: 'demo', seed: 42 };
 export function newNote(title = 'Unbenanntes Dokument'): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');

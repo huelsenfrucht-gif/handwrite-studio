@@ -2,8 +2,9 @@ import { type Library, initialLibrary } from './model';
 import { recalibrateWord } from './contextual';
 const DB='handwrite-studio';
 async function db(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('library');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
-export async function loadLibrary():Promise<Library>{const d=await db();try{return await new Promise((resolve,reject)=>{const r=d.transaction('library').objectStore('library').get('current');r.onsuccess=()=>{try{resolve(r.result?validateLibrary(r.result):initialLibrary());}catch(e){reject(e);}};r.onerror=()=>reject(r.error);});}finally{d.close();}}
-export async function saveLibrary(library:Library){const d=await db();try{await new Promise<void>((resolve,reject)=>{const tx=d.transaction('library','readwrite');tx.objectStore('library').put(library,'current');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});}finally{d.close();}}
+async function readStored(d:IDBDatabase,key:string){return new Promise<unknown>((resolve,reject)=>{const r=d.transaction('library').objectStore('library').get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+export async function loadLibrary():Promise<Library>{const d=await db();try{const current=await readStored(d,'current');if(current){try{return validateLibrary(current);}catch{const backup=await readStored(d,'last-good');if(backup)return validateLibrary(backup);throw new Error('Die lokale Speicherung ist beschädigt und es wurde keine lesbare Sicherung gefunden.');}}const backup=await readStored(d,'last-good');return backup?validateLibrary(backup):initialLibrary();}finally{d.close();}}
+export async function saveLibrary(library:Library){validateLibrary(structuredClone(library));const d=await db();try{await new Promise<void>((resolve,reject)=>{const tx=d.transaction('library','readwrite'),store=tx.objectStore('library');store.put(library,'current');store.put(library,'last-good');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Lokales Speichern wurde abgebrochen.'));});}finally{d.close();}}
 export function validateLibrary(value:unknown):Library {
  const fail=()=>{throw new Error('Ungültige Studio-Sicherung. Bitte eine unveränderte .handwrite.json-Datei wählen.');};
  if(!value||typeof value!=='object')return fail();const v=value as Library;
@@ -26,6 +27,7 @@ export function validateLibrary(value:unknown):Library {
  }
  for(const n of v.notes){if(!n||!str(n.id,100)||!str(n.title,200)||!str(n.text,100000)||!str(n.renderedText,100000)||!str(n.updated,100))return fail();const s=n.settings;
   if(s&&s.wordSpacing===undefined)s.wordSpacing=35;
+  if(s&&s.size===27&&s.lineHeight===43&&s.wordSpacing===35&&s.variation===25&&s.color==='#263e62'&&s.penWidth===1.7)Object.assign(s,{size:12,lineHeight:20,wordSpacing:60,variation:34,color:'#000000',penWidth:1.2,paper:'lined'});
   if(!s||!num(s.size,12,60)||!num(s.lineHeight,20,100)||!num(s.wordSpacing,15,90)||!num(s.variation,0,100)||!num(s.penWidth,.5,6)||!num(s.seed,0,2147483647)||!color(s.color)||!['lined','grid','blank'].includes(s.paper)||(s.profileId!=='demo'&&!v.profiles.some(p=>p.id===s.profileId)))return fail();
   if(!n.edits||typeof n.edits!=='object'||Array.isArray(n.edits)||!Array.isArray(n.annotations)||n.annotations.length>10000)return fail();
   for(const [id,e] of Object.entries(n.edits))if(!/^\d+$/.test(id)||!e||(e.dx!==undefined&&!num(e.dx,-10000,10000))||(e.dy!==undefined&&!num(e.dy,-10000,10000))||(e.deleted!==undefined&&typeof e.deleted!=='boolean')||(e.color!==undefined&&!color(e.color))||(e.hiddenStrokes!==undefined&&(!Array.isArray(e.hiddenStrokes)||!e.hiddenStrokes.every(x=>num(x,0,100000)&&Number.isInteger(x)))))return fail();

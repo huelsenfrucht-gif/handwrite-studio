@@ -30,5 +30,20 @@ function templateBytes(paper:Note['settings']['paper']){const raw=atob(GOODNOTES
 type Ink={points:Stroke;width:number;color:string};
 export function pageInk(note:Note,profiles:Profile[],page:number):Ink[]{const data=layout(note,profiles),scale=PDF_SCALE*GN_SCALE,toGN=(s:Stroke)=>s.map(p=>({...p,x:p.x*scale,y:p.y*scale})),ink:Ink[]=[];for(const g of data.glyphs.filter(g=>g.page===page)){const r=resolvedStrokes(g,note);for(const s of r.strokes)ink.push({points:toGN(s),width:note.settings.penWidth*scale,color:r.color});}for(const a of note.annotations.filter(a=>a.page===page))ink.push({points:toGN(a.points),width:a.width*scale,color:a.color});for(const d of (note.drawings||[]).filter(d=>d.page===page))for(const s of resolvedDrawing(d))ink.push({points:toGN(s),width:d.penWidth*d.scale*scale,color:d.color});return ink.filter(x=>x.points.length>0);}
 async function buildPage(note:Note,profiles:Profile[],page:number){const zip=await JSZip.loadAsync(templateBytes(note.settings.paper)),names=Object.keys(zip.files).filter(n=>!zip.files[n].dir),notePath=names.find(n=>n.startsWith('notes/')),events=zip.file('index.events.pb');if(!notePath||!events)throw new Error('Unvollständige Goodnotes-Vorlage.');const author=authorOf(await events.async('uint8array')),strokes=pageInk(note,profiles,page),records=pb.concat(strokes.map((s,i)=>strokeRecords(s.points,s.width,s.color,author,1000+i,i))),remap=remapper(),out=new JSZip();for(const name of names){let bytes=name===notePath?records:await zip.file(name)!.async('uint8array');if(name.endsWith('.pb')||name.startsWith('notes/')||name.startsWith('search/'))bytes=latin1.encode(remap(latin1.decode(bytes)));out.file(remap(name),bytes,{compression:'DEFLATE',compressionOptions:{level:6},date:new Date(),createFolders:false});}return out.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});}
-export async function createGoodnotesFiles(note:Note,profiles:Profile[]){const pages=layout(note,profiles).pages,base=safeName(note.title),files:{name:string;data:Uint8Array}[]=[];for(let page=0;page<pages;page++)files.push({name:`${base}${pages>1?` – Seite ${page+1}`:''}.goodnotes`,data:await buildPage(note,profiles,page)});return files;}
-export async function exportGoodnotes(note:Note,profiles:Profile[]){const files=await createGoodnotesFiles(note,profiles);if(files.length===1){download(new Blob([files[0].data as BlobPart],{type:'application/octet-stream'}),files[0].name);return 1;}const bundle=new JSZip();for(const f of files)bundle.file(f.name,f.data);download(await bundle.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}}),`${safeName(note.title)} – Goodnotes-Seiten.zip`,'application/zip');return files.length;}
+async function combinePages(pages:Uint8Array[]){
+ if(pages.length===1)return pages[0];
+ const out=new JSZip(),merged=new Map<string,Uint8Array[]>();
+ for(let i=0;i<pages.length;i++){
+  const zip=await JSZip.loadAsync(pages[i]);
+  for(const [name,file] of Object.entries(zip.files)){
+   if(file.dir)continue;
+   const bytes=await file.async('uint8array');
+   if(name==='index.events.pb'||name==='index.notes.pb'){merged.set(name,[...(merged.get(name)||[]),bytes]);continue;}
+   if(i===0||name.startsWith('notes/')||name.startsWith('attachments/')||name.startsWith('search/'))out.file(name,bytes,{compression:'DEFLATE',compressionOptions:{level:6},date:new Date(),createFolders:false});
+  }
+ }
+ for(const [name,parts] of merged)out.file(name,pb.concat(parts),{compression:'DEFLATE',compressionOptions:{level:6},date:new Date(),createFolders:false});
+ return out.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
+}
+export async function createGoodnotesFiles(note:Note,profiles:Profile[]){const count=layout(note,profiles).pages,pages:Uint8Array[]=[];for(let page=0;page<count;page++)pages.push(await buildPage(note,profiles,page));return[{name:`${safeName(note.title)}.goodnotes`,data:await combinePages(pages)}];}
+export async function exportGoodnotes(note:Note,profiles:Profile[]){const [file]=await createGoodnotesFiles(note,profiles);download(new Blob([file.data as BlobPart],{type:'application/octet-stream'}),file.name);return layout(note,profiles).pages;}
