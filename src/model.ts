@@ -2,7 +2,7 @@ import type { WordSample } from './contextual';
 export type Point = { x: number; y: number; p?: number };
 export type Stroke = Point[];
 export type RasterInk = { data: string; x: number; y: number; width: number; height: number };
-export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean };
+export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean; position?:'initial'|'medial'|'final'|'isolated' };
 export type Profile = { id: string; name: string; created: string; glyphs: Record<string, Glyph[]>; words?: WordSample[]; styleImages?: string[] };
 export type Paper = 'lined' | 'grid' | 'blank';
 export type Settings = { size: number; lineHeight: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number };
