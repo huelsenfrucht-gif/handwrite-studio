@@ -2,10 +2,10 @@ import { analyzeWord, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
 export const CALIBRATION_LINES=[
- 'franz fährt mit dem taxi quer durch bayern',
- 'viktor packt zwölf große boxen',
- 'jeder zwerg übt xylophon und musik',
- 'fünf flinke jäger machen pause',
+ 'franz jagt durch bayern',
+ 'viktor mixt zwölf boxen',
+ 'jeder packt sein saxofon',
+ 'quinn übt zwei lieder',
 ] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
