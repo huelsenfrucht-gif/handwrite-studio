@@ -1,0 +1,11 @@
+.guided-training{max-height:94dvh;overflow:auto;overscroll-behavior:contain}
+.guided-training,.guided-training *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.training-pad,.paper{touch-action:none;overscroll-behavior:none}
+.calibration-pad-wrap{position:relative}
+.calibration-pad-wrap .clear-line{position:absolute;right:8px;top:8px;margin:0;background:#ffffffdd;border:1px solid #d9e2ea;z-index:2}
+.complete-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.guided-complete .complete-actions .button{margin:0}
+.guided-steps .route-back{display:flex;width:100%;align-items:center;margin:0 0 20px}
+.guided-steps>strong{display:block}
+.pdf-import-button{width:100%;margin:-7px 0 10px;color:#386da9;border-style:dashed}
+@media(max-width:700px){.guided-training{width:calc(100% - 12px);max-height:98dvh}.calibration-pad{height:120px}.calibration-copy strong{font-size:15px}.line-route{padding-bottom:90px}}

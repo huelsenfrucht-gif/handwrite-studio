@@ -4,5 +4,6 @@ import App from './App';
 import './styles.css';
 import './guided.css';
 import './drawing.css';
+import './fixes.css';
 createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);
 if('serviceWorker' in navigator && !import.meta.env?.DEV) window.addEventListener('load',()=>{void navigator.serviceWorker.register('/sw.js').catch(()=>{});});

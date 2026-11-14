@@ -1,7 +1,12 @@
 import { analyzeWord, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
-export const CALIBRATION_LINES=['mr jock tv quiz','phd bags few lynx'] as const;
+export const CALIBRATION_LINES=[
+ 'franz fährt mit dem taxi quer durch bayern',
+ 'viktor packt zwölf große boxen',
+ 'jeder zwerg übt xylophon und musik',
+ 'fünf flinke jäger machen pause',
+] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
  const points=strokes.flat();if(points.length<12)throw new Error('Bitte schreibe die vollständige Zeile.');
@@ -14,19 +19,21 @@ function inkGaps(strokes:Stroke[],expected:number){
  return chosen.map(g=>(g.from+g.to)/2);
 }
 
-export function extractCalibrationLine(strokes:Stroke[],text:string):Record<string,Glyph>{
- const words=text.split(' '),gaps=inkGaps(strokes,words.length-1),points=strokes.flat(),left=Math.min(...points.map(p=>p.x))-2,right=Math.max(...points.map(p=>p.x))+2,bounds=[left,...gaps,right],glyphs:Record<string,Glyph>={};
+export function extractCalibrationLine(strokes:Stroke[],text:string):Record<string,Glyph[]>{
+ const words=text.split(' '),gaps=inkGaps(strokes,words.length-1),points=strokes.flat(),left=Math.min(...points.map(p=>p.x))-2,right=Math.max(...points.map(p=>p.x))+2,bounds=[left,...gaps,right],glyphs:Record<string,Glyph[]>={};
  for(let w=0;w<words.length;w++){
   const local=sliceStrokes(strokes,bounds[w],bounds[w+1]);
   const sample=analyzeWord(local,words[w],'pen',`cal-${w}`);
-  Array.from(words[w]).forEach((char,i)=>{const shape=sliceStrokes(sample.strokes,sample.cuts[i],sample.cuts[i+1]);if(shape.flat().length<2)throw new Error(`„${char}“ konnte nicht sauber getrennt werden. Schreibe die Buchstaben etwas deutlicher.`);glyphs[char]={source:'pen',advance:sample.cuts[i+1]-sample.cuts[i],strokes:shape};});
+  Array.from(words[w]).forEach((char,i)=>{const shape=sliceStrokes(sample.strokes,sample.cuts[i],sample.cuts[i+1]);if(shape.flat().length<2)throw new Error(`„${char}“ konnte nicht sauber getrennt werden. Schreibe die Buchstaben etwas deutlicher.`);(glyphs[char]??=[]).push({source:'pen',advance:sample.cuts[i+1]-sample.cuts[i],strokes:shape});});
  }
  return glyphs;
 }
 
-export function extractCalibrationAlphabet(lines:Stroke[][]):Record<string,Glyph>{
- if(lines.length!==CALIBRATION_LINES.length)throw new Error('Bitte schreibe beide Zeilen.');
- const glyphs=Object.assign({},...CALIBRATION_LINES.map((text,i)=>extractCalibrationLine(lines[i],text)));
+export function extractCalibrationAlphabet(lines:Stroke[][]):Record<string,Glyph[]>{
+ if(lines.length!==CALIBRATION_LINES.length)throw new Error('Bitte schreibe alle vier Zeilen.');
+ const glyphs:Record<string,Glyph[]>={};
+ CALIBRATION_LINES.forEach((text,i)=>{for(const [char,variants] of Object.entries(extractCalibrationLine(lines[i],text)))(glyphs[char]??=[]).push(...variants);});
+ for(const [char,variants] of Object.entries(glyphs)){const widths=variants.map(g=>g.advance).sort((a,b)=>a-b),median=widths[Math.floor(widths.length/2)];glyphs[char]=variants.filter(g=>g.advance>median*.45&&g.advance<median*1.9).slice(0,4);}
  const missing=Array.from('abcdefghijklmnopqrstuvwxyz').filter(c=>!glyphs[c]);
  if(missing.length)throw new Error(`Nicht sicher erkannt: ${missing.join(' ')}. Bitte versuche die Kurzzeile erneut oder nutze a–z einzeln.`);
  return glyphs;
