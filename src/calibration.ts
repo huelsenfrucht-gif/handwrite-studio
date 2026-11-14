@@ -1,12 +1,18 @@
 import { analyzeWord, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
-export const CALIBRATION_LINES=[
+export const LOWERCASE_LINES=[
  'franz jagt durch bayern',
  'viktor mixt zwölf boxen',
  'jeder packt sein saxofon',
  'quinn übt zwei lieder',
 ] as const;
+export const UPPERCASE_LINES=[
+ 'FRANZ JAGT DURCH BAYERN',
+ 'VIKTOR MIXT ZWÖLF BOXEN',
+ 'QUINN PACKT SEIN SAXOFON',
+] as const;
+export const CALIBRATION_LINES=[...LOWERCASE_LINES,...UPPERCASE_LINES] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
  const points=strokes.flat();if(points.length<12)throw new Error('Bitte schreibe die vollständige Zeile.');
@@ -30,11 +36,11 @@ export function extractCalibrationLine(strokes:Stroke[],text:string):Record<stri
 }
 
 export function extractCalibrationAlphabet(lines:Stroke[][]):Record<string,Glyph[]>{
- if(lines.length!==CALIBRATION_LINES.length)throw new Error('Bitte schreibe alle vier Zeilen.');
+ if(lines.length!==CALIBRATION_LINES.length)throw new Error('Bitte schreibe alle Klein- und Großbuchstaben-Zeilen.');
  const glyphs:Record<string,Glyph[]>={};
  CALIBRATION_LINES.forEach((text,i)=>{for(const [char,variants] of Object.entries(extractCalibrationLine(lines[i],text)))(glyphs[char]??=[]).push(...variants);});
  for(const [char,variants] of Object.entries(glyphs)){const widths=variants.map(g=>g.advance).sort((a,b)=>a-b),median=widths[Math.floor(widths.length/2)];glyphs[char]=variants.filter(g=>g.advance>median*.45&&g.advance<median*1.9).slice(0,4);}
- const missing=Array.from('abcdefghijklmnopqrstuvwxyz').filter(c=>!glyphs[c]);
- if(missing.length)throw new Error(`Nicht sicher erkannt: ${missing.join(' ')}. Bitte versuche die Kurzzeile erneut oder nutze a–z einzeln.`);
+ const missing=Array.from('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ').filter(c=>!glyphs[c]);
+ if(missing.length)throw new Error(`Nicht sicher erkannt: ${missing.join(' ')}. Bitte versuche die Zeilen erneut oder nutze die Einzeleingabe.`);
  return glyphs;
 }

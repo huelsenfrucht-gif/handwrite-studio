@@ -10,7 +10,7 @@ export function layout(note: Note, profiles: Profile[]) {
  const line=()=>{x=PAGE.margin;y+=s.lineHeight;if(y+s.size*1.2>PAGE.height-PAGE.margin){page++;y=PAGE.margin;}};
  const tokens=note.renderedText.normalize('NFC').replace(/\r/g,'').match(/[\p{L}\p{N}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
  for(const token of tokens) {
-   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n')line();else x+=(c==='\t'?140:style?.spacing?Math.max(25,style.spacing*.65):35)*size;}continue;}
+   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n')line();else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}continue;}
    const chars=Array.from(token),word=profile?composeWord(token,profile,rand):null;
    if(chars.length>1&&word?.kind==='original')originalWords++;if(chars.length>1&&word?.kind==='contextual')contextualWords++;if(word?.glyphs.some(g=>g.raster))rasterWords++;
    const sources=chars.map((c,i)=>word?.glyphs[i]||(demoGlyphs[c]||[missingGlyph])[0]);

@@ -7,5 +7,7 @@
 .guided-complete .complete-actions .button{margin:0}
 .guided-steps .route-back{display:flex;width:100%;align-items:center;margin:0 0 20px}
 .guided-steps>strong{display:block}
+.calibration-group-title{margin:20px 0 8px;color:#405672;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.calibration-group-title.uppercase-title{border-top:1px solid #dfe5ed;padding-top:20px;margin-top:28px}
 .pdf-import-button{width:100%;margin:-7px 0 10px;color:#386da9;border-style:dashed}
 @media(max-width:700px){.guided-training{width:calc(100% - 12px);max-height:98dvh}.calibration-pad{height:120px}.calibration-copy strong{font-size:15px}.line-route{padding-bottom:90px}}
