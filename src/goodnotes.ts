@@ -30,6 +30,7 @@ function templateBytes(paper:Note['settings']['paper']){const raw=atob(GOODNOTES
 type Ink={points:Stroke;width:number;color:string};
 export function pageInk(note:Note,profiles:Profile[],page:number):Ink[]{const data=layout(note,profiles),scale=PDF_SCALE*GN_SCALE,toGN=(s:Stroke)=>s.map(p=>({...p,x:p.x*scale,y:p.y*scale})),ink:Ink[]=[];for(const g of data.glyphs.filter(g=>g.page===page)){const r=resolvedStrokes(g,note);for(const s of r.strokes)ink.push({points:toGN(s),width:note.settings.penWidth*scale,color:r.color});}for(const a of note.annotations.filter(a=>a.page===page))ink.push({points:toGN(a.points),width:a.width*scale,color:a.color});for(const d of (note.drawings||[]).filter(d=>d.page===page))for(const drawingInk of resolvedDrawingInk(d))ink.push({points:toGN(drawingInk.points),width:d.penWidth*d.scale*scale,color:drawingInk.color});return ink.filter(x=>x.points.length>0);}
 async function buildPage(note:Note,profiles:Profile[],page:number){const zip=await JSZip.loadAsync(templateBytes(note.settings.paper)),names=Object.keys(zip.files).filter(n=>!zip.files[n].dir),notePath=names.find(n=>n.startsWith('notes/')),events=zip.file('index.events.pb');if(!notePath||!events)throw new Error('Unvollständige Goodnotes-Vorlage.');const author=authorOf(await events.async('uint8array')),strokes=pageInk(note,profiles,page),records=pb.concat(strokes.map((s,i)=>strokeRecords(s.points,s.width,s.color,author,1000+i,i))),remap=remapper(),out=new JSZip();for(const name of names){let bytes=name===notePath?records:await zip.file(name)!.async('uint8array');if(name.endsWith('.pb')||name.startsWith('notes/')||name.startsWith('search/'))bytes=latin1.encode(remap(latin1.decode(bytes)));out.file(remap(name),bytes,{compression:'DEFLATE',compressionOptions:{level:6},date:new Date(),createFolders:false});}return out.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});}
+const MERGED_INDEXES=new Set(['index.events.pb','index.notes.pb','index.attachments.pb','index.search.pb']);
 async function combinePages(pages:Uint8Array[]){
  if(pages.length===1)return pages[0];
  const out=new JSZip(),merged=new Map<string,Uint8Array[]>();
@@ -38,7 +39,9 @@ async function combinePages(pages:Uint8Array[]){
   for(const [name,file] of Object.entries(zip.files)){
    if(file.dir)continue;
    const bytes=await file.async('uint8array');
-   if(name==='index.events.pb'||name==='index.notes.pb'){merged.set(name,[...(merged.get(name)||[]),bytes]);continue;}
+   // Every page carries its own paper attachment; all index files must list
+   // each page's entries, otherwise Goodnotes shows pages 2+ without paper.
+   if(MERGED_INDEXES.has(name)){merged.set(name,[...(merged.get(name)||[]),bytes]);continue;}
    if(i===0||name.startsWith('notes/')||name.startsWith('attachments/')||name.startsWith('search/'))out.file(name,bytes,{compression:'DEFLATE',compressionOptions:{level:6},date:new Date(),createFolders:false});
   }
  }
