@@ -1,7 +1,7 @@
 .guided-training{max-height:94dvh;overflow:auto;overscroll-behavior:contain}
 .guided-training,.guided-training *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .training-pad{touch-action:none;overscroll-behavior:none}
-.paper.tool-select,.paper.tool-pen,.paper.tool-eraser{touch-action:pan-y;overscroll-behavior:contain}
+.paper.tool-select{touch-action:pan-y;overscroll-behavior:contain}
 .paper.tool-pan{touch-action:none}
 .paper-stage.pan-active,.paper.tool-pan{touch-action:none;cursor:grab;overscroll-behavior:contain}
 .paper.tool-pan:active{cursor:grabbing}
