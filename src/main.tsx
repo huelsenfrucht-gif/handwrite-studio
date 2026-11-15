@@ -7,6 +7,7 @@ import './guided.css';
 import './drawing.css';
 import './fixes.css';
 import {loadAdSense} from './adsense';
-createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App/></AppErrorBoundary></StrictMode>);
+import {UpdateBanner} from './UpdateBanner';
+createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App/></AppErrorBoundary><UpdateBanner/></StrictMode>);
 if('serviceWorker' in navigator && !import.meta.env?.DEV) window.addEventListener('load',()=>{void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(()=>{});});
 window.addEventListener('load',()=>{loadAdSense();});
