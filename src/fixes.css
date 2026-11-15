@@ -30,3 +30,12 @@
 .threshold-help{display:block;color:#738398;font-weight:400;line-height:1.35}.drawing-controls label>span{display:flex;justify-content:space-between}.drawing-controls label>span small{font-weight:700;color:#3268ad}
 @media(max-width:700px){.guided-training{width:calc(100% - 12px);max-height:98dvh}.calibration-pad{height:120px}.calibration-copy strong{font-size:15px}.line-route{padding-bottom:90px}.workspace-actions .fullscreen-button{font-size:0;padding:8px}.workspace-actions .fullscreen-button svg{margin:0}.expanded-text-modal .modal-content textarea{height:65dvh;min-height:260px}}
 @media(max-width:650px){.view-studio .workspace{height:auto;min-height:0}.view-studio .controls{overflow:visible}.view-studio .preview-panel{overflow:visible}.view-studio .paper-stage{min-height:480px;max-height:750px}.source-actions{flex-direction:column}.source-actions .pdf-import-button,.source-actions .drawing-add-button{font-size:11px}}
+.guided-training{width:min(1120px,calc(100vw - 24px))}
+.line-route{padding:26px 38px 36px}
+.line-instructions{max-width:760px;margin-bottom:25px}
+.calibration-row{margin-top:27px}
+.calibration-copy{margin-bottom:10px;gap:15px}
+.calibration-copy strong{font-size:21px;line-height:1.35}
+.calibration-pad{height:220px;border-radius:14px;border-color:#cdd9e5;background:#fffefa;box-shadow:0 8px 22px #27486b0b}
+.calibration-pad-wrap .clear-line{right:12px;top:12px;border-radius:9px;box-shadow:0 3px 10px #263e6212}
+@media(max-width:700px){.line-route{padding:20px 18px 90px}.calibration-row{margin-top:24px}.calibration-copy{align-items:flex-start;flex-direction:column;gap:4px}.calibration-copy strong{font-size:17px}.calibration-pad{height:190px;border-radius:12px}}

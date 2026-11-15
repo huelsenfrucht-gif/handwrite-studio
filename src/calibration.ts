@@ -4,10 +4,10 @@ import type { Glyph, Stroke } from './model';
 // Four short mixed-case lines cover a–z and A–Z without a second capital block.
 // Names provide natural capitals while the surrounding words cover rare forms.
 export const CALIBRATION_LINES=[
- 'Anna und Anja rufen Ben Cora Dirk Eva Finn',
- 'Greta Hugo Ida Jan Kim Leo Max laufen quer',
- 'Nora Oskar Philipp Quentin Rita Sara zeichnen',
- 'Tina Uwe Viktor Walter Xaver Yaya Zoe üben',
+ 'Anna und Anja rufen Ben Cora Dirk Eva und Finn',
+ 'Greta Hugo Ida Jan Kim Leo und Max laufen quer',
+ 'Nora Oskar Philipp Quentin Rita und Sara zeichnen',
+ 'Tina Uwe Viktor Walter Xaver Yaya und Zoe üben',
 ] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
