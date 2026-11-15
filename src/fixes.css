@@ -1,6 +1,8 @@
 .guided-training{max-height:94dvh;overflow:auto;overscroll-behavior:contain}
 .guided-training,.guided-training *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.training-pad,.paper{touch-action:none;overscroll-behavior:none}
+.training-pad{touch-action:pan-y;overscroll-behavior:contain}
+.paper.tool-select,.paper.tool-pen,.paper.tool-eraser{touch-action:pan-y;overscroll-behavior:contain}
+.paper.tool-pan{touch-action:none}
 .paper-stage.pan-active,.paper.tool-pan{touch-action:none;cursor:grab;overscroll-behavior:contain}
 .paper.tool-pan:active{cursor:grabbing}
 .zoom-controls input{width:92px;accent-color:#3268ad}
@@ -13,4 +15,18 @@
 .calibration-group-title{margin:20px 0 8px;color:#405672;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 .calibration-group-title.uppercase-title{border-top:1px solid #dfe5ed;padding-top:20px;margin-top:28px}
 .pdf-import-button{width:100%;margin:-7px 0 10px;color:#386da9;border-style:dashed}
-@media(max-width:700px){.guided-training{width:calc(100% - 12px);max-height:98dvh}.calibration-pad{height:120px}.calibration-copy strong{font-size:15px}.line-route{padding-bottom:90px}}
+.workspace-actions,.source-actions{display:flex;align-items:center;gap:8px}
+.source-actions{align-items:stretch;margin:-7px 0 10px}
+.source-actions .pdf-import-button,.source-actions .drawing-add-button{width:auto;flex:1;margin:0;padding:9px 7px;white-space:normal;font-size:10px}
+.source-actions .drawing-add-button{border-style:dashed}
+.section-title .expand-text{margin-left:0;width:25px;height:25px}
+.view-studio .workspace{height:calc(100dvh - 111px);min-height:0}
+.view-studio .controls{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.view-studio .preview-panel{min-height:0;overflow:hidden}
+.view-studio .paper-stage{min-height:0;max-height:none}
+.expanded-text-modal{width:min(900px,96vw)}
+.expanded-text-modal .modal-content textarea{display:block;width:100%;height:min(62dvh,680px);min-height:320px;resize:none;font-size:14px;line-height:1.7}
+.expanded-text-modal footer{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:14px;color:#6b7c91;font-size:11px}
+.threshold-help{display:block;color:#738398;font-weight:400;line-height:1.35}.drawing-controls label>span{display:flex;justify-content:space-between}.drawing-controls label>span small{font-weight:700;color:#3268ad}
+@media(max-width:700px){.guided-training{width:calc(100% - 12px);max-height:98dvh}.calibration-pad{height:120px}.calibration-copy strong{font-size:15px}.line-route{padding-bottom:90px}.workspace-actions .fullscreen-button{font-size:0;padding:8px}.workspace-actions .fullscreen-button svg{margin:0}.expanded-text-modal .modal-content textarea{height:65dvh;min-height:260px}}
+@media(max-width:650px){.view-studio .workspace{height:auto;min-height:0}.view-studio .controls{overflow:visible}.view-studio .preview-panel{overflow:visible}.view-studio .paper-stage{min-height:480px;max-height:750px}.source-actions{flex-direction:column}.source-actions .pdf-import-button,.source-actions .drawing-add-button{font-size:11px}}

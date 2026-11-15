@@ -1,18 +1,14 @@
 import { analyzeWord, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
-export const LOWERCASE_LINES=[
- 'franz jagt durch bayern',
- 'viktor mixt zwölf boxen',
- 'jeder packt sein saxofon',
- 'quinn übt zwei lieder',
+// Four short mixed-case lines cover a–z and A–Z without a second capital block.
+// Names provide natural capitals while the surrounding words cover rare forms.
+export const CALIBRATION_LINES=[
+ 'Anna und Anja rufen Ben Cora Dirk Eva Finn',
+ 'Greta Hugo Ida Jan Kim Leo Max laufen quer',
+ 'Nora Oskar Philipp Quentin Rita Sara zeichnen',
+ 'Tina Uwe Viktor Walter Xaver Yaya Zoe üben',
 ] as const;
-export const UPPERCASE_LINES=[
- 'FRANZ JAGT DURCH BAYERN',
- 'VIKTOR MIXT ZWÖLF BOXEN',
- 'QUINN PACKT SEIN SAXOFON',
-] as const;
-export const CALIBRATION_LINES=[...LOWERCASE_LINES,...UPPERCASE_LINES] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
  const points=strokes.flat();if(points.length<12)throw new Error('Bitte schreibe die vollständige Zeile.');
