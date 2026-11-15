@@ -1,4 +1,4 @@
-import { analyzeWord, sliceStrokes } from './contextual';
+import { analyzeWord, estimateSlant, findCuts, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
 // Six minimal name lines cover a–z and A–Z together. The selected names also
@@ -28,7 +28,11 @@ export function extractCalibrationLine(strokes:Stroke[],text:string):Record<stri
  for(let w=0;w<words.length;w++){
   const local=sliceStrokes(strokes,bounds[w],bounds[w+1]);
   const sample=analyzeWord(local,words[w],'pen',`cal-${w}`);
-  Array.from(words[w]).forEach((char,i)=>{const shape=sliceStrokes(sample.strokes,sample.cuts[i],sample.cuts[i+1]);if(shape.flat().length<2)throw new Error(`„${char}“ konnte nicht sauber getrennt werden. Schreibe die Buchstaben etwas deutlicher.`);(glyphs[char]??=[]).push({source:'pen',advance:sample.cuts[i+1]-sample.cuts[i],strokes:shape});});
+  // Slanted handwriting is cut along its own slant: shear upright, find the
+  // letter boundaries, then restore the original slant for every letter.
+  const k=estimateSlant(sample.strokes),upright=sample.strokes.map(s=>s.map(p=>({...p,x:p.x+k*(p.y-80)}))),ux=upright.flat().map(p=>p.x),u0=Math.min(...ux),shifted=upright.map(s=>s.map(p=>({...p,x:p.x-u0}))),uw=Math.max(...ux)-u0;
+  const cuts=findCuts(shifted,words[w],uw);
+  Array.from(words[w]).forEach((char,i)=>{const shape=sliceStrokes(shifted,cuts[i],cuts[i+1]).map(s=>s.map(p=>({...p,x:p.x-k*(p.y-80)})));if(shape.flat().length<2)throw new Error(`„${char}“ konnte nicht sauber getrennt werden. Schreibe die Buchstaben etwas deutlicher.`);(glyphs[char]??=[]).push({source:'pen',advance:cuts[i+1]-cuts[i],strokes:shape});});
  }
  return glyphs;
 }

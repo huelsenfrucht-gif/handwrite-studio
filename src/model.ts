@@ -15,7 +15,32 @@ export type PlacedGlyph = { id: string; char: string; page: number; strokes: Str
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();
-export const defaultSettings: Settings = { size: 12, lineHeight: 20, wordSpacing: 60, variation: 34, color: '#000000', penWidth: 1.2, paper: 'lined', profileId: 'demo', seed: 42 };
+// Geometry of Goodnotes' standard A4 papers, measured from the bundled
+// Goodnotes templates (595.28 × 841.89 pt): ruled = 25 pt line pitch with the
+// first line 49.75 pt from the top, full page width, 0.5 pt, #D0D2D3.
+export const PT = PAGE.width / 595.28;
+export const GOODNOTES = { linePitch: 25*PT, firstLine: 49.75*PT, lastLine: (841.89-17.64)*PT, gridPitch: 16*PT, gridFirst: 15.75*PT, color: '#d0d2d3', width: .5*PT };
+/** Goodnotes standard: handwriting sized to sit naturally on the ruled lines. */
+export const GOODNOTES_STANDARD = { size: 26, lineHeight: GOODNOTES.linePitch, wordSpacing: 52, variation: 34, penWidth: 1.2, paper: 'lined' } satisfies Partial<Settings>;
+export const isGoodnotesStandard = (s: Settings) => (Object.keys(GOODNOTES_STANDARD) as (keyof typeof GOODNOTES_STANDARD)[]).every(k => s[k] === GOODNOTES_STANDARD[k]);
+export type Rule = { x1: number; y1: number; x2: number; y2: number };
+/** First baseline and pitch of text lines for the chosen paper. */
+export function textLines(s: Settings) {
+  const minimum = Math.max(PAGE.margin * .55, s.size * .8 + 16);
+  if (s.paper === 'lined') { const k = Math.max(0, Math.ceil((minimum - GOODNOTES.firstLine) / s.lineHeight - 1e-6)); return { first: GOODNOTES.firstLine + k * s.lineHeight, last: GOODNOTES.lastLine + 1 }; }
+  if (s.paper === 'grid') { const k = Math.ceil((PAGE.margin + s.size * .8 - GOODNOTES.gridFirst) / GOODNOTES.gridPitch); return { first: GOODNOTES.gridFirst + k * GOODNOTES.gridPitch, last: PAGE.height - 30 }; }
+  return { first: PAGE.margin + s.size * .8, last: PAGE.height - PAGE.margin * .6 };
+}
+const ruleCache = new Map<string, Rule[]>();
+/** Background ruling, identical in the editor, PDF, SVG and previews. */
+export function paperRules(s: Settings): Rule[] {
+  const key = `${s.paper}:${s.lineHeight}`; const hit = ruleCache.get(key); if (hit) return hit;
+  const rules: Rule[] = [];
+  if (s.paper === 'lined') for (let y = GOODNOTES.firstLine; y <= GOODNOTES.lastLine + 1; y += s.lineHeight) rules.push({ x1: 0, x2: PAGE.width, y1: y, y2: y });
+  if (s.paper === 'grid') { for (let y = GOODNOTES.gridFirst; y < PAGE.height; y += GOODNOTES.gridPitch) rules.push({ x1: 0, x2: PAGE.width, y1: y, y2: y }); for (let x = GOODNOTES.gridFirst; x < PAGE.width; x += GOODNOTES.gridPitch) rules.push({ x1: x, x2: x, y1: 0, y2: PAGE.height }); }
+  if (ruleCache.size > 30) ruleCache.clear(); ruleCache.set(key, rules); return rules;
+}
+export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, color: '#000000', profileId: 'demo', seed: 42 };
 export function newNote(title = 'Unbenanntes Dokument'): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');
@@ -33,7 +58,8 @@ export function smooth(points: Stroke): Stroke {
   }
   result.push(points[points.length-1]); return result;
 }
-export function pathData(points: Stroke) { return points.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')+(points.length===1?` l0.01,0`:''); }
+const pathCache = new WeakMap<Stroke, string>();
+export function pathData(points: Stroke) { const hit = pathCache.get(points); if (hit !== undefined) return hit; let d = ''; for (let i = 0; i < points.length; i++) d += `${i ? ' L' : 'M'}${points[i].x.toFixed(1)},${points[i].y.toFixed(1)}`; if (points.length === 1) d += ' l0.01,0'; pathCache.set(points, d); return d; }
 // Normalise to a baseline of 80 and an x-height of 42; preserve ascenders/descenders.
 export function normalise(strokes: Stroke[], char: string, source: Glyph['source']): Glyph {
   const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe oder markiere zuerst einen Buchstaben.');

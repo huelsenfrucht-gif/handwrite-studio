@@ -72,10 +72,6 @@ Studio-Sicherung kann manuell heruntergeladen und auf ein anderes Gerät
 
 ## Qualität und Grenzen
 
-Mit zwei echten deutschen Notizseiten wurden 367 Wortbilder verarbeitet: 182
-klare Kandidaten wurden sicher vorausgewählt, 185 bewusst zur Prüfung gelassen
-und kein Wort verursachte einen Verarbeitungsfehler.
-
 Ein Foto enthält keine ursprüngliche Stiftreihenfolge, Geschwindigkeit oder
 Druckwerte. Diese Daten können nur durch eine direkt geschriebene
 Kalibrierungsprobe zuverlässig erfasst werden. Das lokale Generatormodell

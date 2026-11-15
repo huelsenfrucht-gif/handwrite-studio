@@ -1,5 +1,5 @@
 import { type Glyph, type Point, type Profile, type RasterInk, type Stroke } from './model';
-import { demoGlyphs } from './demo';
+import { composeAccented, demoGlyphs } from './demo';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
 export type Style={slant:number;baselineSpread:number;joining:number;spacing:number;samples:number};
 const quantile=(values:number[],q:number)=>{const s=[...values].sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(s.length*q))]||0;};
@@ -13,17 +13,38 @@ function bodyFrame(strokes:Stroke[],text:string,cuts:number[]){
  const total=Math.max(5,globalBottom-globalTop),measured=bodyHeights.length?median(bodyHeights):total*(/[A-ZÄÖÜbdfhkltgjpqy]/.test(text)?.62:.86),minBody=total*(bodyHeights.length?.38:.5),maxBody=total*.92,xHeight=Math.max(5,Math.min(maxBody,Math.max(minBody,measured)));
  const stable=measured>=minBody&&measured<=maxBody?1:.55,confidence=Math.min(1,(bodyHeights.length+baselines.length*.35)/Math.max(2,chars.length*.7))*stable;return{baseline,xHeight,confidence};
 }
-function provisionalCuts(strokes:Stroke[],text:string,width:number){
- const weights=Array.from(text).map(c=>demoGlyphs[c]?.[0].advance||50),total=weights.reduce((a,b)=>a+b,0),density=new Float64Array(Math.ceil(width)+2);
- for(const s of strokes)for(let i=1;i<s.length;i++){const a=s[i-1],b=s[i],steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)));for(let k=0;k<=steps;k++){const x=Math.round(a.x+(b.x-a.x)*k/steps);if(x>=0&&x<density.length)density[x]+=1/steps;}}
- const cuts=[0];let sum=0;for(let i=0;i<weights.length-1;i++){sum+=weights[i];const expected=width*sum/total,window=width/weights.length*.3;let best=expected,score=Infinity;for(let x=Math.max(cuts.at(-1)!+3,Math.floor(expected-window));x<Math.min(width-3,expected+window);x++){const value=density[x]*2+Math.abs(x-expected)*.04;if(value<score){score=value;best=x;}}cuts.push(best);}cuts.push(width);return cuts;
+// Letter boundaries are found with a global dynamic programme instead of a
+// greedy search: every cut prefers columns crossed by few strokes (gaps or a
+// single connecting ligature), stays close to the expected letter width and
+// keeps a minimum distance to its neighbours.
+export function findCuts(strokes:Stroke[],text:string,width:number){
+ const chars=Array.from(text),n=chars.length;if(n<2)return [0,width];
+ const step=Math.max(.5,width/700),cols=Math.max(n*3,Math.ceil(width/step)+1),cross=new Float64Array(cols),ink=new Float64Array(cols);
+ const all=strokes.flat(),ys=all.map(p=>p.y),height=Math.max(4,quantile(ys,.95)-quantile(ys,.05));
+ for(const s of strokes)for(let i=1;i<s.length;i++){const a=s[i-1],b=s[i],lo=Math.min(a.x,b.x)/step,hi=Math.max(a.x,b.x)/step,dy=Math.abs(b.y-a.y);
+  const c0=Math.max(0,Math.ceil(lo)),c1=Math.min(cols-1,Math.ceil(hi)-1);for(let c=c0;c<=c1;c++)cross[c]++;
+  const c=Math.max(0,Math.min(cols-1,Math.round((lo+hi)/2)));ink[c]+=dy/height;}
+ const local=new Float64Array(cols);for(let c=0;c<cols;c++){let v=0;for(let k=-1;k<=1;k++){const j=Math.max(0,Math.min(cols-1,c+k));v+=(cross[j]+ink[j]*3)*(k?.25:.5);}local[c]=v;}
+ const weights=chars.map(c=>Math.max(18,demoGlyphs[c]?.[0].advance||50)),total=weights.reduce((a,b)=>a+b,0),expected:number[]=[];let sum=0;
+ for(let i=0;i<n-1;i++){sum+=weights[i];expected.push((cols-1)*sum/total);}
+ const avg=(cols-1)/n,radius=Math.max(2,Math.round(avg*.8)),minGap=Math.max(1,avg*.28);
+ let prev=new Map<number,{cost:number;path:number[]}>([[0,{cost:0,path:[0]}]]);
+ for(let i=0;i<n-1;i++){const next=new Map<number,{cost:number;path:number[]}>(),e=expected[i],lo=Math.max(1,Math.floor(e-radius)),hi=Math.min(cols-2,Math.ceil(e+radius));
+  for(let c=lo;c<=hi;c++){const own=local[c]+2.2*((c-e)/avg)**2;let best:{cost:number;path:number[]}|undefined;
+   for(const [p,v] of prev){if(c-p<minGap*Math.min(1,weights[i]/40))continue;if(!best||v.cost<best.cost)best=v;}
+   if(best)next.set(c,{cost:best.cost+own,path:[...best.path,c]});}
+  if(!next.size){const c=Math.round(Math.max(e,(Math.max(...prev.keys()))+1));const v=[...prev.values()].sort((a,b)=>a.cost-b.cost)[0];next.set(c,{cost:v.cost,path:[...v.path,c]});}
+  prev=next;}
+ const best=[...prev.values()].sort((a,b)=>a.cost-b.cost)[0];
+ return [...best.path.map(c=>Math.min(width,c*step)),width];
 }
+export function estimateSlant(strokes:Stroke[]){let vertical=0,total=0;for(const s of strokes)for(let i=1;i<s.length;i++){const dx=s[i].x-s[i-1].x,dy=s[i].y-s[i-1].y;if(Math.abs(dy)>Math.abs(dx)*1.5&&Math.abs(dy)>.2){total+=(-dx/dy)*Math.abs(dy);vertical+=Math.abs(dy);}}return Math.max(-.7,Math.min(.7,total/Math.max(1,vertical)));}
 export function analyzeWord(raw:Stroke[],text:string,source:'pen'|'photo',id:string,alignedCuts?:number[]):WordSample{
  text=text.trim().normalize('NFC');if(!/^[\p{L}\p{N}]{2,24}$/u.test(text))throw new Error('Bitte ein einzelnes Wort mit 2–24 Buchstaben oder Zahlen eingeben.');
  const pts=raw.flat();if(pts.length<5)throw new Error('Bitte zuerst ein zusammenhängendes Wort schreiben oder aus einem Foto erkennen.');
  const x0=Math.min(...pts.map(p=>p.x)),x1=Math.max(...pts.map(p=>p.x)),y0=quantile(pts.map(p=>p.y),.02),y1=quantile(pts.map(p=>p.y),.98);
  if(x1-x0<5||y1-y0<5)throw new Error('Die Schreibprobe ist zu klein.');
- const local=raw.map(s=>s.map(p=>({...p,x:p.x-x0}))),rawWidth=x1-x0,chars=Array.from(text),validCuts=alignedCuts?.length===chars.length+1&&alignedCuts.every(Number.isFinite)&&alignedCuts.every((c,i,a)=>i===0||c>a[i-1]),rawCuts=validCuts?alignedCuts!.map(c=>Math.max(0,Math.min(rawWidth,c-x0))):provisionalCuts(local,text,rawWidth);if(validCuts){rawCuts[0]=0;rawCuts[rawCuts.length-1]=rawWidth;}const frame=bodyFrame(local,text,rawCuts),scale=Math.max(.08,Math.min(20,52/frame.xHeight)),width=rawWidth*scale;
+ const local=raw.map(s=>s.map(p=>({...p,x:p.x-x0}))),rawWidth=x1-x0,chars=Array.from(text),validCuts=alignedCuts?.length===chars.length+1&&alignedCuts.every(Number.isFinite)&&alignedCuts.every((c,i,a)=>i===0||c>a[i-1]),rawCuts=validCuts?alignedCuts!.map(c=>Math.max(0,Math.min(rawWidth,c-x0))):findCuts(local,text,rawWidth);if(validCuts){rawCuts[0]=0;rawCuts[rawCuts.length-1]=rawWidth;}const frame=bodyFrame(local,text,rawCuts),scale=Math.max(.08,Math.min(20,52/frame.xHeight)),width=rawWidth*scale;
  if(width>6000)throw new Error('Die Probe ist zu breit. Bitte nur ein einzelnes Wort markieren.');
  const strokes=local.map(s=>s.map(p=>({...p,x:p.x*scale,y:(p.y-frame.baseline)*scale+80}))),cuts=rawCuts.map(c=>c*scale);
  const bottoms:number[]=[];for(let i=0;i<Array.from(text).length;i++){const ps=strokes.flat().filter(p=>p.x>=cuts[i]&&p.x<=cuts[i+1]);if(ps.length)bottoms.push(quantile(ps.map(p=>p.y),.88));}
@@ -52,6 +73,9 @@ export type WordResult={glyphs:Glyph[];kind:'original'|'contextual'|'letters';le
 function writtenGlyphs(profile:Profile,char:string):Glyph[]{
  const exact=profile.glyphs[char]?.filter(g=>g.source==='pen')||[];
  if(exact.length)return exact;
+ // Accented letters reuse the writer's own base letter plus a handwritten mark.
+ const accented=char.normalize('NFD')!==char?(profile.glyphs[char.normalize('NFD')[0]]?.filter(g=>g.source==='pen')||[]).map(g=>composeAccented(char,()=>g)).filter((g):g is Glyph=>!!g):[];
+ if(accented.length)return accented;
  const lower=char.toLocaleLowerCase('de-DE');
  if(char===lower||!/[A-Z]/.test(char))return [];
  // A capital derived from the user's own lowercase form is deliberately only

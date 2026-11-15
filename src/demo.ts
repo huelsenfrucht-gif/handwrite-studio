@@ -45,11 +45,62 @@ const forms: Record<string,string> = {
  '!':'23,6 16,57|12,77 13,78', '?':'9,20 23,7 41,10 47,25 23,47 20,58|16,77 17,78', '-':'9,51 40,49', '+':'8,50 45,48|29,29 24,70',
  '(':'31,4 15,28 9,57 16,88', ')':'13,4 27,28 24,57 9,88', '/':'5,87 44,4', '=':'8,41 46,39|5,58 43,56', '„':'13,77 6,90|27,77 20,90', '“':'16,13 23,1|30,13 37,1', '"':'15,8 11,25|30,8 26,25', "'":'15,8 11,25',
  '@':'53,68 49,40 34,37 22,50 26,67 40,65 49,42 50,67 64,65 73,45 66,21 44,10 20,18 7,40 9,67 26,83 54,85', '%':'5,81 58,6|20,6 8,11 8,25 20,29 28,18 20,6|46,53 34,60 36,75 48,78 55,64 46,53',
- 'ß':'9,79 17,21 27,6 42,8 48,22 30,39 48,51 49,67 36,79 24,74', '•':'18,50 19,51', '–':'7,50 55,48', '—':'5,50 75,48'
+ 'ß':'9,79 17,21 27,6 42,8 48,22 30,39 48,51 49,67 36,79 24,74', '•':'18,46 14,49 15,54 20,55 23,51 20,47 17,50 19,52', '–':'7,50 55,48', '—':'5,50 75,48',
+ // Typographic quotes, apostrophes, list markers and other everyday symbols.
+ '’':'18,7 20,13 13,25', '‘':'19,8 12,15 14,23', '‚':'15,75 8,90', '”':'17,7 19,13 12,25|31,7 33,13 26,25', '‟':'16,8 9,15 11,23|30,8 23,15 25,23',
+ '«':'24,44 8,58 24,72|38,44 22,58 38,72', '»':'8,44 24,58 8,72|22,44 38,58 22,72', '‹':'24,44 8,58 24,72', '›':'8,44 24,58 8,72',
+ '…':'8,77 9,78|22,77 23,78|36,77 37,78', '*':'22,30 22,58|10,37 34,51|34,37 10,51', '&':'52,79 18,34 20,15 32,8 42,16 38,30 12,52 10,68 20,79 36,76 52,52',
+ '#':'18,22 12,80|38,22 32,80|6,40 46,40|4,62 44,62', '§':'40,12 26,6 13,14 17,26 37,38 40,52 29,60|14,72 28,80 41,72 37,60 17,48 14,34 25,26',
+ '€':'50,14 38,7 22,14 12,40 16,66 32,79 50,72|4,36 38,36|4,50 34,50', '$':'44,20 30,13 15,20 17,35 38,48 40,64 26,74 9,68|27,2 25,86',
+ '°':'18,6 10,10 9,19 16,24 25,20 26,11 18,6', '[':'28,4 14,4 14,88 28,88', ']':'12,4 26,4 26,88 12,88',
+ '{':'30,4 20,8 20,38 10,46 20,54 20,84 30,88', '}':'10,4 20,8 20,38 30,46 20,54 20,84 10,88', '_':'4,86 50,86', '<':'40,36 8,57 40,78', '>':'8,36 40,57 8,78',
+ '~':'6,56 14,48 24,52 32,58 42,50', '|':'18,2 18,96', '\\':'6,4 44,87', '^':'8,28 20,10 32,28', '`':'12,8 20,18', '´':'20,8 12,18', '·':'14,55 15,56',
+ '×':'10,42 36,70|36,42 10,70', '÷':'8,56 44,56|26,40 27,41|26,72 27,73', '→':'6,56 52,56|40,44 52,56 40,68', '←':'52,56 6,56|18,44 6,56 18,68',
+ '✓':'8,54 20,72 48,22', '✔':'8,54 20,72 48,22', '◦':'18,46 13,51 18,56 23,51 18,46', '▪':'14,47 23,47 23,56 14,56 14,47 22,52', '■':'14,47 23,47 23,56 14,56 14,47 22,52',
+ '²':'12,12 20,6 28,10 26,18 12,30 30,30', '³':'12,8 26,8 20,16 28,22 24,30 12,30', '½':'10,14 16,8 16,34|44,6 10,80|30,58 38,52 46,56 44,64 30,78 48,78',
+ '±':'8,48 44,48|26,32 26,64|8,74 44,74', '≈':'6,48 14,42 24,46 32,52 42,44|6,64 14,58 24,62 32,68 42,60', '≠':'8,41 46,39|5,58 43,56|36,28 16,72',
 };
+// Characters that look identical in handwriting.
+const aliases: Record<string,string> = {'‐':'-','‑':'-','−':'-','‒':'–','′':"'",'″':'"','＂':'"','＇':"'",'‛':'‘','❛':'‘','❜':'’','❝':'“','❞':'”','►':'→','‣':'→','✗':'×','✘':'×','⁄':'/','∗':'*','⋅':'·'};
 export const demoGlyphs: Record<string,Glyph[]> = {};
 for(const [char,form] of Object.entries(forms)) {
  const strokes=form.split('|').map(s=>smooth(s.split(' ').map(pair=>{const [x,y]=pair.split(',').map(Number);return {x,y,p:.5};})));
  demoGlyphs[char]=[{source:'demo',strokes,advance:Math.max(...strokes.flat().map(p=>p.x))+8}];
 }
 for(const [char,base] of Object.entries({ä:'a',ö:'o',ü:'u',Ä:'A',Ö:'O',Ü:'U'})) { const g=demoGlyphs[base][0]; const top=base===base.toUpperCase()?-7:19; demoGlyphs[char]=[{...g,strokes:[...g.strokes,[{x:23,y:top},{x:24,y:top+1}],[{x:41,y:top},{x:42,y:top+1}]]}]; }
+for(const [char,base] of Object.entries(aliases)) if(!demoGlyphs[char]&&demoGlyphs[base]) demoGlyphs[char]=demoGlyphs[base];
+
+// Accented letters (é, è, ñ, ç, å, š, ł …) are composed from their base letter
+// plus a handwritten mark, so they never fall back to a placeholder box.
+type Mark=(cx:number,top:number)=>{x:number;y:number}[][];
+const dot=(x:number,y:number)=>[{x,y},{x:x+1,y:y+1}];
+const MARKS: Record<string,Mark> = {
+ '́':(c,t)=>[[{x:c-3,y:t},{x:c+5,y:t-9}]], '̀':(c,t)=>[[{x:c+3,y:t},{x:c-5,y:t-9}]],
+ '̂':(c,t)=>[[{x:c-7,y:t},{x:c,y:t-8},{x:c+7,y:t}]], '̌':(c,t)=>[[{x:c-7,y:t-8},{x:c,y:t},{x:c+7,y:t-8}]],
+ '̃':(c,t)=>[[{x:c-8,y:t-2},{x:c-3,y:t-7},{x:c+3,y:t-3},{x:c+8,y:t-7}]], '̈':(c,t)=>[dot(c-8,t-3),dot(c+7,t-3)],
+ '̊':(c,t)=>[[{x:c,y:t-10},{x:c-4,y:t-6},{x:c,y:t-1},{x:c+4,y:t-6},{x:c,y:t-10}]], '̇':(c,t)=>[dot(c,t-3)],
+ '̄':(c,t)=>[[{x:c-8,y:t-4},{x:c+8,y:t-4}]], '̆':(c,t)=>[[{x:c-7,y:t-8},{x:c,y:t-1},{x:c+7,y:t-8}]],
+ '̋':(c,t)=>[[{x:c-6,y:t},{x:c-1,y:t-9}],[{x:c+3,y:t},{x:c+8,y:t-9}]],
+ '̧':c=>[[{x:c,y:79},{x:c+5,y:88},{x:c-3,y:95}]], '̨':c=>[[{x:c+6,y:79},{x:c+1,y:90},{x:c+8,y:96}]],
+};
+export function composeAccented(char:string, base:(c:string)=>Glyph|undefined): Glyph|undefined {
+ const parts=Array.from(char.normalize('NFD')); if(parts.length<2) return undefined;
+ const marks=parts.slice(1).map(m=>MARKS[m]); if(marks.some(m=>!m)) return undefined;
+ const g=base(parts[0]); if(!g) return undefined;
+ // i and j lose their own dot when an accent sits on top.
+ let strokes=g.strokes; if(/[ij]/.test(parts[0])) strokes=strokes.filter(s=>{const ys=s.map(p=>p.y),xs=s.map(p=>p.x);return !(Math.max(...ys)<38&&Math.max(...xs)-Math.min(...xs)<6&&Math.max(...ys)-Math.min(...ys)<6);});
+ const pts=strokes.flat(); if(!pts.length) return undefined;
+ const xs=pts.map(p=>p.x),cx=(Math.min(...xs)+Math.max(...xs))/2,top=Math.min(...pts.map(p=>p.y))-4;
+ const extra=marks.flatMap(m=>m!(cx,top)).map(s=>smooth(s.map(p=>({...p,p:.5}))));
+ return {...g,strokes:[...strokes,...extra]};
+}
+for(let code=0xC0;code<=0x24F;code++){const c=String.fromCodePoint(code);if(demoGlyphs[c])continue;const g=composeAccented(c,b=>demoGlyphs[b]?.[0]);if(g)demoGlyphs[c]=[g];}
+for(const c of ['ẞ','ı']) if(!demoGlyphs[c]) demoGlyphs[c]=c==='ẞ'?demoGlyphs['ß']:[{...demoGlyphs.i[0],strokes:demoGlyphs.i[0].strokes.slice(0,1)}];
+// Letters with a built-in stroke that Unicode does not decompose.
+const struck=(base:string,from:{x:number;y:number},to:{x:number;y:number})=>{const g=demoGlyphs[base]?.[0];return g?[{...g,strokes:[...g.strokes,smooth([{...from,p:.5},{...to,p:.5}])]}]:undefined;};
+const joined=(a:string,b:string)=>{const g=demoGlyphs[a][0],h=demoGlyphs[b][0];return [{...g,advance:g.advance+h.advance-12,strokes:[...g.strokes,...h.strokes.map(s=>s.map(p=>({...p,x:p.x+g.advance-12})))]}];};
+Object.assign(demoGlyphs,Object.fromEntries(Object.entries({
+ 'ł':struck('l',{x:6,y:52},{x:32,y:36}),'Ł':struck('L',{x:2,y:52},{x:28,y:36}),'ø':struck('o',{x:4,y:82},{x:48,y:32}),'Ø':struck('O',{x:2,y:86},{x:62,y:0}),
+ 'đ':struck('d',{x:36,y:18},{x:60,y:16}),'Đ':struck('D',{x:0,y:44},{x:24,y:43}),'ħ':struck('h',{x:6,y:24},{x:30,y:22}),
+ 'æ':joined('a','e'),'Æ':joined('A','E'),'œ':joined('o','e'),'Œ':joined('O','E'),
+}).filter(([c,g])=>g&&!demoGlyphs[c])));
