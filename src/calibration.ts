@@ -1,13 +1,15 @@
 import { analyzeWord, sliceStrokes } from './contextual';
 import type { Glyph, Stroke } from './model';
 
-// Four short mixed-case lines cover a–z and A–Z without a second capital block.
-// Names provide natural capitals while the surrounding words cover rare forms.
+// Six minimal name lines cover a–z and A–Z together. The selected names also
+// contain every required lowercase form, so no filler sentence is necessary.
 export const CALIBRATION_LINES=[
- 'Anna und Anja rufen Ben Cora Dirk Eva und Finn',
- 'Greta Hugo Ida Jan Kim Leo und Max laufen quer',
- 'Nora Oskar Philipp Quentin Rita und Sara zeichnen',
- 'Tina Uwe Viktor Walter Xaver Yaya und Zoe üben',
+ 'Anja Ben Cora Dan Eva',
+ 'Felix Gabi Hugo Ida',
+ 'Jacques Kyle Liz Matt',
+ 'Noa Oskar Philipp Quinn',
+ 'Ralf Sam Tom Uwe Vic',
+ 'Wim Xu Yan Zoe',
 ] as const;
 
 function inkGaps(strokes:Stroke[],expected:number){
