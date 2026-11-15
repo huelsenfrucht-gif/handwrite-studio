@@ -58,7 +58,8 @@ export function layout(note: Note, profiles: Profile[]) {
  const key=JSON.stringify(note.settings)+'\u0000'+note.renderedText;let core=cache.get(key);
  if(!core){core=layoutCore(note,profiles);if(cache.size>24)cache.delete(cache.keys().next().value!);cache.set(key,core);}
  const lastInk=[...note.annotations,...(note.drawings||[])].reduce((n,a)=>Math.max(n,a.page),0);
- return {...core,pages:Math.max(core.pages,lastInk+1)};
+ const templatePages=note.settings.paper==='custom'?note.settings.templatePages||0:0;
+ return {...core,pages:Math.max(core.pages,lastInk+1,templatePages)};
 }
 export function resolvedDrawingInk(d:Drawing):{points:Stroke;color:string}[]{
  if(d.deleted)return [];

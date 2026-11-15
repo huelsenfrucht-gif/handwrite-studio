@@ -4,13 +4,15 @@ export type Stroke = Point[];
 export type RasterInk = { data: string; x: number; y: number; width: number; height: number };
 export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean; position?:'initial'|'medial'|'final'|'isolated' };
 export type Profile = { id: string; name: string; created: string; glyphs: Record<string, Glyph[]>; words?: WordSample[]; styleImages?: string[] };
-export type Paper = 'lined' | 'grid' | 'blank';
-export type Settings = { size: number; lineHeight: number; wordSpacing: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number };
+export type Paper = 'lined' | 'grid' | 'blank' | 'custom';
+/** A user's own paper (image or PDF pages, e.g. a worksheet) as A4 JPEG data URLs. */
+export type Template = { id: string; name: string; pages: string[]; created: string };
+export type Settings = { size: number; lineHeight: number; wordSpacing: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number; templateId?: string; templatePages?: number };
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
 export type Annotation = { id: string; page: number; points: Stroke; color: string; width: number };
 export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; strokeColors?: string[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };
 export type Note = { id: string; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
-export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string };
+export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string; templates?: Template[] };
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';

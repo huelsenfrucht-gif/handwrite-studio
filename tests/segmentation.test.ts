@@ -38,3 +38,10 @@ describe('Goodnotes paper',()=>{
   for(const g of r.glyphs){const baseline=g.y+note.settings.size*.8;expect(lines.some(y=>Math.abs(y-baseline)<.01)).toBe(true);}
  });
 });
+describe('own templates',()=>{
+ it('keeps every template page and draws no ruling over it',async()=>{
+  const {paperRules,newNote:fresh}=await import('../src/model');
+  const note=fresh();note.renderedText='Kurz';note.settings={...note.settings,paper:'custom',templateId:'t1',templatePages:3};
+  expect(layout(note,[]).pages).toBe(3);expect(paperRules(note.settings)).toEqual([]);
+ });
+});

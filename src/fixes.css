@@ -68,3 +68,24 @@
 .goodnotes-preset strong{font-size:13px}.goodnotes-preset small{font-size:11px;opacity:.7}
 .goodnotes-preset .paper-swatch{flex:none}.goodnotes-preset svg{color:var(--green,#2e65a7);flex:none}
 .paper{contain:layout paint}
+/* Clickable training alphabet + back button */
+.mini-alphabet button{display:grid;place-items:center;aspect-ratio:1;padding:0;border:1px solid #dfe7db;border-radius:5px;background:white;color:#738171;font-size:11px;cursor:pointer}
+.mini-alphabet button:hover{border-color:#65a17f}
+.mini-alphabet button.done{background:#eaf3e8;color:#5c8a68}
+.mini-alphabet button.active{background:#dceee3;border-color:#65a17f;color:#1d6041;font-weight:700}
+.training-save .button:first-child{margin-left:0}
+.training-save p{flex:1}
+.paper.tool-select .drawing-item{cursor:move}
+.paper .resize-handle{cursor:nwse-resize}
+/* Own paper templates */
+.paper-swatch.custom{display:grid;place-items:center;background-size:cover;background-position:top center;color:#8a97a6}
+.template-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:10px}
+.template-item{position:relative}
+.template-choose{display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;padding:5px;border:1px solid #e3e8dc;border-radius:7px;background:#fff;cursor:pointer;text-align:left}
+.template-item.active .template-choose{border-color:var(--green,#2e65a7);box-shadow:0 0 0 1px var(--green,#2e65a7)}
+.template-choose img{width:100%;aspect-ratio:210/297;object-fit:cover;object-position:top;border-radius:3px;background:#f4f4f4}
+.template-choose span{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.template-choose small{font-size:9px;opacity:.6}
+.template-remove{position:absolute;top:2px;right:2px;display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#ffffffe6;color:#9a4c43;cursor:pointer;box-shadow:0 1px 3px #0002}
+.template-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:120px;padding:8px;border:1px dashed #b9c4cf;border-radius:7px;background:#fafbfc;color:inherit;font-size:10px;text-align:center;cursor:pointer}
+.template-add small{font-size:9px;opacity:.6}
