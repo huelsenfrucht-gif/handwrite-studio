@@ -15,7 +15,7 @@ export function buildGermanLexicon(lemmaText:string,frequencyText:string,context
   return{words,exact:seen,rank:ranks,grams,lengths};
 }
 export async function loadGermanLexicon(){
- if(!loading)loading=Promise.all([fetch('/models/de-lexicon/lemmas.tsv'),fetch('/models/de-lexicon/frequency.txt'),fetch('/models/de-lexicon/context-frequency.txt'),fetch('/models/de-lexicon/words.bloom')]).then(async([lemmas,frequency,contextFrequency,wordForms])=>{
+ if(!loading)loading=Promise.all([fetch(`${import.meta.env.BASE_URL}models/de-lexicon/lemmas.tsv`),fetch(`${import.meta.env.BASE_URL}models/de-lexicon/frequency.txt`),fetch(`${import.meta.env.BASE_URL}models/de-lexicon/context-frequency.txt`),fetch(`${import.meta.env.BASE_URL}models/de-lexicon/words.bloom`)]).then(async([lemmas,frequency,contextFrequency,wordForms])=>{
   if(!lemmas.ok||!frequency.ok||!contextFrequency.ok||!wordForms.ok)throw new Error('Deutsches Korrekturwörterbuch konnte nicht geladen werden.');
   const lexicon=buildGermanLexicon(await lemmas.text(),await frequency.text(),await contextFrequency.text());lexicon.bloom=new Uint8Array(await wordForms.arrayBuffer());return lexicon;
  }).catch(e=>{loading=undefined;throw e;});return loading;

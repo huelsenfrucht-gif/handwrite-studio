@@ -4,7 +4,7 @@ import { decodeCTCBeam } from './ctc';
 let session:Promise<ort.InferenceSession>|undefined;
 let alphabet='';
 export async function recognizeLine(image:HTMLCanvasElement){
- if(!session){ort.env.wasm.numThreads=1;ort.env.wasm.wasmPaths={wasm:wasmURL};session=(async()=>{const response=await fetch('/models/de-htr/config.json');if(!response.ok)throw new Error('Erkennungsmodell konnte nicht geladen werden.');const config=await response.json();if(config.format_version!==2)throw new Error('Nicht unterstützte Modellversion.');alphabet=config.alphabet;return ort.InferenceSession.create('/models/de-htr/model.onnx',{executionProviders:['wasm']});})().catch(e=>{session=undefined;throw e;});}
+ if(!session){ort.env.wasm.numThreads=1;ort.env.wasm.wasmPaths={wasm:wasmURL};session=(async()=>{const response=await fetch(`${import.meta.env.BASE_URL}models/de-htr/config.json`);if(!response.ok)throw new Error('Erkennungsmodell konnte nicht geladen werden.');const config=await response.json();if(config.format_version!==2)throw new Error('Nicht unterstützte Modellversion.');alphabet=config.alphabet;return ort.InferenceSession.create(`${import.meta.env.BASE_URL}models/de-htr/model.onnx`,{executionProviders:['wasm']});})().catch(e=>{session=undefined;throw e;});}
  const model=await session;
  const height=64,target=Math.round(image.width*height/image.height);
  if(target>1024)throw new Error('Zeile zu lang: vor der Erkennung in Teilzeilen aufteilen.');

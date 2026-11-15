@@ -5,7 +5,7 @@ async function loadJsPDF():Promise<JsPDFConstructor>{
  try{return(await import('jspdf')).jsPDF;}catch(primaryError){
   const root=window as typeof window&{jspdf?:{jsPDF:JsPDFConstructor}};
   if(root.jspdf?.jsPDF)return root.jspdf.jsPDF;
-  await new Promise<void>((resolve,reject)=>{const old=document.querySelector<HTMLScriptElement>('script[data-jspdf-fallback]');if(old){old.addEventListener('load',()=>resolve(),{once:true});old.addEventListener('error',()=>reject(primaryError),{once:true});return;}const script=document.createElement('script');script.src='/vendor/jspdf.umd.min.js';script.dataset.jspdfFallback='true';script.onload=()=>resolve();script.onerror=()=>reject(primaryError);document.head.appendChild(script);});
+  await new Promise<void>((resolve,reject)=>{const old=document.querySelector<HTMLScriptElement>('script[data-jspdf-fallback]');if(old){old.addEventListener('load',()=>resolve(),{once:true});old.addEventListener('error',()=>reject(primaryError),{once:true});return;}const script=document.createElement('script');script.src=`${import.meta.env.BASE_URL}vendor/jspdf.umd.min.js`;script.dataset.jspdfFallback='true';script.onload=()=>resolve();script.onerror=()=>reject(primaryError);document.head.appendChild(script);});
   if(!root.jspdf?.jsPDF)throw primaryError;return root.jspdf.jsPDF;
  }
 }

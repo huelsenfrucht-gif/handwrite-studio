@@ -2,7 +2,7 @@ import * as ort from 'onnxruntime-web';
 import {analyzeWord,type WordSample} from './contextual';
 import {uid,type Profile,type Stroke} from './model';
 
-const MODEL_ROOT='/models/handwriting-gen';
+const MODEL_ROOT=`${import.meta.env.BASE_URL}models/handwriting-gen`;
 type Manifest={format_version:1;model:string;alphabet:string;style_width:number;style_height:number;max_points:number};
 let runtime:Promise<{session:ort.InferenceSession;manifest:Manifest}>|undefined;
 
