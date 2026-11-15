@@ -6,5 +6,7 @@ import './styles.css';
 import './guided.css';
 import './drawing.css';
 import './fixes.css';
+import {loadAdSense} from './adsense';
 createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App/></AppErrorBoundary></StrictMode>);
 if('serviceWorker' in navigator && !import.meta.env?.DEV) window.addEventListener('load',()=>{void navigator.serviceWorker.register('/sw.js').catch(()=>{});});
+window.addEventListener('load',()=>{loadAdSense();});
