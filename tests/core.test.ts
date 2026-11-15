@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
 import { initialLibrary,newNote,type Profile,type Stroke } from '../src/model';
-import { layout,random,resolvedStrokes } from '../src/engine';
+import { layout,random,resolvedDrawingInk,resolvedStrokes } from '../src/engine';
 import { analyzeWord,composeWord,recalibrateWord,relabelWord,sliceStrokes } from '../src/contextual';
 import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
@@ -9,6 +9,7 @@ import {decodeStrokeTensor,extractSynthWords} from '../src/synthesis';
 import {editDistance} from '../src/synthesis';
 import {selectStyleImages} from '../src/import/style';
 import {CALIBRATION_LINES,extractCalibrationAlphabet} from '../src/calibration';
+import {assessDrawing} from '../src/import/DrawingImport';
 import JSZip from 'jszip';
 const wave:Stroke=Array.from({length:161},(_,i)=>({x:i*2,y:60+30*Math.sin(i/8),p:.2+i/300}));
 const word=analyzeWord([wave],'meine','pen','sample');
@@ -49,6 +50,7 @@ describe('document layout and editing',()=>{
  it('keeps every generated word free of original-word raster ink',()=>{const n=newNote();n.settings.profileId=profile.id;n.settings.variation=100;n.renderedText='meine';const r=layout(n,[profile]);expect(r.rasterWords).toBe(0);expect(r.glyphs.every(g=>!g.raster)).toBe(true);});
  it('exports moved ink and erases only the targeted stroke',()=>{const n=newNote();n.renderedText='i';const g=layout(n,[]).glyphs[0];expect(g.strokes.length).toBe(2);n.edits[g.id]={dx:30,dy:-8,hiddenStrokes:[1],color:'#ff0000'};const r=resolvedStrokes(g,n);expect(r.strokes).toHaveLength(1);expect(r.strokes[0][0].x).toBeCloseTo(g.strokes[0][0].x+30);const svg=makeSVG(n,[],0);expect(svg).toContain('stroke="#ff0000"');expect(svg).not.toContain('<text');});
  it('includes a drawing-only page in pagination',()=>{const n=newNote();n.drawings=[{id:'diagram',name:'Zelle',page:3,strokes:[wave],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2}];expect(layout(n,[]).pages).toBe(4);});
+ it('preserves individual colors in imported vector drawings',()=>{const drawing={id:'color',name:'Proton',page:0,strokes:[[{x:0,y:0},{x:10,y:10}],[{x:20,y:20},{x:30,y:30}]],strokeColors:['#ff0000','#0000ff'],x:5,y:7,scale:2,width:30,height:30,color:'#000000',penWidth:1.2};const ink=resolvedDrawingInk(drawing);expect(ink.map(item=>item.color)).toEqual(['#ff0000','#0000ff']);expect(ink[0].points[1]).toMatchObject({x:25,y:27});});
 });
 describe('photo vectorization',()=>{
  const raster=(w:number,h:number,predicate:(x:number,y:number)=>boolean)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=predicate(x,y)?0:255;data[i+3]=255;}return data;};
@@ -58,6 +60,7 @@ describe('photo vectorization',()=>{
  it('rejects uneven paper shadows while preserving darker handwriting',()=>{const w=240,h=80,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,bg=145+80*x/w,ink=(x>20&&x<210&&Math.abs(y-(38+12*Math.sin(x/13)))<3);data[i]=data[i+1]=data[i+2]=ink?35:bg;data[i+3]=255;}const paths=vectorize(data,w,h,165),pts=paths.flat();expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeGreaterThan(170);expect(paths.length).toBeLessThan(80);expect(pts.every(p=>p.y>15&&p.y<65)).toBe(true);});
  it('fills broad dark ink before thinning instead of tracing both outlines',()=>{const w=100,h=70,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,ink=x>12&&x<88&&Math.abs(y-35)<=5;data[i]=data[i+1]=data[i+2]=ink?25:155;data[i+3]=255;}const paths=vectorize(data,w,h,165),long=paths.filter(p=>Math.max(...p.map(q=>q.x))-Math.min(...p.map(q=>q.x))>60);expect(long).toHaveLength(1);expect(long[0].reduce((n,p)=>n+p.y,0)/long[0].length).toBeCloseTo(35,0);});
  it('rejects empty crops',()=>{expect(()=>vectorize(raster(20,20,()=>false),20,20,155)).toThrow('Keine dunklen Striche');});
+ it('accepts a sparse colored line diagram and warns about a shaded painting',()=>{const image=(w:number,h:number,paint:(data:Uint8ClampedArray,x:number,y:number,i:number)=>void)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=255;data[i+3]=255;paint(data,x,y,i);}return{data,width:w,height:h} as ImageData;};const diagram=image(100,100,(data,x,y,i)=>{if(Math.abs(y-50)<2){data[i]=x<50?230:20;data[i+1]=20;data[i+2]=x<50?20:230;}}),painting=image(100,100,(data,x,y,i)=>{data[i]=(x*2)%220;data[i+1]=(y*2)%220;data[i+2]=((x+y)*3)%220;});expect(assessDrawing(diagram).kind).toBe('suitable');expect(assessDrawing(painting).kind).toBe('warning');});
 });
 describe('portable backup validation',()=>{
  it('round-trips real word training, edits, annotations and vector drawings',()=>{const lib=initialLibrary();lib.profiles=[profile];lib.notes[0].settings.profileId=profile.id;lib.notes[0].annotations=[{id:'a',page:0,points:wave,color:'#123456',width:2}];lib.notes[0].drawings=[{id:'diagram',name:'Zelle',page:0,strokes:[wave,[{x:5,y:5}]],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2,hiddenStrokes:[1]}];expect(validateLibrary(JSON.parse(JSON.stringify(lib)))).toEqual(lib);});

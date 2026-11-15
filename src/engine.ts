@@ -36,10 +36,11 @@ export function layout(note: Note, profiles: Profile[]) {
  const lastInk=[...note.annotations,...(note.drawings||[])].reduce((n,a)=>Math.max(n,a.page),0);
  return {glyphs,pages:Math.max(page+1,lastInk+1),missing:[...missing],fallback:[...fallback],originalWords,contextualWords,rasterWords};
 }
-export function resolvedDrawing(d:Drawing): Stroke[] {
+export function resolvedDrawingInk(d:Drawing):{points:Stroke;color:string}[]{
  if(d.deleted)return [];
- return d.strokes.filter((_,i)=>!d.hiddenStrokes?.includes(i)).map(s=>s.map(p=>({...p,x:d.x+p.x*d.scale,y:d.y+p.y*d.scale})));
+ return d.strokes.flatMap((stroke,index)=>d.hiddenStrokes?.includes(index)?[]:[{points:stroke.map(point=>({...point,x:d.x+point.x*d.scale,y:d.y+point.y*d.scale})),color:d.strokeColors?.[index]||d.color}]);
 }
+export function resolvedDrawing(d:Drawing): Stroke[] {return resolvedDrawingInk(d).map(ink=>ink.points);}
 export function resolvedStrokes(g:PlacedGlyph,note:Note): {strokes:Stroke[];color:string} {
  const edit=note.edits[g.id];return {strokes:edit?.deleted?[]:g.strokes.filter((_,i)=>!edit?.hiddenStrokes?.includes(i)).map(s=>s.map(p=>({...p,x:p.x+(edit?.dx||0),y:p.y+(edit?.dy||0)}))),color:edit?.color||note.settings.color};
 }

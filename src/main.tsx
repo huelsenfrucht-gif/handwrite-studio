@@ -1,9 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import {AppErrorBoundary} from './AppErrorBoundary';
 import './styles.css';
 import './guided.css';
 import './drawing.css';
 import './fixes.css';
-createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App/></AppErrorBoundary></StrictMode>);
 if('serviceWorker' in navigator && !import.meta.env?.DEV) window.addEventListener('load',()=>{void navigator.serviceWorker.register('/sw.js').catch(()=>{});});
