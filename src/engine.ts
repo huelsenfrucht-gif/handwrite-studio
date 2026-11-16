@@ -103,8 +103,9 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    }
   }
  };
- // Plain paragraphs flow; blocks of "| … |" lines become tables.
- const blocks=note.renderedText.normalize('NFC').replace(/\r/g,'').split('\n');
+ // Plain paragraphs flow; blocks of "| … |" lines become tables. On a worksheet the text goes into the fields instead.
+ const worksheet=s.paper==='custom'&&(note.fields||[]).some(f=>f.role!=='header');
+ const blocks=worksheet?[]:note.renderedText.normalize('NFC').replace(/\r/g,'').split('\n');
  for(let i=0;i<blocks.length;){
   if(TABLE_ROW.test(blocks[i])){const start=i;while(i<blocks.length&&TABLE_ROW.test(blocks[i]))i++;table(blocks.slice(start,i));index++;continue;}
   const start=i;while(i<blocks.length&&!TABLE_ROW.test(blocks[i]))i++;
@@ -127,7 +128,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    const baseline=field.y+(field.height-.96*f)/2+76*size,{from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,baseline-80*size,field.page);
    const height=(lines-1)*lh+.96*f;
    if(lines===1)break;
-   if(height<=field.height-2||f<=6){const shift=field.y+2+76*size-baseline;for(const g of glyphs.slice(from)){g.y+=shift;g.strokes=g.strokes.map(st=>st.map(p=>({...p,y:p.y+shift})));if(g.raster)g.raster={...g.raster,y:g.raster.y+shift};}break;}
+   if(height<=field.height-6||f<=6){const shift=field.y+3+76*size-baseline;for(const g of glyphs.slice(from)){g.y+=shift;g.strokes=g.strokes.map(st=>st.map(p=>({...p,y:p.y+shift})));if(g.raster)g.raster={...g.raster,y:g.raster.y+shift};}break;}
    glyphs.length=from;f*=.9;
   }
   size=keepSize;lh=keepLh;index=base;

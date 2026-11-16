@@ -6,7 +6,7 @@ import { PAGE, uid, type Field } from './model';
  * - answer lines ("Name: ________"), several equal lines below each other as one field.
  * Works on the grey values of the scanned page; coordinates are returned in page units.
  */
-export type Rect = { x: number; y: number; width: number; height: number; rows?: number };
+export type Rect = { x: number; y: number; width: number; height: number; rows?: number; header?: boolean };
 type HLine = { y1: number; y2: number; x1: number; x2: number };
 type VLine = { x1: number; x2: number; y1: number; y2: number };
 
@@ -36,7 +36,13 @@ export function findRules(gray: Uint8Array | Uint8ClampedArray, w: number, h: nu
     const open = vs.find(l => x - l.x2 <= 2 && Math.min(y2, l.y2) - Math.max(y1, l.y1) > .8 * Math.max(y2 - y1, l.y2 - l.y1));
     if (open) { open.x2 = x; open.y1 = Math.min(open.y1, y1); open.y2 = Math.max(open.y2, y2); } else vs.push({ x1: x, x2: x, y1, y2 });
   }
-  return { hs: hs.filter(l => l.y2 - l.y1 < thick), vs: vs.filter(l => l.x2 - l.x1 < thick) };
+  // A slightly tilted scan breaks one long rule into pieces on neighbouring pixel rows: join them again.
+  const joined: HLine[] = [];
+  for (const l of hs.filter(l => l.y2 - l.y1 < thick).sort((a, b) => a.x1 - b.x1)) {
+    const near = joined.find(j => Math.abs((j.y1 + j.y2) / 2 - (l.y1 + l.y2) / 2) <= 4 && l.x1 <= j.x2 + w * .02);
+    if (near) { near.x2 = Math.max(near.x2, l.x2); near.y1 = Math.min(near.y1, l.y1); near.y2 = Math.max(near.y2, l.y2); } else joined.push({ ...l });
+  }
+  return { hs: joined, vs: vs.filter(l => l.x2 - l.x1 < thick) };
 }
 
 const inkShare = (gray: Uint8Array | Uint8ClampedArray, w: number, x1: number, y1: number, x2: number, y2: number) => {
@@ -70,20 +76,27 @@ export function findAnswerAreas(gray: Uint8Array | Uint8ClampedArray, w: number,
     }
   }
   // Answer lines: rules that are not borders of a box; the free space above is the writing area.
-  const lines: Rect[] = [];
+  // Pieces of box or table borders (broken by rounded corners or anti-aliasing) are skipped.
+  const borderList = [...borders], onBorder = (l: HLine) => borderList.some(b => Math.abs((b.y1 + b.y2) / 2 - (l.y1 + l.y2) / 2) < tol && l.x2 >= b.x1 - tol * 4 && l.x1 <= b.x2 + tol * 4);
+  const lines: (Rect & { stop: number; line: HLine })[] = [];
   for (const l of sorted) {
-    if (borders.has(l) || vs.some(v => Math.abs((v.x1 + v.x2) / 2 - l.x1) < tol && v.y2 >= l.y1 - tol && v.y1 <= l.y2 + tol && v.y2 - v.y1 > h * .02)) continue;
-    const max = Math.round(h * .03), x1 = l.x1 + 2, x2 = l.x2 - 2; let free = 0;
-    for (let y = l.y1 - 3; y > l.y1 - max && y > 0; y--) { if (inkShare(gray, w, x1, y, x2, y + 1) > .01) break; free++; }
-    if (free >= h * .009) lines.push({ x: l.x1, y: l.y1 - free - 2, width: l.x2 - l.x1, height: free + 2 });
+    if (borders.has(l) || onBorder(l) || vs.some(v => Math.abs((v.x1 + v.x2) / 2 - l.x1) < tol && v.y2 >= l.y1 - tol && v.y1 <= l.y2 + tol && v.y2 - v.y1 > h * .02)) continue;
+    const max = Math.round(h * .03), x1 = l.x1 + 2, x2 = l.x2 - 2; let free = 0, y = l.y1 - 3;
+    for (; y > l.y1 - max && y > 0; y--) { if (inkShare(gray, w, x1, y, x2, y + 1) > .01) break; free++; }
+    if (free >= h * .015) lines.push({ x: l.x1, y: l.y1 - free - 2, width: l.x2 - l.x1, height: free + 2, stop: y, line: l });
   }
-  // Equal lines right below each other form one larger writing area with several rows.
+  // Equal lines right below each other (nothing printed in between) form one writing area with several rows.
   const merged: Rect[] = [];
+  let last: (typeof lines)[number] | undefined;
   for (const r of lines) {
     const prev = merged.at(-1);
-    if (prev && Math.abs(prev.x - r.x) < tol && Math.abs(prev.width - r.width) < tol * 2 && r.y - (prev.y + prev.height) < h * .025) { prev.rows = (prev.rows || 1) + 1; prev.height = r.y + r.height - prev.y; }
-    else merged.push({ ...r });
+    if (prev && last && Math.abs(prev.x - r.x) < tol && Math.abs(last.width - r.width) < tol * 2 && r.stop <= last.line.y2 + 3 && r.stop >= last.line.y1 - 3) { prev.rows = (prev.rows || 1) + 1; prev.height = r.y + r.height - prev.y; }
+    // A rule right under another, different rule with nothing in between is the edge of a box, not an answer line.
+    else if (!sorted.some(o => o !== r.line && r.stop <= o.y2 + 3 && r.stop >= o.y1 - 3 && Math.min(o.x2, r.line.x2) - Math.max(o.x1, r.line.x1) > .6 * Math.max(o.x2 - o.x1, r.line.x2 - r.line.x1))) merged.push({ x: r.x, y: r.y, width: r.width, height: r.height });
+    last = r;
   }
+  // Name, date and class at the top of the sheet are not answers: marked so they are not filled automatically.
+  for (const r of merged) if (!r.rows && r.y + r.height < h * .15) r.header = true;
   return [...cells, ...merged];
 }
 
@@ -96,5 +109,48 @@ export async function detectFields(image: string, page: number): Promise<Field[]
   const data = ctx.getImageData(0, 0, w, h).data, gray = new Uint8Array(w * h);
   for (let i = 0; i < gray.length; i++) gray[i] = (data[i * 4] * 299 + data[i * 4 + 1] * 587 + data[i * 4 + 2] * 114) / 1000;
   const k = PAGE.width / w;
-  return findAnswerAreas(gray, w, h).map(r => ({ id: uid(), page, x: r.x * k, y: r.y * k, width: r.width * k, height: r.height * k, text: '', ...(r.rows && r.rows > 1 ? { rows: r.rows } : {}) }));
+  return findAnswerAreas(gray, w, h).map(r => ({ id: uid(), page, x: r.x * k, y: r.y * k, width: r.width * k, height: r.height * k, text: '', ...(r.rows && r.rows > 1 ? { rows: r.rows } : {}), ...(r.header ? { role: 'header' as const } : {}) }));
+}
+
+const TABLE = /^\s*\|.*\|\s*$/, RULE = /^[\s|:\-]+$/;
+
+/** Answer fields in reading order: page, then row by row (fields on one line from left to right). */
+export function readingOrder(fields: Field[]) {
+  const sorted = [...fields].sort((a, b) => a.page - b.page || a.y - b.y || a.x - b.x), rows: Field[][] = [];
+  for (const f of sorted) { const row = rows.at(-1); if (row && row[0].page === f.page && Math.abs(row[0].y + row[0].height / 2 - (f.y + f.height / 2)) < Math.min(row[0].height, f.height) * .5) row.push(f); else rows.push([f]); }
+  for (const row of rows) row.sort((a, b) => a.x - b.x);
+  return rows;
+}
+
+/**
+ * Puts the text typed into the big text field into the worksheet's answer fields, in reading order:
+ * one line (or one item of a "a; b; c" list) per field, a table row "| … | … |" fills one row of cells.
+ * Name/date fields are skipped. Returns the updated fields and how many answers had no field left.
+ */
+export function distributeAnswers(text: string, fields: Field[]) {
+  const rows = readingOrder(fields.filter(f => f.role !== 'header')), slots = rows.flat(), out = new Map<string, string>();
+  const rowOf = new Map(rows.flatMap((r, i) => r.map(f => [f.id, i] as const)));
+  const lines = text.replace(/\r/g, '').split('\n');
+  let i = 0, left = 0;
+  const put = (value: string) => { if (i < slots.length) out.set(slots[i++].id, value); else left++; };
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n].trim();
+    if (!line || RULE.test(line) && line.includes('-')) continue;
+    if (TABLE.test(line)) {
+      if (RULE.test(lines[n + 1] || '') && (lines[n + 1] || '').includes('-')) continue; // header row of a table
+      const cells = line.slice(1, -1).split('|').map(c => c.trim());
+      if (i >= slots.length) { left++; continue; }
+      const row = rows[rowOf.get(slots[i].id)!], free = row.length - row.indexOf(slots[i]);
+      // A pasted table often repeats the printed first column: keep only as many cells as there are fields.
+      const values = cells.length > free ? cells.slice(cells.length - free) : cells;
+      for (let k = 0; k < free; k++) put(values[k] || '');
+      continue;
+    }
+    // Headings like "Lückentext:" separate parts of the answer text but are no answers themselves.
+    if (/:\s*$/.test(line) && line.length <= 40) continue;
+    const clean = line.replace(/^(?:[-•*·]|[①-⑳]|\(?[a-zA-Z]\)|\d+\))\s*/, '').trim();
+    const parts = clean.split(';').map(p => p.trim()).filter(Boolean);
+    if (parts.length >= 3 && parts.every(p => p.length <= 40)) parts.forEach(put); else if (clean) put(clean);
+  }
+  return { fields: fields.map(f => f.role === "header" ? f : { ...f, text: out.get(f.id) ?? "" }), filled: [...out.values()].filter(Boolean).length, left };
 }

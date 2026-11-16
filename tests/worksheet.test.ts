@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newNote } from '../src/model';
 import { layout } from '../src/engine';
-import { findAnswerAreas } from '../src/worksheet';
+import { distributeAnswers, findAnswerAreas } from '../src/worksheet';
 
 describe('tables in the text', () => {
   it('writes "| a | b |" rows as a table with drawn rules', () => {
@@ -43,5 +43,39 @@ describe('worksheet fields', () => {
     expect(areas.filter(a => Math.abs(a.x - 350) < 3)).toHaveLength(2);
     const line = areas.find(a => a.y > 300)!;
     expect(line.x).toBeCloseTo(160, -1); expect(line.y + line.height).toBeGreaterThan(405);
+  });
+});
+
+describe('answers from the text field', () => {
+  // Fields as found on a real worksheet (Reichsgründung 1871), in image pixels.
+  const raw: [number, number, number, number, string?][] = [[556,916,240,64],[795,916,742,64],[556,980,240,63],[795,980,742,63],[556,1043,240,64],[795,1043,742,64],[556,1106,240,64],[795,1106,742,64],[556,1170,240,64],[795,1170,742,64],[179,133,423,65,'header'],[1220,133,289,65,'header'],[406,364,372,66],[760,433,380,54],[427,490,354,56],[1084,490,338,56],[135,549,338,56],[392,608,387,56],[134,1404,1383,58],[134,1515,1384,55]];
+  const fields = raw.map(([x, y, width, height, role], i) => ({ id: `f${i}`, page: 0, x, y, width, height, text: '', ...(role ? { role: 'header' as const } : {}) }));
+  const textAt = (r: ReturnType<typeof distributeAnswers>, x: number, y: number) => r.fields.find(f => f.x === x && f.y === y)!.text;
+  it('fills gaps, table and questions in reading order and leaves name and date empty', () => {
+    const r = distributeAnswers(`Bismarck; Preußen; Österreich; Norddeutsche; 18. Januar 1871; Wilhelm
+
+| Ereignis | Jahr | Ergebnis |
+|---|---|---|
+| Deutsch-Dänischer Krieg | 1864 | Dänemark verliert Schleswig und Holstein. |
+| Deutscher Krieg | 1866 | Preußen besiegt Österreich; Deutscher Bund wird aufgelöst. |
+| Norddeutscher Bund | 1867 | Zusammenschluss der norddeutschen Staaten. |
+| Deutsch-Französischer Krieg | 1870/71 | Frankreich wird besiegt. |
+| Reichsgründung | 1871 | Gründung des Deutschen Kaiserreichs. |
+
+a) Einigung Deutschlands unter preußischer Führung.
+b) Fehlende Einigkeit, Widerstand der Fürsten.`, fields);
+    expect(textAt(r, 179, 133)).toBe(''); expect(textAt(r, 1220, 133)).toBe('');
+    expect(textAt(r, 406, 364)).toBe('Bismarck');
+    expect(textAt(r, 427, 490)).toBe('Österreich'); expect(textAt(r, 1084, 490)).toBe('Norddeutsche');
+    expect(textAt(r, 392, 608)).toBe('Wilhelm');
+    expect(textAt(r, 556, 916)).toBe('1864'); expect(textAt(r, 795, 980)).toBe('Preußen besiegt Österreich; Deutscher Bund wird aufgelöst.');
+    expect(textAt(r, 556, 1170)).toBe('1871');
+    expect(textAt(r, 134, 1404)).toBe('Einigung Deutschlands unter preußischer Führung.');
+    expect(textAt(r, 134, 1515)).toBe('Fehlende Einigkeit, Widerstand der Fürsten.');
+    expect(r.left).toBe(0); expect(r.filled).toBe(18);
+  });
+  it('takes one answer per line as well', () => {
+    const r = distributeAnswers('Bismarck\nPreußen\nÖsterreich', fields);
+    expect(textAt(r, 760, 433)).toBe('Preußen'); expect(textAt(r, 427, 490)).toBe('Österreich'); expect(textAt(r, 1084, 490)).toBe('');
   });
 });
