@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { GOODNOTES, PAGE, paperRules, pathData, type Note, type Profile, type Library, type Template } from './model';
 import { layout, resolvedDrawingInk, resolvedRaster, resolvedStrokes } from './engine';
 type JsPDFConstructor=typeof import('jspdf').jsPDF;
@@ -9,9 +10,17 @@ async function loadJsPDF():Promise<JsPDFConstructor>{
   if(!root.jspdf?.jsPDF)throw primaryError;return root.jspdf.jsPDF;
  }
 }
-export function download(data:Blob|string,name:string,type='application/json') {const blob=data instanceof Blob?data:new Blob([data],{type}); const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+export const isNative=()=>Capacitor.isNativePlatform();
+/** Saves a file: a browser download on the web, the iOS share sheet ("In Goodnotes öffnen", "In Dateien sichern") in the native app. */
+export function download(data:Blob|string,name:string,type='application/json'):Promise<void> {const blob=data instanceof Blob?data:new Blob([data],{type});if(isNative())return shareNative(blob,name);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return Promise.resolve();}
+async function shareNative(blob:Blob,name:string){
+ const [{Filesystem,Directory},{Share}]=await Promise.all([import('@capacitor/filesystem'),import('@capacitor/share')]);
+ const data=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});
+ const {uri}=await Filesystem.writeFile({path:name,data,directory:Directory.Cache});
+ try{await Share.share({title:name,files:[uri]});}catch(e){if(!/cancel/i.test(String((e as Error)?.message||e)))throw e;}
+}
 export function safeName(name:string){return (name.replace(/[^\p{L}\p{N}\-_ ]/gu,'').trim()||'Dokument').slice(0,80);}
-export function exportBackup(library:Library){download(JSON.stringify(library),`Handwrite-Studio-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
+export function exportBackup(library:Library){return download(JSON.stringify(library),`Handwrite-Studio-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
 export async function createPDF(note:Note,profiles:Profile[],template?:Template){const jsPDF=await loadJsPDF(),{glyphs,pages}=layout(note,profiles);const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});const ratio=595.28/PAGE.width;
  for(let page=0;page<pages;page++){
   if(page)pdf.addPage();pdf.setFillColor('#ffffff');pdf.rect(0,0,595.28,841.89,'F');pdf.setLineWidth(GOODNOTES.width*ratio);pdf.setDrawColor(GOODNOTES.color);
@@ -25,7 +34,7 @@ export async function createPDF(note:Note,profiles:Profile[],template?:Template)
  }
  pdf.setProperties({title:note.title,creator:'Handwrite Studio',subject:'Vektorhandschrift – PDF-Seiteninhalt, keine nativen Goodnotes-Stiftstriche'});return pdf;
 }
-export async function exportPDF(note:Note,profiles:Profile[],template?:Template){const pdf=await createPDF(note,profiles,template);pdf.save(`${safeName(note.title)}.pdf`);}
+export async function exportPDF(note:Note,profiles:Profile[],template?:Template){const pdf=await createPDF(note,profiles,template);await download(pdf.output('blob'),`${safeName(note.title)}.pdf`,'application/pdf');}
 export function makeSVG(note:Note,profiles:Profile[],page:number,template?:Template){const {glyphs}=layout(note,profiles);const paths:string[]=[];
  const background=note.settings.paper==='custom'?template?.pages[page]:undefined;if(background)paths.push(`<image href="${background}" x="0" y="0" width="${PAGE.width}" height="${PAGE.height}" preserveAspectRatio="none"/>`);
  for(const r of paperRules(note.settings))paths.push(`<path d="M${r.x1.toFixed(2)} ${r.y1.toFixed(2)} L${r.x2.toFixed(2)} ${r.y2.toFixed(2)}" stroke="${GOODNOTES.color}" stroke-width="${GOODNOTES.width.toFixed(2)}"/>`);
@@ -34,4 +43,4 @@ export function makeSVG(note:Note,profiles:Profile[],page:number,template?:Templ
  for(const d of (note.drawings||[]).filter(d=>d.page===page&&!d.deleted)){const visible=d.strokes.flatMap((stroke,index)=>d.hiddenStrokes?.includes(index)?[]:[{stroke,color:d.strokeColors?.[index]||d.color}]);paths.push(`<g id="drawing-${d.id}" transform="translate(${d.x} ${d.y}) scale(${d.scale})" fill="none" stroke-width="${d.penWidth}" stroke-linecap="round" stroke-linejoin="round">${visible.map(item=>`<path d="${pathData(item.stroke)}" stroke="${item.color}"/>`).join('')}</g>`);}
  return `<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="white"/>${paths.join('')}</svg>`;
 }
-export function exportSVG(note:Note,profiles:Profile[],page:number,template?:Template){download(makeSVG(note,profiles,page,template),`${safeName(note.title)}-Seite-${page+1}.svg`,'image/svg+xml');}
+export function exportSVG(note:Note,profiles:Profile[],page:number,template?:Template){return download(makeSVG(note,profiles,page,template),`${safeName(note.title)}-Seite-${page+1}.svg`,'image/svg+xml');}

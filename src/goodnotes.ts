@@ -49,4 +49,4 @@ async function combinePages(pages:Uint8Array[]){
  return out.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
 }
 export async function createGoodnotesFiles(note:Note,profiles:Profile[]){const count=layout(note,profiles).pages,pages:Uint8Array[]=[];for(let page=0;page<count;page++)pages.push(await buildPage(note,profiles,page));return[{name:`${safeName(note.title)}.goodnotes`,data:await combinePages(pages)}];}
-export async function exportGoodnotes(note:Note,profiles:Profile[]){const [file]=await createGoodnotesFiles(note,profiles);download(new Blob([file.data as BlobPart],{type:'application/octet-stream'}),file.name);return layout(note,profiles).pages;}
+export async function exportGoodnotes(note:Note,profiles:Profile[]){const [file]=await createGoodnotesFiles(note,profiles);await download(new Blob([file.data as BlobPart],{type:'application/octet-stream'}),file.name);return layout(note,profiles).pages;}

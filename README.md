@@ -83,3 +83,16 @@ Buchstabenbilder zusammen.
 - Goodnotes-Schreibansatz: [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)
 - Deutsches Kontextlexikon:
   [public/models/de-lexicon/NOTICE.md](public/models/de-lexicon/NOTICE.md)
+
+## iOS-App (Xcode)
+
+Die Web-App ist mit [Capacitor](https://capacitorjs.com) als native iOS-App verpackt (`ios/`).
+
+```bash
+npm run ios        # Web-App bauen, nach ios/ kopieren und Xcode öffnen
+npm run ios:sync   # nur bauen und kopieren
+```
+
+In Xcode unter *Signing & Capabilities* das eigene Team wählen und bei Bedarf die
+Bundle-ID (`com.handwritestudio.app`) ändern, dann auf dem iPad oder im Simulator starten.
+In der App werden Exporte über das iOS-Teilen-Menü geöffnet (z. B. „In Goodnotes öffnen“).
