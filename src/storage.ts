@@ -15,7 +15,7 @@ export function validateLibrary(value:unknown):Library {
  let points=0;
  const stroke=(s:unknown)=>Array.isArray(s)&&s.length>0&&s.length<=100000&&s.every(p=>{points++;return p&&num(p.x,-10000,10000)&&num(p.y,-10000,10000)&&(p.p===undefined||num(p.p,0,1));});
  if(new Set(v.notes.map(n=>n.id)).size!==v.notes.length||new Set(v.profiles.map(p=>p.id)).size!==v.profiles.length)return fail();
- for(const p of v.profiles){if(!p||!str(p.id,100)||p.id==='demo'||!str(p.name,100)||!str(p.created,100)||!p.glyphs||typeof p.glyphs!=='object'||Array.isArray(p.glyphs))return fail();
+ for(const p of v.profiles){if(!p||!str(p.id,100)||p.id==='demo'||!str(p.name,100)||!str(p.created,100)||(p.updated!==undefined&&!str(p.updated,100))||!p.glyphs||typeof p.glyphs!=='object'||Array.isArray(p.glyphs))return fail();
   if(p.styleImages!==undefined&&(!Array.isArray(p.styleImages)||p.styleImages.length>5||!p.styleImages.every(image=>str(image,500000)&&/^data:image\/(?:png|jpeg|webp);base64,/.test(image))))return fail();
   if(p.words!==undefined){if(!Array.isArray(p.words)||p.words.length>2000)return fail();
    for(const w of p.words){if(!w||!str(w.id,100)||!str(w.text,24)||!(/^[\p{L}\p{N}]{2,24}$/u.test(w.text))||!['pen','photo'].includes(w.source)||!num(w.width,1,6000)||!Array.isArray(w.strokes)||!w.strokes.length||w.strokes.length>10000||!w.strokes.every(stroke)||!Array.isArray(w.cuts)||w.cuts.length!==Array.from(w.text).length+1||w.cuts[0]!==0||Math.abs(w.cuts.at(-1)!-w.width)>.001||!w.cuts.every((c,i)=>num(c,0,w.width)&&(i===0||c>w.cuts[i-1])))return fail();
@@ -37,6 +37,7 @@ export function validateLibrary(value:unknown):Library {
  }
  if(v.templates!==undefined){if(!Array.isArray(v.templates)||v.templates.length>50)return fail();for(const t of v.templates)if(!t||!str(t.id,100)||!str(t.name,100)||!str(t.created,100)||!Array.isArray(t.pages)||!t.pages.length||t.pages.length>60||!t.pages.every(p=>str(p,12000000)&&p.startsWith('data:image/')))return fail();}
  if(v.folders!==undefined){if(!Array.isArray(v.folders)||v.folders.length>500||new Set(v.folders.map(f=>f?.id)).size!==v.folders.length)return fail();for(const f of v.folders)if(!f||!str(f.id,100)||!str(f.name,100)||!color(f.color)||!str(f.created,100)||!str(f.updated,100)||(f.parentId!==undefined&&!str(f.parentId,100))||(f.favorite!==undefined&&typeof f.favorite!=='boolean'))return fail();const ids=new Set(v.folders.map(f=>f.id));for(const f of v.folders)if(f.parentId&&!ids.has(f.parentId))delete f.parentId;for(const n of v.notes)if(n.folderId&&!ids.has(n.folderId))delete n.folderId;}else for(const n of v.notes)delete n.folderId;
+ if(v.deleted!==undefined){if(!v.deleted||typeof v.deleted!=='object'||Array.isArray(v.deleted)||Object.keys(v.deleted).length>20000||!Object.entries(v.deleted).every(([k,t])=>k.length<=100&&str(t,100)))return fail();}
  if(points>2000000||!v.notes.some(n=>n.id===v.activeId))return fail();
  for(const p of v.profiles)if(p.words)p.words=p.words.map(recalibrateWord);
  return v;

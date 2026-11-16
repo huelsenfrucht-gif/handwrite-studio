@@ -6,7 +6,8 @@ import { recognizeLine } from './recognizer';
 import { segmentPage } from './segment';
 import { correctGermanWord, loadGermanLexicon } from './lexicon';
 import { vectorize } from '../vectorize';
-import { analyseBoard, binarize, bounds, components, inkImage, joinLines, maskImage } from './boardAnalysis';
+import { analyseBoard, binarize, bounds, components, diagramOutside, inkImage, joinLines, linesToText, maskImage } from './boardAnalysis';
+import { visionText } from '../native';
 
 type Mode = 'text' | 'board';
 type Label = { id: string; x: number; y: number; width: number; height: number; text: string };
@@ -82,17 +83,24 @@ function handwrite(text: string, profiles: Profile[], settings: Settings) {
   return { strokes: strokes.map(s => s.map(p => ({ ...p, x: p.x - b.minX, y: p.y - b.minY }))), width: b.maxX - b.minX, height: b.maxY - b.minY, capHeight: 40 * .76 };
 }
 
-export function PhotoText({ profiles, settings, page, insertY, onClose, onText, onDrawing }: { profiles: Profile[]; settings: Settings; page: number; insertY: number; onClose: () => void; onText: (text: string) => void; onDrawing: (d: Drawing) => void }) {
+export function PhotoText({ profiles, settings, page, insertY, initialFiles, onClose, onText, onDrawing }: { profiles: Profile[]; settings: Settings; page: number; insertY: number; initialFiles?: File[]; onClose: () => void; onText: (text: string) => void; onDrawing: (d: Drawing) => void }) {
   const input = useRef<HTMLInputElement>(null), cancelled = useRef(false);
   const [mode, setMode] = useState<Mode>('text'), [busy, setBusy] = useState(''), [error, setError] = useState(''), [photo, setPhoto] = useState('');
   const [text, setText] = useState<string | null>(null), [board, setBoard] = useState<Board | null>(null), [withLines, setWithLines] = useState(true);
   useEffect(() => () => { if (photo) URL.revokeObjectURL(photo); }, [photo]);
   useEffect(() => () => { cancelled.current = true; }, []);
+  // Photos shared from the Photos app are read right away.
+  useEffect(() => { if (initialFiles?.length) void load(initialFiles, 'text'); }, [initialFiles]); // eslint-disable-line react-hooks/exhaustive-deps
   const reset = () => { setText(null); setBoard(null); setError(''); };
+  const files = useRef<File[]>([]);
 
   const readText = async (files: File[]) => {
     const lexicon = await loadGermanLexicon().catch(() => undefined), parts: string[] = [];
     for (let f = 0; f < files.length; f++) {
+      // In the iOS app Apple's own text recognition reads print, boards and handwriting best.
+      setBusy(`Foto ${f + 1}/${files.length} wird gelesen …`);
+      const original = await loadImage(files[f], 2400), vision = await visionText(canvasOf(original.data, original.width, original.height));
+      if (vision?.length) { parts.push(linesToText(vision.map(l => ({ text: l.text, x: l.x * original.width, y: l.y * original.height, width: l.width * original.width, height: l.height * original.height })))); continue; }
       const image = await loadImage(files[f], 2200), { gray } = inkImage(image.data, image.width, image.height), rgba = grayToRGBA(gray), source = canvasOf(rgba, image.width, image.height);
       const found = segmentPage(rgba, image.width, image.height), heights = found.map(r => r.height).sort((a, b) => a - b), median = heights[Math.floor(heights.length / 2)] || 1;
       const regions = found.filter(r => r.height >= median * .35 && r.height <= median * 2.6);
@@ -120,7 +128,18 @@ export function PhotoText({ profiles, settings, page, insertY, onClose, onText, 
     const lexicon = await loadGermanLexicon().catch(() => undefined);
     setBusy('Tafelbild wird analysiert …'); await new Promise(res => setTimeout(res, 30));
     const image = await loadImage(file, 1500), { gray, board: dark } = inkImage(image.data, image.width, image.height), ink = binarize(gray, image.width, image.height);
-    const { label, list } = components(ink, image.width, image.height), result = analyseBoard(list);
+    const { label, list } = components(ink, image.width, image.height);
+    const vision = (await visionText(canvasOf(image.data, image.width, image.height)))?.filter(l => l.text.trim() && l.confidence >= .3);
+    if (vision?.length) {
+      const boxes = vision.map(l => ({ id: uid(), text: l.text.trim(), x: l.x * image.width, y: l.y * image.height, width: l.width * image.width, height: l.height * image.height }));
+      const textHeight = boxes.map(b => b.height).sort((a, b) => a - b)[Math.floor(boxes.length / 2)] || 20, ids = diagramOutside(list, boxes, textHeight);
+      setBusy('Linien und Formen werden nachgezeichnet …'); await new Promise(res => setTimeout(res, 0));
+      const mask = maskImage(label, image.width, image.height, ids);
+      const diagram = ids.length ? vectorize(mask.rgba, mask.width, mask.height, 165).filter(s => s.length > 1) : [];
+      setBoard({ width: image.width, height: image.height, diagram, labels: boxes, board: dark });
+      return;
+    }
+    const result = analyseBoard(list);
     if (!result.labels.length && !result.diagram.length) throw new Error('Auf dem Foto wurde kein Tafelbild erkannt.');
     const labels: Label[] = [], dropped: number[] = [];
     for (let i = 0; i < result.labels.length; i++) {
@@ -137,11 +156,12 @@ export function PhotoText({ profiles, settings, page, insertY, onClose, onText, 
     setBoard({ width: image.width, height: image.height, diagram, labels, board: dark });
   };
 
-  const load = async (files: File[]) => {
-    if (!files.length) return; reset(); cancelled.current = false;
-    setPhoto(URL.createObjectURL(files[0]));
+  const load = async (chosen: File[], as: Mode = mode) => {
+    if (!chosen.length) return; reset(); cancelled.current = false; files.current = chosen;
+    const files_ = chosen;
+    setPhoto(URL.createObjectURL(files_[0]));
     setBusy('Erkennung wird geladen …');
-    try { if (mode === 'text') await readText(files); else await readBoard(files[0]); }
+    try { if (as === 'text') await readText(files_); else await readBoard(files_[0]); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(''); }
   };
@@ -173,8 +193,8 @@ export function PhotoText({ profiles, settings, page, insertY, onClose, onText, 
     <header className="modal-header"><div><span className="eyebrow">NICHT MEHR ABSCHREIBEN</span><h2 id="photo-text-title">Foto in deine Handschrift</h2><p>Text, Buchseite oder Tafelbild fotografieren – die App liest es und schreibt es in deiner Schrift.</p></div><button className="icon-button" aria-label="Foto-Import schließen" onClick={onClose}><X size={20} /></button></header>
     <div className="modal-content">
       <div className="photo-modes" role="tablist">
-        <button role="tab" aria-selected={mode === 'text'} className={mode === 'text' ? 'active' : ''} onClick={() => { setMode('text'); reset(); }}><ScanText size={20} /><span><strong>Text</strong><small>Buch, Arbeitsblatt, Tafeltext</small></span></button>
-        <button role="tab" aria-selected={mode === 'board'} className={mode === 'board' ? 'active' : ''} onClick={() => { setMode('board'); reset(); }}><Presentation size={20} /><span><strong>Tafelbild</strong><small>Mindmap, Skizze mit Beschriftung</small></span></button>
+        <button role="tab" aria-selected={mode === 'text'} className={mode === 'text' ? 'active' : ''} onClick={() => { setMode('text'); reset(); if (files.current.length) void load(files.current, 'text'); }}><ScanText size={20} /><span><strong>Text</strong><small>Buch, Arbeitsblatt, Tafeltext</small></span></button>
+        <button role="tab" aria-selected={mode === 'board'} className={mode === 'board' ? 'active' : ''} onClick={() => { setMode('board'); reset(); if (files.current.length) void load(files.current, 'board'); }}><Presentation size={20} /><span><strong>Tafelbild</strong><small>Mindmap, Skizze mit Beschriftung</small></span></button>
       </div>
       <input ref={input} hidden type="file" accept="image/*" multiple={mode === 'text'} onChange={e => { const files = Array.from(e.target.files || []); e.target.value = ''; void load(files); }} />
       {busy ? <div className="photo-busy" role="status"><span className="spinner" />{busy}</div>

@@ -7,61 +7,66 @@ import { Capacitor } from '@capacitor/core';
  * app is registered there. Until then Google's official test ads are shown,
  * which never earn money but also never risk the account.
  * The app ID also has to be set in ios/App/App/Info.plist (GADApplicationIdentifier).
+ *
+ * Placement: a full-screen ad before every export (not for backups) and
+ * before a new handwriting is created. No banners.
  */
 export const ADMOB = {
-  bannerId: 'ca-app-pub-3940256099942544/2435281174',
   interstitialId: 'ca-app-pub-3940256099942544/4411468910',
 };
-const TESTING = ADMOB.bannerId.startsWith('ca-app-pub-3940256099942544');
-// Full-screen ads only after every 2nd export and at most every 4 minutes.
-const EXPORTS_PER_AD = 2, MIN_INTERSTITIAL_GAP = 4 * 60 * 1000;
+const TESTING = ADMOB.interstitialId.startsWith('ca-app-pub-3940256099942544');
 
 type AdMobModule = typeof import('@capacitor-community/admob');
-let mod: Promise<AdMobModule> | undefined, ready: Promise<boolean> | undefined;
-let bannerShown = false, bannerWanted = false, interstitialReady = false, exports = 0, lastInterstitial = 0;
+let mod: Promise<AdMobModule> | undefined, ready: Promise<boolean> | undefined, loading: Promise<boolean> | undefined;
+let interstitialReady = false;
 const load = () => (mod ??= import('@capacitor-community/admob'));
+const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /** Asks for consent (GDPR form and Apple's tracking prompt) once, then starts AdMob. */
 export function initAds(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return Promise.resolve(false);
   return (ready ??= (async () => {
     try {
-      const { AdMob, AdmobConsentStatus, BannerAdPluginEvents } = await load();
+      const { AdMob, AdmobConsentStatus } = await load();
       const consent = await AdMob.requestConsentInfo();
       if (consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED) await AdMob.showConsentForm();
       const tracking = await AdMob.trackingAuthorizationStatus();
       if (tracking.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
       await AdMob.initialize({ initializeForTesting: TESTING });
-      await AdMob.addListener(BannerAdPluginEvents.SizeChanged, size => document.documentElement.style.setProperty('--ad-height', `${Math.round(size.height)}px`));
       void prepareInterstitial();
       return true;
     } catch { return false; }
   })());
 }
 
-async function prepareInterstitial() {
-  try { const { AdMob } = await load(); await AdMob.prepareInterstitial({ adId: ADMOB.interstitialId, isTesting: TESTING }); interstitialReady = true; } catch { interstitialReady = false; }
+function prepareInterstitial() {
+  return (loading ??= (async () => {
+    try { const { AdMob } = await load(); await AdMob.prepareInterstitial({ adId: ADMOB.interstitialId, isTesting: TESTING }); interstitialReady = true; }
+    catch { interstitialReady = false; }
+    finally { loading = undefined; }
+    return interstitialReady;
+  })());
 }
 
-/** Shows the banner at the bottom of the library and hides it everywhere else. */
-export async function setBannerVisible(visible: boolean) {
-  bannerWanted = visible;
+/**
+ * Shows a full-screen ad and resolves once it was closed, so the action that
+ * follows (export, new handwriting) starts right after. Without an ad
+ * (web, no connection, no fill) it resolves immediately and nothing is blocked.
+ */
+export async function showInterstitialAd(): Promise<void> {
   if (!(await initAds())) return;
-  const { AdMob, BannerAdPosition, BannerAdSize } = await load();
-  if (bannerWanted !== visible) return;
+  if (!interstitialReady) await Promise.race([prepareInterstitial(), wait(3500)]);
+  if (!interstitialReady) return;
   try {
-    if (visible && !bannerShown) { await AdMob.showBanner({ adId: ADMOB.bannerId, adSize: BannerAdSize.ADAPTIVE_BANNER, position: BannerAdPosition.BOTTOM_CENTER, margin: 0, isTesting: TESTING }); bannerShown = true; }
-    else if (visible) await AdMob.resumeBanner();
-    else if (bannerShown) await AdMob.hideBanner();
-    document.documentElement.classList.toggle('ad-banner', visible);
-  } catch { document.documentElement.classList.remove('ad-banner'); }
-}
-
-/** Called after a successful export: now and then a full-screen ad, never mid-work. */
-export async function afterExport() {
-  exports++;
-  if (exports < EXPORTS_PER_AD || Date.now() - lastInterstitial < MIN_INTERSTITIAL_GAP || !interstitialReady || !(await initAds())) return;
-  try { const { AdMob } = await load(); interstitialReady = false; await AdMob.showInterstitial(); exports = 0; lastInterstitial = Date.now(); } catch { /* no fill: try again next time */ }
+    const { AdMob, InterstitialAdPluginEvents } = await load();
+    interstitialReady = false;
+    let finish = () => {};
+    const closed = new Promise<void>(resolve => { finish = resolve; });
+    const handles = await Promise.all([AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, () => finish())]);
+    await AdMob.showInterstitial();
+    await Promise.race([closed, wait(90000)]);
+    await Promise.all(handles.map(h => h.remove()));
+  } catch { /* never block the user's action because of an ad */ }
   void prepareInterstitial();
 }
 

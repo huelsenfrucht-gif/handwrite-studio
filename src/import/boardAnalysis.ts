@@ -111,3 +111,25 @@ export function bounds(strokes: Stroke[]) {
   for (const s of strokes) for (const p of s) { if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; }
   return minX === Infinity ? { minX: 0, minY: 0, maxX: 0, maxY: 0 } : { minX, minY, maxX, maxY };
 }
+
+export type TextBox = { text: string; x: number; y: number; width: number; height: number };
+/** Apple Vision lines (in pixels) → plain text: segments of one row are joined,
+ * rows in reading order, blank lines where a paragraph break is visible. */
+export function linesToText(lines: TextBox[]) {
+  const sorted = [...lines].filter(l => l.text.trim()).sort((a, b) => a.y + a.height / 2 - (b.y + b.height / 2));
+  const rows: TextBox[][] = [];
+  for (const line of sorted) {
+    const row = rows.at(-1), mid = line.y + line.height / 2;
+    if (row && Math.abs(mid - (row[0].y + row[0].height / 2)) < Math.min(line.height, row[0].height) * .5) row.push(line); else rows.push([line]);
+  }
+  return joinLines(rows.map(r => { r.sort((a, b) => a.x - b.x); return { y: Math.min(...r.map(l => l.y)), height: Math.max(...r.map(l => l.height)), text: r.map(l => l.text.trim()).join(' ') }; }));
+}
+
+/** Ink blobs that lie inside a recognised text box are letters; everything else is drawing. */
+export function diagramOutside(list: Component[], boxes: Region[], textHeight: number) {
+  const pad = textHeight * .25;
+  return list.filter(c => c.pixels >= 6 && !boxes.some(b => {
+    const w = Math.min(c.x + c.width, b.x + b.width + pad) - Math.max(c.x, b.x - pad), h = Math.min(c.y + c.height, b.y + b.height + pad) - Math.max(c.y, b.y - pad);
+    return w > 0 && h > 0 && w * h >= c.width * c.height * .6;
+  })).map(c => c.id);
+}

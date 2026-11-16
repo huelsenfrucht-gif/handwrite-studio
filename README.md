@@ -96,3 +96,9 @@ npm run ios:sync   # nur bauen und kopieren
 In Xcode unter *Signing & Capabilities* das eigene Team wählen und bei Bedarf die
 Bundle-ID (`com.handwritestudio.app`) ändern, dann auf dem iPad oder im Simulator starten.
 In der App werden Exporte über das iOS-Teilen-Menü geöffnet (z. B. „In Goodnotes öffnen“).
+
+### Funktionen nur in der iOS-App
+- **Apple-Texterkennung (Vision)** für Fotos von Text und Tafelbildern (`ios/App/App/HandwriteNativePlugin.swift`).
+- **Teilen mit Handwrite Studio**: Share-Extension (`ios/App/ShareExtension`) für Fotos aus der Fotos-App.
+- **iCloud-Abgleich** über einen selbst gewählten Ordner in iCloud Drive – ohne iCloud-Berechtigung, funktioniert daher auch mit kostenlosem Apple-Konto.
+- **Werbung (AdMob)** vor jedem Export und vor dem Anlegen einer Handschrift. Eigene IDs in `src/nativeAds.ts` und `ios/App/App/Info.plist` eintragen.
