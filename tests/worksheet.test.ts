@@ -80,7 +80,8 @@ b) Fehlende Einigkeit, Widerstand der Fürsten.`, fields);
   });
   it('writes a prompt that asks for exactly one line per field and describes the groups', () => {
     const prompt = answerPrompt(fields);
-    expect(prompt).toContain('genau 18 Zeilen');
+    expect(prompt).toContain('genau 18 Antworten');
+    expect(prompt).toContain('das Zeichen ¦');
     expect(prompt).toContain('Zeile 1–6: 6 Lücken');
     expect(prompt).toContain('Zeile 7–16: die 10 leeren Zellen einer Tabelle (5 Zeilen mit je 2 leeren Spalten)');
     expect(prompt).toContain('Zeile 17–18: 2 Antwortlinien');
@@ -92,5 +93,13 @@ b) Fehlende Einigkeit, Widerstand der Fürsten.`, fields);
     expect(textAt(r, 795, 916)).toBe('Dänemark verliert Schleswig; Holstein; Lauenburg');
     expect(textAt(r, 795, 980)).toBe('');
     expect(textAt(r, 134, 1515)).toBe('Uneinigkeit');
+  });
+  it('splits a reply at the answer sign even when copying lost every line break', () => {
+    const reply = ['Bismarck', 'Preußen', 'Österreich', 'Norddeutsche', '18. Januar 1871', 'Wilhelm', '1864', 'Dänemark verliert Schleswig und Holstein.', '1866', '-', '1867', 'x', '1870/71', 'x', '1871', 'x', 'Einigung unter preußischer Führung.', 'Die Fürsten waren sich nicht einig.'];
+    const r = distributeAnswers(reply.map(a => `${a}¦`).join(' '), fields);
+    expect(textAt(r, 406, 364)).toBe('Bismarck'); expect(textAt(r, 135, 549)).toBe('18. Januar 1871');
+    expect(textAt(r, 795, 916)).toBe('Dänemark verliert Schleswig und Holstein.'); expect(textAt(r, 795, 980)).toBe('');
+    expect(textAt(r, 134, 1515)).toBe('Die Fürsten waren sich nicht einig.');
+    expect(r.left).toBe(0);
   });
 });

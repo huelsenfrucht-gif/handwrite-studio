@@ -113,6 +113,9 @@ export async function detectFields(image: string, page: number): Promise<Field[]
 }
 
 const TABLE = /^\s*\|.*\|\s*$/, RULE = /^[\s|:\-]+$/;
+/** Ends every answer in the AI reply. Copy buttons of AI chats often drop line breaks; this sign survives. */
+export const ANSWER_END = '¦';
+const ANSWER_SPLIT = /[¦￤]/;
 
 /** Answer fields in reading order: page, then row by row (fields on one line from left to right). */
 export function readingOrder(fields: Field[]) {
@@ -136,6 +139,14 @@ export function distributeAnswers(text: string, fields: Field[]) {
   const empty = (line: string) => /^[-–—]$/.test(line);
   // Exactly one line per field (the format the AI prompt asks for): taken over 1:1, "-" leaves a field empty.
   // A numbering "1. … 2. …" that an AI adds anyway is removed.
+  // Reply in the prompt format "Antwort ¦ Antwort ¦ …": split at the sign, however the text was copied.
+  if (ANSWER_SPLIT.test(text)) {
+    const pieces = text.split(ANSWER_SPLIT).map(p => p.replace(/\s+/g, ' ').trim());
+    if (!pieces.at(-1)) pieces.pop();
+    const numbered = pieces.length > 1 && pieces.every((p, k) => new RegExp(`^${k + 1}[.):]\\s`).test(p));
+    pieces.forEach(p => { const v = numbered ? p.replace(/^\d+[.):]\s*/, '') : p; put(!v || empty(v) ? '' : v); });
+    return { fields: fields.map(f => f.role === 'header' ? f : { ...f, text: out.get(f.id) ?? '' }), filled: [...out.values()].filter(Boolean).length, left };
+  }
   const given = lines.map(l => l.trim()).filter(Boolean);
   if (given.length === slots.length && !given.some(l => TABLE.test(l))) {
     const numbered = given.every((l, k) => new RegExp(`^${k + 1}[.):]\\s`).test(l));
@@ -198,11 +209,16 @@ export function answerPrompt(fields: Field[]) {
   return [
     'Fülle das angehängte Arbeitsblatt aus.',
     '',
-    `Antworte ausschließlich mit genau ${slots.length} Zeilen – eine Zeile pro Antwortfeld, in genau dieser Reihenfolge. Keine Nummerierung, keine Überschriften, keine Leerzeilen, keine Erklärungen, kein Markdown, keine Tabelle.`,
+    `Antworte ausschließlich mit genau ${slots.length} Antworten – eine pro Antwortfeld, in genau dieser Reihenfolge. Setze direkt nach jeder Antwort das Zeichen ${ANSWER_END} (auch nach der letzten) und schreibe jede Antwort in eine eigene Zeile. Benutze das Zeichen ${ANSWER_END} sonst nirgends. Keine Nummerierung, keine Überschriften, keine Erklärungen, kein Markdown, keine Tabelle.`,
     '',
     'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
     ...groups.map(describe),
     '',
-    'Wenn du ein Feld nicht beantworten kannst, schreibe in diese Zeile nur ein „-“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.',
+    `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
+    '',
+    'Format:',
+    `Antwort 1${ANSWER_END}`,
+    `Antwort 2${ANSWER_END}`,
+    '…',
   ].join('\n');
 }
