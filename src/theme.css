@@ -421,3 +421,43 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 .paper-pages{margin:0 auto;display:flex;flex-direction:column;gap:22px}
 .paper-pages>.paper-holder{width:100%!important;max-width:none!important;margin:0;position:relative}
 .page-number{position:absolute;right:10px;bottom:8px;padding:3px 8px;border-radius:999px;background:#13254a14;color:var(--hs-muted);font-size:11px;font-weight:600;pointer-events:none}
+
+/* Linke Spalte im Studio: ruhige Karten im Stil der Bibliothek */
+.view-studio .controls.sp{background:var(--hs-bg);padding:14px 14px 28px;display:flex;flex-direction:column;gap:12px;border-right:1px solid var(--hs-line)}
+.sp-card{background:#fff;border:1px solid var(--hs-line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.sp-title{margin:0;font-family:var(--hs-serif);font-size:18px;font-weight:700;letter-spacing:-.2px;color:var(--hs-ink)}
+.sp-head{display:flex;align-items:center;gap:8px}
+.sp-count{margin-left:auto;font-size:12px;color:var(--hs-muted)}
+.sp-expand{width:30px;height:30px;color:var(--hs-muted)}
+.sp .select-wrapper{margin:0}
+.sp .select-wrapper select{height:42px;border:1px solid var(--hs-line);border-radius:10px;background:#fff;font-size:14px;color:var(--hs-ink)}
+.sp-link{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:2px 0;font-size:13px;font-weight:600;color:var(--hs-navy-2);cursor:pointer}
+.sp-link:hover{text-decoration:underline;text-underline-offset:3px}
+.sp-sources{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sp-sources button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:8px 4px;border:1px solid var(--hs-line);border-radius:10px;background:#fff;color:var(--hs-ink);font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
+.sp-sources button:hover{border-color:var(--hs-line-strong);background:var(--hs-bg)}
+.sp-sources button:disabled{opacity:.5}
+.sp-sources svg{color:var(--hs-navy-2)}
+.sp-text textarea#source-text{min-height:180px;border:1px solid var(--hs-line);border-radius:10px;padding:12px;font-size:14px;line-height:1.55;color:var(--hs-ink);background:#fff;resize:vertical}
+.sp-text textarea#source-text:focus{outline:none;border-color:var(--hs-navy-2);box-shadow:0 0 0 3px #24406f1f}
+.sp .text-footer{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--hs-muted);margin:0}
+.sp .generate{width:100%;min-height:46px;border-radius:12px;background:var(--hs-navy);border-color:var(--hs-navy);font-size:15px}
+.sp .goodnotes-preset{margin:0}
+.sp-label{margin-top:6px;font-size:13px;font-weight:600;color:var(--hs-muted)}
+.sp .color-swatches,.sp .paper-options{margin:0}
+.sp-mark{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--hs-line);border-radius:12px;background:var(--hs-bg)}
+.sp-toggle{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:0;font-size:13.5px;font-weight:600;color:var(--hs-muted);cursor:pointer;text-align:left}
+.sp-toggle.on{color:var(--hs-ink)}
+.sp-toggle svg{flex:none;padding:5px;box-sizing:content-box;border-radius:8px;background:#fff;border:1px solid var(--hs-line);color:var(--hs-muted)}
+.sp-toggle.on svg{background:var(--hs-navy);border-color:var(--hs-navy);color:#fff}
+.sp-hl{display:flex;gap:6px;flex:none}
+.sp-hl button{width:20px;height:20px;border-radius:50%;border:1px solid #13254a26;cursor:pointer;padding:0}
+.sp-hl button.on{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--hs-navy-2)}
+.sp .special-settings{margin-top:6px}
+.sp .special-body .two-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sp .worksheet-panel{margin-top:4px}
+.sp-mark{flex-direction:column;align-items:flex-start;gap:9px}
+.sp-toggle{white-space:nowrap}
+.sp-hl{padding-left:36px}
+.sp .special-body .range-label,.sp .special-body .stepper-row>span:first-child,.sp .special-body .margin-head,.sp .special-body .pen-width,.sp .special-body .two-controls>label{font-size:13px;font-weight:600;color:var(--hs-muted)}
+.sp .range-label span{color:var(--hs-ink);font-weight:500}

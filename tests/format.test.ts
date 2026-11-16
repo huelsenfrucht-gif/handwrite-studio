@@ -21,3 +21,20 @@ describe('pasted text keeps its formatting', () => {
     expect(g.some(x => x.char === '*' || x.char === '#')).toBe(false);
   });
 });
+
+describe('marking headings', () => {
+  const text = '# Die Französische Revolution\n\nEinleitung\nIm Jahr 1789 begann eine Revolution.\n\nKurzer Satz am Ende.\n\n- Punkt eins\n\nUrsachen:\nDer Staat war verschuldet.\n\nLiebe Grüße';
+  it('finds marked headings and short lines that start a block', async () => {
+    const { headingLines } = await import('../src/engine');
+    const lines = cleanText(text).split('\n'), found = [...headingLines(text)].map(i => lines[i]);
+    expect(found).toEqual(['Die Französische Revolution', 'Einleitung', 'Ursachen:']);
+  });
+  it('draws one highlighter bar per heading line, only when switched on', () => {
+    const n = newNote(); n.renderedText = text;
+    expect(layout(n, []).highlights).toHaveLength(0);
+    n.settings = { ...n.settings, highlightHeadings: true };
+    const bars = layout(n, []).highlights;
+    expect(bars).toHaveLength(3);
+    for (const b of bars) { expect(b.height).toBeGreaterThan(8); expect(b.width).toBeGreaterThan(20); }
+  });
+});

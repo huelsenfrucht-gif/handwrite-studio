@@ -27,6 +27,7 @@ export function validateLibrary(value:unknown):Library {
  }
  for(const n of v.notes){if(!n||!str(n.id,100)||!str(n.title,200)||!str(n.text,100000)||!str(n.renderedText,100000)||!str(n.updated,100))return fail();const s=n.settings;
   if(s&&s.wordSpacing===undefined)s.wordSpacing=35;
+  if(s&&((s.highlightHeadings!==undefined&&typeof s.highlightHeadings!=='boolean')||(s.highlightColor!==undefined&&!color(s.highlightColor))))return fail();
   // Natural variation is no longer a setting: every document uses the full natural variation.
   if(s)s.variation=100;
   if(s&&s.size===27&&s.lineHeight===43&&s.wordSpacing===35&&s.variation===25&&s.color==='#263e62'&&s.penWidth===1.7)Object.assign(s,{size:12,lineHeight:20,wordSpacing:60,variation:34,color:'#000000',penWidth:1.2,paper:'lined'});

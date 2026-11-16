@@ -4,7 +4,7 @@ import { composeWord, profileStyle } from './contextual';
 import { connect, endpoints } from './joins';
 export function random(seed: number) { let a=seed|0; return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;}; }
 export const missingGlyph: Glyph = {source:'demo',advance:58,strokes:[[{x:5,y:12},{x:46,y:12},{x:46,y:79},{x:5,y:79},{x:5,y:12}],[{x:12,y:22},{x:39,y:69}]]};
-type LayoutCore={glyphs:PlacedGlyph[];pages:number;missing:string[];fallback:string[];originalWords:number;contextualWords:number;rasterWords:number};
+type LayoutCore={glyphs:PlacedGlyph[];highlights:Highlight[];pages:number;missing:string[];fallback:string[];originalWords:number;contextualWords:number;rasterWords:number};
 // Layout only depends on text, settings and profiles. Caching it keeps typing,
 // selecting and drawing free of lag even for long documents.
 const layoutCache=new WeakMap<Profile[],Map<string,LayoutCore>>();
@@ -25,12 +25,15 @@ function joinStroke(prev:Glyph,cur:Glyph,gap=0):Stroke|undefined{
  * empty line, indent, list and table, but removes the formatting characters that are not meant
  * to be written by hand (**bold**, # headings, `code`, > quotes, [links](…), invisible characters).
  */
-export function cleanText(text: string) {
+export function cleanText(text: string) { return cleanLines(text).map(l => l.text).join('\n'); }
+function cleanLines(text: string) {
   return text.normalize('NFC').replace(/\r\n?|[\u2028\u2029\u0085]/g, '\n').replace(/[\u00a0\u202f\u2007]/g, ' ').replace(/[\u200b-\u200d\u2060\ufeff]/g, '')
     .split('\n').map(line => {
       if (/^\s*```/.test(line)) return null;
-      if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return ''; // horizontal rule
-      return line
+      if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return { text: '', marked: false }; // horizontal rule
+      // "# Title" or a line that is bold as a whole is meant as a heading.
+      const marked = /^\s{0,3}#{1,6}\s+\S/.test(line) || /^\s*(\*\*|__)[^*_]+\1:?\s*$/.test(line);
+      return { marked, text: line
         .replace(/^(\s{0,3})#{1,6}\s+/, '$1').replace(/\s+#+\s*$/, '')
         .replace(/^(\s*)>\s?/, '$1')
         .replace(/^(\s*)\+(?=\s)/, '$1-')
@@ -39,9 +42,27 @@ export function cleanText(text: string) {
         .replace(/(^|[^\p{L}\p{N}_])_(?!\s)([^_\n]*?[^\s_])_(?![\p{L}\p{N}_])/gu, '$1$2')
         .replace(/`([^`\n]+)`/g, '$1')
         .replace(/!?\[([^\]\n]+)\]\([^)\n]*\)/g, '$1')
-        .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, '$1');
-    }).filter((line): line is string => line !== null).join('\n');
+        .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, '$1') };
+    }).filter((line): line is { text: string; marked: boolean } => line !== null);
 }
+/**
+ * Lines of the (cleaned) text that are headings: marked as such ("# …", a bold line), or a short
+ * line without closing punctuation that starts a block (first line or after an empty line)
+ * and is followed by more text — the way headings look in homework and notes.
+ */
+export function headingLines(text: string) {
+  const lines = cleanLines(text), out = new Set<number>();
+  lines.forEach(({ text: t0, marked }, i) => {
+    const t = t0.trim(); if (!t) return;
+    if (marked) { out.add(i); return; }
+    const words = t.split(/\s+/).length, rest = lines.slice(i + 1).some(l => l.text.trim());
+    if (t.length > 70 || words > 9 || !rest || /[.,;!?…]$/.test(t) || /^([-•*·]|\d+[.)]|\p{L}[.)])\s/u.test(t) || /^\|/.test(t)) return;
+    if (i > 0 && lines[i - 1].text.trim()) return;
+    out.add(i);
+  });
+  return out;
+}
+export type Highlight = { page: number; x: number; y: number; width: number; height: number };
 /** Table rows written as "| a | b |"; a row of dashes ("|---|---|") only separates the header. */
 const TABLE_ROW=/^[ \t]*\|.*\|[ \t]*$/,TABLE_RULE=/^[ \t|:\-]+$/;
 export const tableCells=(row:string)=>row.trim().slice(1,-1).split('|').map(c=>c.trim());
@@ -55,7 +76,9 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  const s=note.settings,profile=profiles.find(p=>p.id===s.profileId),rand=random(s.seed),style=profile?profileStyle(profile):null,rows=textLines(s);
  const glyphs:PlacedGlyph[]=[], missing=new Set<string>(), fallback=new Set<string>();
  const margins=textMargins(s),spacing=(s.letterSpacing||0)/100;
- let size=s.size/100,lh=s.lineHeight,paging=true;
+ let size=s.size/100,lh=s.lineHeight,paging=true,tracking=false,curLine=0;
+ // Headings to mark with the highlighter: one bar per written line of a heading.
+ const heads=s.highlightHeadings?headingLines(note.renderedText):new Set<number>(),bars=new Map<string,Highlight>();
  const last=Math.max(rows.first+lh,rows.last-(s.linesBottom||0)*lh),top=Math.min(last-lh,rows.first-80*size+(s.linesTop||0)*lh),firstTop=Math.min(last-lh,top+(s.linesFirstPage||0)*lh);
  let left=margins.left,right=margins.right,x=left,y=firstTop,page=0,index=0,originalWords=0,contextualWords=0,rasterWords=0,indent=left,lineStart=true,bullet=false;
  const line=()=>{x=indent;y+=lh;if(paging&&y+80*size>last){page++;y=top;}};
@@ -67,7 +90,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
   let numbered=0;
   const tokens=cleanText(text).replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•').match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
   for(const token of tokens) {
-   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}
+   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;if(tracking)curLine++;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}
     // Wrapped lines stay under the text: after a list dot or number ("1." "a)"), and for indented lines.
     if(bullet||numbered===2||lineStart){indent=x;bullet=false;numbered=0;}continue;}
    if(lineStart){bullet=token==='•';numbered=/^(\d{1,3}|\p{L})$/u.test(token)?1:0;lineStart=false;}
@@ -91,6 +114,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
      const unsupported=glyph===missingGlyph||(!demoGlyphs[char]&&!profile?.glyphs[char]?.length&&glyph.source==='demo'&&!profile?.words?.some(w=>w.text.includes(char)));
      if(isFallback)fallback.add(char);if(unsupported)missing.add(char);
      const raster=glyph.raster?{...glyph.raster,x:x+glyph.raster.x*scale,y:y+80*size+(glyph.raster.y-80)*scale+wordY,width:glyph.raster.width*scale,height:glyph.raster.height*scale}:undefined;
+     if(tracking&&heads.has(curLine)){const key=`${curLine}:${page}:${Math.round(y)}`,top=y+80*size-66*size,bar=bars.get(key);if(bar){bar.width=Math.max(bar.width,x+advance-bar.x);}else bars.set(key,{page,x,y:top,width:advance,height:78*size});}
      glyphs.push({id,char,page,strokes,x,y,width:raster?.width||advance,height:raster?.height||s.size*1.2,fallback:isFallback,unsupported,raster,hiddenByRaster:glyph.hiddenByRaster});
      x+=advance*(1+spacing);wordOffset+=glyph.advance*(1+spacing);
    }
@@ -98,10 +122,10 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  };
  /** Writes text into a box without changing the running position (cells, worksheet fields). */
  const boxed=(text:string,l:number,r:number,startY:number,onPage:number)=>{
-  const saved={left,right,x,y,page,indent,lineStart,bullet,paging};
-  left=indent=x=l;right=r;y=startY;page=onPage;lineStart=true;bullet=false;paging=false;
+  const saved={left,right,x,y,page,indent,lineStart,bullet,paging,tracking};
+  left=indent=x=l;right=r;y=startY;page=onPage;lineStart=true;bullet=false;paging=false;tracking=false;
   const from=glyphs.length;flow(text);const lines=Math.round((y-startY)/lh)+1;
-  ({left,right,x,y,page,indent,lineStart,bullet,paging}=saved);
+  ({left,right,x,y,page,indent,lineStart,bullet,paging,tracking}=saved);
   return {from,lines};
  };
  const naturalWidth=(text:string)=>{const keep=index,{from}=boxed(text,0,1e7,0,0),w=glyphs.slice(from).reduce((m,g)=>Math.max(m,g.x+g.width),0);glyphs.length=from;index=keep;return w;};
@@ -136,7 +160,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  for(let i=0;i<blocks.length;){
   if(TABLE_ROW.test(blocks[i])){const start=i;while(i<blocks.length&&TABLE_ROW.test(blocks[i]))i++;table(blocks.slice(start,i));index++;continue;}
   const start=i;while(i<blocks.length&&!TABLE_ROW.test(blocks[i]))i++;
-  const text=blocks.slice(start,i).join('\n')+(i<blocks.length?'\n':'');flow(text);
+  const text=blocks.slice(start,i).join('\n')+(i<blocks.length?'\n':'');tracking=true;curLine=start;flow(text);tracking=false;
  }
  // Worksheet answers: each field's text is written into its box, as large as the box allows
  // (never larger than the document's font size), centred for one line, top-aligned for more.
@@ -160,7 +184,8 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
   }
   size=keepSize;lh=keepLh;index=base;
  });
- return {glyphs,pages:page+1,missing:[...missing],fallback:[...fallback],originalWords,contextualWords,rasterWords};
+ const highlights=[...bars.values()].map(b=>({...b,x:b.x-3,width:b.width+6}));
+ return {glyphs,highlights,pages:page+1,missing:[...missing],fallback:[...fallback],originalWords,contextualWords,rasterWords};
 }
 export function layout(note: Note, profiles: Profile[]) {
  let cache=layoutCache.get(profiles);if(!cache){cache=new Map();layoutCache.set(profiles,cache);}

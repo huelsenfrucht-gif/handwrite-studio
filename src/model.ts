@@ -13,7 +13,11 @@ export type Settings = { size: number; lineHeight: number; wordSpacing: number; 
   /** Empty ruled lines kept free at the top of every page, additionally on the first page, and at the bottom. */
   linesTop?: number; linesFirstPage?: number; linesBottom?: number;
   /** Extra space between letters in percent of the letter width. */
-  letterSpacing?: number };
+  letterSpacing?: number;
+  /** Mark all headings with a highlighter in this colour. */
+  highlightHeadings?: boolean; highlightColor?: string };
+/** The highlighter colours of Goodnotes' standard set. */
+export const HIGHLIGHT_COLORS = ['#ffdd33', '#8be05a', '#6cc6ff', '#ff86c8', '#ffaa45'];
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
 export type Annotation = { id: string; page: number; points: Stroke; color: string; width: number };
 export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; strokeColors?: string[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };

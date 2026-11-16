@@ -1,12 +1,12 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { GOODNOTES, PAGE, paperRules, pathData, type Annotation, type Drawing, type Edit, type Field, type Note, type PlacedGlyph, type Point, type Settings, type Stroke } from './model';
-import { resolvedDrawing, resolvedRaster, resolvedStrokes } from './engine';
+import { resolvedDrawing, resolvedRaster, resolvedStrokes, type Highlight } from './engine';
 export type Tool = 'pan'|'select'|'field';
 export type FieldRect={x:number;y:number;width:number;height:number};
-type Props={background?:string;note:Note;glyphs:PlacedGlyph[];page:number;tool:Tool;selected:string[];onSelect:(ids:string[])=>void;onChange:(n:Note)=>void;activeField?:string;onFieldTap?:(id:string)=>void;onAddField?:(r:FieldRect)=>void;};
+type Props={background?:string;note:Note;glyphs:PlacedGlyph[];page:number;tool:Tool;selected:string[];onSelect:(ids:string[])=>void;onChange:(n:Note)=>void;activeField?:string;onFieldTap?:(id:string)=>void;onAddField?:(r:FieldRect)=>void;highlights?:Highlight[];highlightColor?:string;};
 const drawingKey=(id:string)=>`drawing:${id}`,annotationKey=(id:string)=>`annotation:${id}`;
-export function PaperCanvas({background,note,glyphs,page,tool,selected,onSelect,onChange,activeField,onFieldTap,onAddField}:Props){
+export function PaperCanvas({background,note,glyphs,page,tool,selected,onSelect,onChange,activeField,onFieldTap,onAddField,highlights,highlightColor}:Props){
  const svg=useRef<SVGSVGElement>(null),gesture=useRef<{mode:'move'|'box'|'scale'|'field';start:Point;ids:string[];points:Stroke;scale?:number;size?:number}|null>(null);
  const [delta,setDelta]=useState<Point>({x:0,y:0}),[box,setBox]=useState<{a:Point;b:Point}|null>(null),[scaling,setScaling]=useState<{id:string;scale:number}|null>(null);
  const toolRef=useRef(tool);toolRef.current=tool;
@@ -23,6 +23,7 @@ export function PaperCanvas({background,note,glyphs,page,tool,selected,onSelect,
  const down=(e:PointerEvent<SVGSVGElement>)=>{const field=(e.target as Element).closest?.('[data-field]') as SVGElement|null;if(field){onFieldTap?.(field.dataset.field!);if(tool!=='pan'){e.preventDefault();return;}}const hit=(e.target as Element).closest?.('[data-g],[data-a],[data-resize]') as SVGElement|null;if(!hit)return begin(e);const d=hit.dataset;begin(e,d.g,d.s===undefined?undefined:+d.s,d.a,d.resize);};
  return <svg ref={svg} className={`paper tool-${tool}`} viewBox="0 0 794 1123" role="img" aria-label={`Bearbeitbare Dokumentseite ${page+1}. Buchstaben und Zeichnungen auswählen und verschieben.`} tabIndex={0} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={()=>{gesture.current=null;setDelta({x:0,y:0});setBox(null);setScaling(null);}} onKeyDown={e=>{if(e.key==='Escape')onSelect([]);if((e.key==='Delete'||e.key==='Backspace')&&selected.length){e.preventDefault();updateSelection(selected,0,0,true);onSelect([]);}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&selected.length){e.preventDefault();const amount=e.shiftKey?10:1;updateSelection(selected,(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0)*amount,(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0)*amount);}}}>
   <PaperRules paper={note.settings.paper} lineHeight={note.settings.lineHeight} background={background}/>
+  {highlights?.some(h=>h.page===page)&&<g className="highlight-layer" pointerEvents="none" style={{mixBlendMode:'multiply'}}>{highlights.filter(h=>h.page===page).map((h,i)=><rect key={i} x={h.x} y={h.y} width={h.width} height={h.height} rx={Math.min(4,h.height/3)} fill={highlightColor} fillOpacity={.6}/>)}</g>}
   {(note.fields||[]).some(f=>f.page===page)&&<FieldLayer fields={note.fields!} page={page} active={activeField} editing={tool==='field'}/>}
   <GlyphLayer glyphs={glyphs} page={page} edits={note.edits} selected={selected} delta={delta} color={note.settings.color} penWidth={note.settings.penWidth}/>
   <DrawingLayer drawings={note.drawings} page={page} selected={selected} delta={delta} scaling={scaling} handles={tool==='select'}/>
