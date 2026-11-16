@@ -149,3 +149,6 @@
 .native-app .gn-pill,.native-app .gn-expand{top:calc(22px + env(safe-area-inset-top))}
 .native-app .gn-main{padding-top:calc(62px + env(safe-area-inset-top))}
 .native-app .document-tabs{padding-top:env(safe-area-inset-top)}
+/* Room for the AdMob banner, which iOS draws over the bottom of the web view. */
+.native-app.ad-banner .gn-main{padding-bottom:calc(var(--ad-height,60px) + 40px)}
+.native-app.ad-banner .gn-sidebar{bottom:calc(var(--ad-height,60px) + 12px)}
