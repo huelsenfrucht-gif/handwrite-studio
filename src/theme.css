@@ -304,3 +304,14 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
   .gn-recent{padding:16px 18px;gap:18px}
   .gn-recent-label strong{font-size:18px;-webkit-line-clamp:2}
 }
+
+/* Tabs im Studio: X zum Schließen (Dokument bleibt erhalten) */
+.document-tabs>button .tab-close{display:grid;place-items:center;flex:none;width:26px;height:26px;margin-right:-10px;border-radius:7px;overflow:visible;cursor:pointer}
+.document-tabs>button .tab-close svg{opacity:.7}
+.document-tabs>button .tab-close:hover{background:#ffffff1f}
+.document-tabs>button .tab-close:hover svg{opacity:1}
+.document-tabs>button.active .tab-close:hover{background:var(--hs-soft)}
+
+/* Menüs bleiben im Bild: nach oben öffnen, wenn unten kein Platz ist */
+.gn-menu{max-height:calc(100dvh - 24px);overflow-y:auto}
+.gn-menu.up{top:auto;bottom:calc(100% + 6px)}

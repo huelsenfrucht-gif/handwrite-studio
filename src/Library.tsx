@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, Cloud, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { layout, resolvedDrawingInk } from './engine';
@@ -122,14 +122,14 @@ export function LibraryShell(props: {
         {renaming === id ? <input className="gn-rename" autoFocus defaultValue={item.name} maxLength={100} aria-label="Neuer Name" onFocus={e => e.currentTarget.select()} onBlur={e => rename(item, e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null); }} />
           : <button className="gn-title gn-menu-trigger" onClick={() => setMenu(menu === id ? null : id)} aria-haspopup="menu" aria-expanded={menu === id}><span>{item.name}</span><ChevronDown size={14} /></button>}
         <small>{stamp(item.updated)}</small>
-        {menu === id && <div className="gn-menu" role="menu">
+        {menu === id && <Menu>
           <button role="menuitem" onClick={() => { setMenu(null); setRenaming(id); }}><Pencil size={16} />Umbenennen</button>
           <button role="menuitem" onClick={() => { setMenu(null); toggleFavorite(item); }}><Star size={16} />{fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten'}</button>
           {item.kind === 'note' && <button role="menuitem" onClick={() => duplicate(item.note)}><Copy size={16} />Duplizieren</button>}
           {item.kind === 'folder' && <div className="gn-colors" role="group" aria-label="Ordnerfarbe"><Palette size={16} />{FOLDER_COLORS.map(c => <button key={c} style={{ background: c }} aria-label={`Farbe ${c}`} className={item.folder.color === c ? 'on' : ''} onClick={() => editFolder(item.folder.id, f => ({ ...f, color: c }))}>{item.folder.color === c && <Check size={11} />}</button>)}</div>}
           {targets.length > 0 && <details className="gn-move"><summary><FolderInput size={16} />Verschieben nach …<ChevronRight size={14} /></summary>{targets.map(t => <button key={t.id || 'root'} role="menuitem" onClick={() => moveItem(item, t.id)}>{t.name}</button>)}</details>}
           <button role="menuitem" className="danger" onClick={() => remove(item)}><Trash2 size={16} />Löschen</button>
-        </div>}
+        </Menu>}
       </div>
     </article>;
   };
@@ -173,11 +173,11 @@ export function LibraryShell(props: {
       {view === 'profiles' ? props.children : <>
         <div className="gn-toolbar">
           <div className="gn-filter"><button className="gn-menu-trigger" onClick={() => setMenu(menu === 'filter' ? null : 'filter')} aria-haspopup="menu"><ListFilter size={24} strokeWidth={1.6} /><span>{view === 'favorites' ? 'Dokumente' : filterLabel}</span></button>
-            {menu === 'filter' && <div className="gn-menu" role="menu"><small>Anzeigen</small>{(['all', 'notes', 'folders'] as Filter[]).map(f => <button key={f} role="menuitemradio" aria-checked={filter === f} onClick={() => { setFilter(f); remember('hs-filter', f); setMenu(null); }}>{filter === f ? <Check size={16} /> : <span className="gn-gap" />}{{ all: 'Alle', notes: 'Nur Dokumente', folders: 'Nur Ordner' }[f]}</button>)}<small>Sortieren</small>{(['updated', 'name'] as Sort[]).map(s => <button key={s} role="menuitemradio" aria-checked={sort === s} onClick={() => { setSort(s); remember('hs-sort', s); setMenu(null); }}>{sort === s ? <Check size={16} /> : <span className="gn-gap" />}{s === 'updated' ? 'Zuletzt geändert' : 'Name'}</button>)}</div>}
+            {menu === 'filter' && <Menu><small>Anzeigen</small>{(['all', 'notes', 'folders'] as Filter[]).map(f => <button key={f} role="menuitemradio" aria-checked={filter === f} onClick={() => { setFilter(f); remember('hs-filter', f); setMenu(null); }}>{filter === f ? <Check size={16} /> : <span className="gn-gap" />}{{ all: 'Alle', notes: 'Nur Dokumente', folders: 'Nur Ordner' }[f]}</button>)}<small>Sortieren</small>{(['updated', 'name'] as Sort[]).map(s => <button key={s} role="menuitemradio" aria-checked={sort === s} onClick={() => { setSort(s); remember('hs-sort', s); setMenu(null); }}>{sort === s ? <Check size={16} /> : <span className="gn-gap" />}{s === 'updated' ? 'Zuletzt geändert' : 'Name'}</button>)}</Menu>}
           </div>
           <div className="gn-actions">
             {view === 'documents' && <div className="gn-new"><button className="gn-new-button gn-menu-trigger" onClick={() => setMenu(menu === 'new' ? null : 'new')} aria-haspopup="menu"><span>+</span>Neu</button>
-              {menu === 'new' && <div className="gn-menu" role="menu"><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafelbild)</button></div>}</div>}
+              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafelbild)</button></Menu>}</div>}
             <button className="gn-icon" aria-label={layoutMode === 'grid' ? 'Als Liste anzeigen' : 'Als Raster anzeigen'} title={layoutMode === 'grid' ? 'Liste' : 'Raster'} onClick={() => { const next = layoutMode === 'grid' ? 'list' : 'grid'; setLayoutMode(next); remember('hs-layout', next); }}>{layoutMode === 'grid' ? <LayoutGrid size={24} strokeWidth={1.6} /> : <List size={24} strokeWidth={1.6} />}</button>
             <span className="gn-divider" />
             <button className={`gn-icon gn-cloud ${props.saveStatus.includes('fehl') ? 'error' : ''}`} title={props.saveStatus} aria-label={`${props.saveStatus} – Sicherung öffnen`} onClick={props.openSettings}><Cloud size={26} strokeWidth={1.6} /><Check size={11} strokeWidth={3} /></button>
@@ -212,3 +212,31 @@ function FolderIcon({ color }: { color: string }) {
 }
 const SidebarIcon = () => <svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="23" rx="5" /><path d="M12 1.5v23M5 7h3.5M5 11h3.5M5 15h3.5" /></svg>;
 const EmptyIllustration = ({ star }: { star: boolean }) => <svg width="130" height="170" viewBox="0 0 130 170" aria-hidden="true"><rect x="8" y="22" width="114" height="146" rx="4" fill="#dcecf8" /><rect x="8" y="150" width="114" height="18" rx="3" fill="#cfe6f8" /><path d="M42 66h30" stroke="#64a9ec" strokeWidth="3" strokeLinecap="round" />{star && <><path d="m104 18 4 8 9 1.3-6.5 6.3 1.5 8.9-8-4.2-8 4.2 1.5-8.9-6.5-6.3 9-1.3z" fill="#f59c8f" /><path d="M93 5l4 6M104 2v6M115 5l-4 6" stroke="#64a9ec" strokeWidth="1.5" strokeLinecap="round" /></>}</svg>;
+
+/** Drop-down menu that always stays inside the visible screen: shifted sideways, opened upwards when there is no room below. */
+function Menu({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const fit = () => {
+      el.style.translate = ''; el.classList.remove('up');
+      const m = 12, vw = Math.min(window.visualViewport?.width ?? window.innerWidth, document.documentElement.clientWidth), vh = window.visualViewport?.height ?? window.innerHeight;
+      let r = el.getBoundingClientRect();
+      if (r.bottom > vh - m) {
+        const below = vh - m - r.top, trigger = el.parentElement?.querySelector('.gn-menu-trigger')?.getBoundingClientRect();
+        const above = (trigger ? trigger.top : r.top) - m;
+        if (above > below) { el.classList.add('up'); r = el.getBoundingClientRect(); }
+      }
+      let dx = 0, dy = 0;
+      if (r.left < m) dx = m - r.left; else if (r.right > vw - m) dx = vw - m - r.right;
+      if (r.bottom > vh - m) dy = vh - m - r.bottom;
+      if (r.top + dy < m) dy = m - r.top;
+      if (dx || dy) el.style.translate = `${dx}px ${dy}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit); ro.observe(el);
+    window.addEventListener('resize', fit);
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
+  }, []);
+  return <div ref={ref} className="gn-menu" role="menu">{children}</div>;
+}
