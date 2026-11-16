@@ -17,11 +17,17 @@ export type Settings = { size: number; lineHeight: number; wordSpacing: number; 
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
 export type Annotation = { id: string; page: number; points: Stroke; color: string; width: number };
 export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; strokeColors?: string[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };
-export type Note = { id: string; folderId?: string; favorite?: boolean; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
+/** An answer area on a worksheet (custom paper): the text is written into this box in the note's handwriting. */
+export type Field = { id: string; page: number; x: number; y: number; width: number; height: number; text: string;
+  /** Several answer lines below each other: the text sits on each of them. */
+  rows?: number };
+export type Note = { id: string; folderId?: string; favorite?: boolean; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; fields?: Field[]; updated: string };
 export type Folder = { id: string; name: string; color: string; parentId?: string; favorite?: boolean; created: string; updated: string };
 export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string; templates?: Template[]; folders?: Folder[];
   /** Deleted item ids with deletion time, so a sync does not bring them back. */
-  deleted?: Record<string, string> };
+  deleted?: Record<string, string>;
+  /** Choices from the settings for every new document. */
+  defaults?: { profileId?: string; penWidth?: number } };
 export const FOLDER_COLORS = ['#5aa9f8', '#f25c5c', '#9b2c2c', '#38b2ac', '#f6ad55', '#9f7aea', '#68d391', '#a0aec0'];
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
@@ -37,7 +43,8 @@ export const uid = () => crypto.randomUUID();
 export const PT = PAGE.width / 595.28;
 export const GOODNOTES = { linePitch: 25*PT, firstLine: 49.75*PT, lastLine: (841.89-17.64)*PT, gridPitch: 16*PT, gridFirst: 15.75*PT, color: '#d0d2d3', width: .5*PT };
 /** Goodnotes standard: handwriting sized to sit naturally on the ruled lines. */
-export const GOODNOTES_STANDARD = { size: 26, lineHeight: GOODNOTES.linePitch, wordSpacing: 52, variation: 34, penWidth: 1.2, paper: 'lined' } satisfies Partial<Settings>;
+export const GOODNOTES_STANDARD = { size: 18, lineHeight: GOODNOTES.linePitch, wordSpacing: 52, paper: 'lined' } satisfies Partial<Settings>;
+export const PEN_WIDTHS = [.8, 1.2, 1.7, 2.2, 3, 4];
 export const isGoodnotesStandard = (s: Settings) => (Object.keys(GOODNOTES_STANDARD) as (keyof typeof GOODNOTES_STANDARD)[]).every(k => s[k] === GOODNOTES_STANDARD[k]);
 export type Rule = { x1: number; y1: number; x2: number; y2: number };
 /** First baseline and pitch of text lines for the chosen paper. */
@@ -56,8 +63,8 @@ export function paperRules(s: Settings): Rule[] {
   if (s.paper === 'grid') { for (let y = GOODNOTES.gridFirst; y < PAGE.height; y += GOODNOTES.gridPitch) rules.push({ x1: 0, x2: PAGE.width, y1: y, y2: y }); for (let x = GOODNOTES.gridFirst; x < PAGE.width; x += GOODNOTES.gridPitch) rules.push({ x1: x, x2: x, y1: 0, y2: PAGE.height }); }
   if (ruleCache.size > 30) ruleCache.clear(); ruleCache.set(key, rules); return rules;
 }
-export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, color: '#000000', profileId: 'demo', seed: 42 };
-export function newNote(title = 'Unbenanntes Dokument'): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
+export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, variation: 100, penWidth: 1.7, color: '#000000', profileId: 'demo', seed: 42 };
+export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');
   note.text = note.renderedText = 'Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.';

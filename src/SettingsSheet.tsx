@@ -1,33 +1,26 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArchiveRestore, ChevronRight, CircleHelp, Cloud, FileText, Folder, FolderSync, HardDriveDownload, Info, Maximize2, Megaphone, RefreshCw, Smartphone, Type, Unlink, X } from 'lucide-react';
-import type { SyncState } from './sync';
+import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Megaphone, PenLine, Smartphone, Type, X } from 'lucide-react';
+import { PEN_WIDTHS, type Library, type Profile } from './model';
 
-/** Settings in the style of the library and of iOS: grouped rows with coloured icon tiles. */
+/** Settings in the style of the library: plain grouped rows. */
 export function SettingsSheet(props: {
-  native: boolean; saveStatus: string; counts: { notes: number; profiles: number; folders: number };
-  sync: SyncState & { busy?: boolean }; fullscreen: boolean;
-  onClose: () => void; onBackup: () => void; onRestore: () => void;
-  onPickSync: () => void; onSyncNow: () => void; onDisconnect: () => void; onAdPrivacy: () => void;
+  native: boolean; saveStatus: string; counts: { notes: number; profiles: number; folders: number }; fullscreen: boolean;
+  profiles: Profile[]; defaults: NonNullable<Library['defaults']>; onDefaults: (d: NonNullable<Library['defaults']>) => void;
+  onClose: () => void; onBackup: () => void; onRestore: () => void; onAdPrivacy: () => void;
   onHelp: () => void; onProfiles: () => void; onHomeScreen: () => void; onFullscreen: () => void;
 }) {
-  const { sync, native } = props, [closing, setClosing] = useState(false);
+  const { native } = props, [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); setTimeout(props.onClose, 160); };
   useEffect(() => { const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); });
   const saved = !props.saveStatus.includes('fehl');
-  const last = sync.last ? new Date(sync.last).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : undefined;
   return <div className={`st-backdrop ${closing ? 'closing' : ''}`} onClick={e => { if (e.target === e.currentTarget) close(); }}>
     <section className="st-sheet" role="dialog" aria-modal="true" aria-labelledby="st-title">
       <header className="st-head"><h2 id="st-title">Einstellungen</h2><button className="st-close" aria-label="Einstellungen schließen" onClick={close}><X size={20} /></button></header>
       <div className="st-scroll">
-        {native && <Group title="iCloud" footer={sync.connected ? (sync.iCloud === false ? 'Dieser Ordner liegt nicht in iCloud Drive und wird nur auf diesem Gerät gesichert.' : 'Wähl auf jedem Gerät denselben Ordner, dann ist alles überall gleich.') : 'Wähl einen Ordner in iCloud Drive, zum Beispiel „Handwrite Studio“.'}>
-          <Row icon={<Cloud size={18} />} label="iCloud-Abgleich" detail={sync.connected ? 'An' : 'Aus'} />
-          {sync.connected ? <>
-            <Row icon={<FolderSync size={18} />} label="Ordner" detail={sync.folder} />
-            <Row icon={<RefreshCw size={18} className={sync.busy ? 'st-spin' : ''} />} label={sync.busy ? 'Gleicht ab …' : 'Jetzt abgleichen'} detail={sync.error ? <span className="st-error">Fehler</span> : last ? `zuletzt ${last} Uhr` : undefined} onClick={sync.busy ? undefined : props.onSyncNow} />
-            <Row icon={<Unlink size={18} />} label="Abgleich trennen" danger onClick={props.onDisconnect} />
-          </> : <Row icon={<FolderSync size={18} />} label="iCloud-Ordner wählen" accent onClick={props.onPickSync} chevron />}
-          {sync.error && <p className="st-inline-error">{sync.error}</p>}
-        </Group>}
+        <Group title="Neue Dokumente" footer="Gilt für jedes neue Dokument. Im Studio kannst du beides pro Dokument ändern.">
+          <label className="st-row st-select"><span className="st-icon"><Type size={18} /></span><span className="st-label">Standardschrift</span><select value={props.defaults.profileId && props.profiles.some(p => p.id === props.defaults.profileId) ? props.defaults.profileId : 'demo'} onChange={e => props.onDefaults({ profileId: e.target.value })}><option value="demo">Studio-Schrift · Demo</option>{props.profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+          <label className="st-row st-select"><span className="st-icon"><PenLine size={18} /></span><span className="st-label">Stiftstärke</span><select value={props.defaults.penWidth ?? 1.7} onChange={e => props.onDefaults({ penWidth: +e.target.value })}>{PEN_WIDTHS.map(v => <option key={v} value={v}>{v.toLocaleString('de')} px</option>)}</select></label>
+        </Group>
 
         <Group title="Bibliothek">
           <Row icon={<FileText size={18} />} label="Dokumente" detail={String(props.counts.notes)} />
@@ -54,7 +47,7 @@ export function SettingsSheet(props: {
           </details>
         </Group>
 
-        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Daten bleiben auf deinem Gerät{native ? ' und in deinem iCloud-Ordner' : ''}<br />Handwrite Studio 1.0</p>
+        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Daten bleiben auf deinem Gerät<br />Handwrite Studio 1.0</p>
       </div>
     </section>
   </div>;

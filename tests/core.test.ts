@@ -9,7 +9,6 @@ import {decodeStrokeTensor,extractSynthWords} from '../src/synthesis';
 import {editDistance} from '../src/synthesis';
 import {selectStyleImages} from '../src/import/style';
 import {CALIBRATION_LINES,extractCalibrationAlphabet} from '../src/calibration';
-import {assessDrawing} from '../src/import/DrawingImport';
 import JSZip from 'jszip';
 const wave:Stroke=Array.from({length:161},(_,i)=>({x:i*2,y:60+30*Math.sin(i/8),p:.2+i/300}));
 const word=analyzeWord([wave],'meine','pen','sample');
@@ -60,7 +59,6 @@ describe('photo vectorization',()=>{
  it('rejects uneven paper shadows while preserving darker handwriting',()=>{const w=240,h=80,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,bg=145+80*x/w,ink=(x>20&&x<210&&Math.abs(y-(38+12*Math.sin(x/13)))<3);data[i]=data[i+1]=data[i+2]=ink?35:bg;data[i+3]=255;}const paths=vectorize(data,w,h,165),pts=paths.flat();expect(Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x))).toBeGreaterThan(170);expect(paths.length).toBeLessThan(80);expect(pts.every(p=>p.y>15&&p.y<65)).toBe(true);});
  it('fills broad dark ink before thinning instead of tracing both outlines',()=>{const w=100,h=70,data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,ink=x>12&&x<88&&Math.abs(y-35)<=5;data[i]=data[i+1]=data[i+2]=ink?25:155;data[i+3]=255;}const paths=vectorize(data,w,h,165),long=paths.filter(p=>Math.max(...p.map(q=>q.x))-Math.min(...p.map(q=>q.x))>60);expect(long).toHaveLength(1);expect(long[0].reduce((n,p)=>n+p.y,0)/long[0].length).toBeCloseTo(35,0);});
  it('rejects empty crops',()=>{expect(()=>vectorize(raster(20,20,()=>false),20,20,155)).toThrow('Keine dunklen Striche');});
- it('accepts a sparse colored line diagram and warns about a shaded painting',()=>{const image=(w:number,h:number,paint:(data:Uint8ClampedArray,x:number,y:number,i:number)=>void)=>{const data=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=255;data[i+3]=255;paint(data,x,y,i);}return{data,width:w,height:h} as ImageData;};const diagram=image(100,100,(data,x,y,i)=>{if(Math.abs(y-50)<2){data[i]=x<50?230:20;data[i+1]=20;data[i+2]=x<50?20:230;}}),painting=image(100,100,(data,x,y,i)=>{data[i]=(x*2)%220;data[i+1]=(y*2)%220;data[i+2]=((x+y)*3)%220;});expect(assessDrawing(diagram).kind).toBe('suitable');expect(assessDrawing(painting).kind).toBe('warning');});
 });
 describe('portable backup validation',()=>{
  it('round-trips real word training, edits, annotations and vector drawings',()=>{const lib=initialLibrary();lib.profiles=[profile];lib.notes[0].settings.profileId=profile.id;lib.notes[0].annotations=[{id:'a',page:0,points:wave,color:'#123456',width:2}];lib.notes[0].drawings=[{id:'diagram',name:'Zelle',page:0,strokes:[wave,[{x:5,y:5}]],x:20,y:30,scale:.5,width:320,height:120,color:'#123456',penWidth:2,hiddenStrokes:[1]}];expect(validateLibrary(JSON.parse(JSON.stringify(lib)))).toEqual(lib);});

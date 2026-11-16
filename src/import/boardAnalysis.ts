@@ -117,12 +117,47 @@ export type TextBox = { text: string; x: number; y: number; width: number; heigh
  * rows in reading order, blank lines where a paragraph break is visible. */
 export function linesToText(lines: TextBox[]) {
   const sorted = [...lines].filter(l => l.text.trim()).sort((a, b) => a.y + a.height / 2 - (b.y + b.height / 2));
+  if (!sorted.length) return '';
   const rows: TextBox[][] = [];
   for (const line of sorted) {
     const row = rows.at(-1), mid = line.y + line.height / 2;
     if (row && Math.abs(mid - (row[0].y + row[0].height / 2)) < Math.min(line.height, row[0].height) * .5) row.push(line); else rows.push([line]);
   }
-  return joinLines(rows.map(r => { r.sort((a, b) => a.x - b.x); return { y: Math.min(...r.map(l => l.y)), height: Math.max(...r.map(l => l.height)), text: r.map(l => l.text.trim()).join(' ') }; }));
+  const heights = sorted.map(l => l.height).sort((a, b) => a - b), size = heights[Math.floor(heights.length / 2)] || 1;
+  // Pieces of one row that are close together are one phrase; wide gaps separate columns.
+  type Segment = { text: string; x: number; right: number };
+  const lineRows = rows.map(r => {
+    r.sort((a, b) => a.x - b.x);
+    const segments: Segment[] = [];
+    for (const box of r) { const last = segments.at(-1); if (last && box.x - last.right < size * 1.6) { last.text += ` ${box.text.trim()}`; last.right = Math.max(last.right, box.x + box.width); } else segments.push({ text: box.text.trim(), x: box.x, right: box.x + box.width }); }
+    return { y: Math.min(...r.map(l => l.y)), height: Math.max(...r.map(l => l.height)), segments };
+  });
+  const left = Math.min(...lineRows.map(r => r.segments[0].x));
+  // Rows with several columns that line up form a table ("| a | b |"), like on the board or sheet.
+  const entries: { y: number; end: number; text: string; table?: boolean }[] = [];
+  for (let i = 0; i < lineRows.length;) {
+    if (lineRows[i].segments.length >= 2) {
+      let j = i; const starts: number[] = [];
+      while (j < lineRows.length && (lineRows[j].segments.length >= 2 || (j > i && starts.some(x => Math.abs(x - lineRows[j].segments[0].x) < size * 2)))) { starts.push(...lineRows[j].segments.map(s => s.x)); j++; }
+      // A table needs at least two rows with several columns; single rows at the end belong to the text.
+      while (j > i && lineRows[j - 1].segments.length < 2) j--;
+      if (lineRows.slice(i, j).filter(r => r.segments.length >= 2).length >= 2) {
+        const columns: number[] = [];
+        for (const x of [...starts].sort((a, b) => a - b)) if (!columns.length || x - columns.at(-1)! > size * 2) columns.push(x);
+        const cells = (r: typeof lineRows[number]) => { const out = columns.map(() => ''); for (const s of r.segments) { let c = 0; for (let k = 0; k < columns.length; k++) if (s.x >= columns[k] - size * 2) c = k; out[c] = out[c] ? `${out[c]} ${s.text}` : s.text; } return out; };
+        const group = lineRows.slice(i, j);
+        entries.push({ y: group[0].y, end: group.at(-1)!.y, table: true, text: group.map(r => `| ${cells(r).map(c => c.replace(/\|/g, '/')).join(' | ')} |`).join('\n') });
+        i = j; continue;
+      }
+    }
+    // Indented lines (sub-points on a board) keep their indent as tabs.
+    const r = lineRows[i], level = Math.min(4, Math.max(0, Math.floor((r.segments[0].x - left) / (size * 3))));
+    entries.push({ y: r.y, end: r.y, text: '\t'.repeat(level) + r.segments.map(s => s.text).join(' ') });
+    i++;
+  }
+  const pitches = entries.slice(1).map((l, i) => l.y - entries[i].end).filter(p => p > 0).sort((a, b) => a - b);
+  const pitch = pitches.length >= 2 ? pitches[Math.floor((pitches.length - 1) / 2)] : size * 1.6;
+  return entries.map((e, i) => (i === 0 ? '' : e.table || entries[i - 1].table || e.y - entries[i - 1].end > pitch * 1.55 ? '\n\n' : '\n') + e.text).join('');
 }
 
 /** Ink blobs that lie inside a recognised text box are letters; everything else is drawing. */

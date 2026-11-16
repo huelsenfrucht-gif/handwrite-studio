@@ -20,18 +20,30 @@ function joinStroke(prev:Glyph,cur:Glyph,gap=0):Stroke|undefined{
  if(distance<1.5||distance>26+gap)return;
  return connect(start,entry,0);
 }
+/** Table rows written as "| a | b |"; a row of dashes ("|---|---|") only separates the header. */
+const TABLE_ROW=/^[ \t]*\|.*\|[ \t]*$/,TABLE_RULE=/^[ \t|:\-]+$/;
+export const tableCells=(row:string)=>row.trim().slice(1,-1).split('|').map(c=>c.trim());
+/** A slightly uneven pen line, so table rules look drawn by hand and export as ink. */
+function handLine(x1:number,y1:number,x2:number,y2:number,rand:()=>number):Stroke{
+ const length=Math.hypot(x2-x1,y2-y1),n=Math.max(2,Math.round(length/24)),nx=-(y2-y1)/(length||1),ny=(x2-x1)/(length||1),points:Stroke=[];
+ for(let i=0;i<=n;i++){const t=i/n,w=i===0||i===n?0:(rand()-.5)*.9;points.push({x:x1+(x2-x1)*t+nx*w,y:y1+(y2-y1)*t+ny*w,p:.5});}
+ return points;
+}
 function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
- const s=note.settings,profile=profiles.find(p=>p.id===s.profileId),rand=random(s.seed),size=s.size/100,style=profile?profileStyle(profile):null,rows=textLines(s);
+ const s=note.settings,profile=profiles.find(p=>p.id===s.profileId),rand=random(s.seed),style=profile?profileStyle(profile):null,rows=textLines(s);
  const glyphs:PlacedGlyph[]=[], missing=new Set<string>(), fallback=new Set<string>();
- const {left,right}=textMargins(s),lh=s.lineHeight,spacing=(s.letterSpacing||0)/100;
+ const margins=textMargins(s),spacing=(s.letterSpacing||0)/100;
+ let size=s.size/100,lh=s.lineHeight,paging=true;
  const last=Math.max(rows.first+lh,rows.last-(s.linesBottom||0)*lh),top=Math.min(last-lh,rows.first-80*size+(s.linesTop||0)*lh),firstTop=Math.min(last-lh,top+(s.linesFirstPage||0)*lh);
- let x=left,y=firstTop,page=0,index=0,originalWords=0,contextualWords=0,rasterWords=0,indent=left,lineStart=true,bullet=false;
- const line=()=>{x=indent;y+=lh;if(y+80*size>last){page++;y=top;}};
- // "* ", "- " or "• " at the start of a line is a list item: write a real
- // handwritten dot and indent wrapped lines under the text, not the dot.
- const text=note.renderedText.normalize('NFC').replace(/\r/g,'').replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•');
- const tokens=text.match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
- for(const token of tokens) {
+ let left=margins.left,right=margins.right,x=left,y=firstTop,page=0,index=0,originalWords=0,contextualWords=0,rasterWords=0,indent=left,lineStart=true,bullet=false;
+ const line=()=>{x=indent;y+=lh;if(paging&&y+80*size>last){page++;y=top;}};
+ const ink=(strokes:Stroke[])=>{const pts=strokes.flat(),minX=Math.min(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y));glyphs.push({id:String(index++),char:'',page,strokes,x:minX,y:minY,width:Math.max(1,Math.max(...pts.map(p=>p.x))-minX),height:Math.max(1,Math.max(...pts.map(p=>p.y))-minY),fallback:false,unsupported:false});};
+ /** Writes running text between left and right, wrapping words and starting new lines/pages. */
+ const flow=(text:string)=>{
+  // "* ", "- " or "• " at the start of a line is a list item: write a real
+  // handwritten dot and indent wrapped lines under the text, not the dot.
+  const tokens=text.replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•').match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
+  for(const token of tokens) {
    if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}if(bullet){indent=x;bullet=false;}continue;}
    if(lineStart){bullet=token==='•';lineStart=false;}
    const chars=Array.from(token),word=profile?composeWord(token,profile,rand):null;
@@ -39,7 +51,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    const sources=chars.map((c,i)=>word?.glyphs[i]||(demoGlyphs[c]||[missingGlyph])[0]);
    const width=sources.reduce((n,g)=>n+g.advance*size,0);
    if(x>indent&&x+width>right)line();
-   const v=s.variation/100,scale=size*(1+(rand()-.5)*.06*v),angle=(rand()-.5)*.035*v,wordY=(rand()-.5)*(style?.baselineSpread||3)*v;
+   const v=1,scale=size*(1+(rand()-.5)*.06*v),angle=(rand()-.5)*.035*v,wordY=(rand()-.5)*(style?.baselineSpread||3)*v;
    const cos=Math.cos(angle),sin=Math.sin(angle);let wordOffset=0;
    for(let i=0;i<chars.length;i++) {
      const char=chars[i],id=String(index++),glyph=sources[i],advance=glyph.advance*scale;
@@ -55,14 +67,78 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
      glyphs.push({id,char,page,strokes,x,y,width:raster?.width||advance,height:raster?.height||s.size*1.2,fallback:isFallback,unsupported,raster,hiddenByRaster:glyph.hiddenByRaster});
      x+=advance*(1+spacing);wordOffset+=glyph.advance*(1+spacing);
    }
+  }
+ };
+ /** Writes text into a box without changing the running position (cells, worksheet fields). */
+ const boxed=(text:string,l:number,r:number,startY:number,onPage:number)=>{
+  const saved={left,right,x,y,page,indent,lineStart,bullet,paging};
+  left=indent=x=l;right=r;y=startY;page=onPage;lineStart=true;bullet=false;paging=false;
+  const from=glyphs.length;flow(text);const lines=Math.round((y-startY)/lh)+1;
+  ({left,right,x,y,page,indent,lineStart,bullet,paging}=saved);
+  return {from,lines};
+ };
+ const naturalWidth=(text:string)=>{const keep=index,{from}=boxed(text,0,1e7,0,0),w=glyphs.slice(from).reduce((m,g)=>Math.max(m,g.x+g.width),0);glyphs.length=from;index=keep;return w;};
+ /** A table: column widths from the content, text wrapped inside cells, rules drawn by hand. */
+ const table=(lines:string[])=>{
+  const body=lines.filter(l=>!TABLE_RULE.test(l)).map(tableCells),cols=Math.max(...body.map(r=>r.length));
+  if(!body.length)return;
+  const pad=Math.max(6,s.wordSpacing*size*.6),avail=right-left;
+  // Words vary a little in size each time they are written: leave some room so a cell does not wrap by surprise.
+  const natural=Array.from({length:cols},(_,c)=>Math.max(...body.map(r=>r[c]?naturalWidth(r[c])*1.1+4:0))+pad*2);
+  const total=natural.reduce((a,b)=>a+b,0),floor=avail/cols*.45;
+  let widths=total<=avail?natural:natural.map(w=>Math.max(floor,w*avail/total));
+  const sum=widths.reduce((a,b)=>a+b,0);if(sum>avail)widths=widths.map(w=>w*avail/sum);
+  const edges=widths.reduce<number[]>((e,w)=>[...e,e.at(-1)!+w],[left]);
+  if(x>indent)line();
+  for(let r=0;r<body.length;r++){
+   for(let attempt=0;attempt<2;attempt++){
+    const from=glyphs.length,keep=index;let used=1;
+    for(let c=0;c<cols;c++){const cell=body[r][c];if(cell)used=Math.max(used,boxed(cell,edges[c]+pad,edges[c+1]-pad,y,page).lines);}
+    const baseline=y+80*size,topRule=baseline-lh*.72,bottomRule=baseline+(used-1)*lh+lh*.28;
+    if(attempt===0&&paging&&y+(used-1)*lh+80*size>last&&y>top){glyphs.length=from;index=keep;page++;y=top;continue;}
+    ink([handLine(edges[0],topRule,edges[cols],topRule,rand)]);
+    for(const e of edges)ink([handLine(e,topRule,e,bottomRule,rand)]);
+    if(r===body.length-1||y+used*lh+80*size>last)ink([handLine(edges[0],bottomRule,edges[cols],bottomRule,rand)]);
+    y+=(used-1)*lh;x=indent;line();break;
+   }
+  }
+ };
+ // Plain paragraphs flow; blocks of "| … |" lines become tables.
+ const blocks=note.renderedText.normalize('NFC').replace(/\r/g,'').split('\n');
+ for(let i=0;i<blocks.length;){
+  if(TABLE_ROW.test(blocks[i])){const start=i;while(i<blocks.length&&TABLE_ROW.test(blocks[i]))i++;table(blocks.slice(start,i));index++;continue;}
+  const start=i;while(i<blocks.length&&!TABLE_ROW.test(blocks[i]))i++;
+  const text=blocks.slice(start,i).join('\n')+(i<blocks.length?'\n':'');flow(text);
  }
+ // Worksheet answers: each field's text is written into its box, as large as the box allows
+ // (never larger than the document's font size), centred for one line, top-aligned for more.
+ (note.fields||[]).forEach((field,n)=>{
+  if(!field.text.trim())return;
+  const base=index,keepSize=size,keepLh=lh,pad=Math.min(10,Math.max(3,field.width*.03));index=10000000+n*100000;
+  if(field.rows&&field.rows>1){
+   // Ruled answer area: one line of text on each printed line.
+   const row=field.height/field.rows;size=Math.min(s.size,row/1.15)/100;lh=row;
+   boxed(field.text,field.x+pad,field.x+field.width-pad,field.y+row-Math.max(2,row*.14)-80*size,field.page);
+   size=keepSize;lh=keepLh;index=base;return;
+  }
+  let f=Math.min(s.size,field.height/1.15);
+  for(let k=0;k<16;k++){
+   size=f/100;lh=f*1.25;
+   const baseline=field.y+(field.height-.96*f)/2+76*size,{from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,baseline-80*size,field.page);
+   const height=(lines-1)*lh+.96*f;
+   if(lines===1)break;
+   if(height<=field.height-2||f<=6){const shift=field.y+2+76*size-baseline;for(const g of glyphs.slice(from)){g.y+=shift;g.strokes=g.strokes.map(st=>st.map(p=>({...p,y:p.y+shift})));if(g.raster)g.raster={...g.raster,y:g.raster.y+shift};}break;}
+   glyphs.length=from;f*=.9;
+  }
+  size=keepSize;lh=keepLh;index=base;
+ });
  return {glyphs,pages:page+1,missing:[...missing],fallback:[...fallback],originalWords,contextualWords,rasterWords};
 }
 export function layout(note: Note, profiles: Profile[]) {
  let cache=layoutCache.get(profiles);if(!cache){cache=new Map();layoutCache.set(profiles,cache);}
- const key=JSON.stringify(note.settings)+'\u0000'+note.renderedText;let core=cache.get(key);
+ const key=JSON.stringify(note.settings)+'\u0000'+note.renderedText+'\u0000'+JSON.stringify(note.fields||[]);let core=cache.get(key);
  if(!core){core=layoutCore(note,profiles);/* a long document can take hundreds of MB per layout: keep only a few */if(cache.size>=3)cache.delete(cache.keys().next().value!);cache.set(key,core);}
- const lastInk=[...note.annotations,...(note.drawings||[])].reduce((n,a)=>Math.max(n,a.page),0);
+ const lastInk=[...note.annotations,...(note.drawings||[]),...(note.fields||[])].reduce((n,a)=>Math.max(n,a.page),0);
  const templatePages=note.settings.paper==='custom'?note.settings.templatePages||0:0;
  return {...core,pages:Math.max(core.pages,lastInk+1,templatePages)};
 }

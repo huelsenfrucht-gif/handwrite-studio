@@ -315,3 +315,80 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 /* Menüs bleiben im Bild: nach oben öffnen, wenn unten kein Platz ist */
 .gn-menu{max-height:calc(100dvh - 24px);overflow-y:auto}
 .gn-menu.up{top:auto;bottom:calc(100% + 6px)}
+
+/* Studio: keine eigene Titelzeile mehr, Rückgängig/Wiederholen sitzen in der Werkzeugleiste */
+.view-studio .workspace-heading{padding:10px 24px}
+.view-studio .canvas-toolbar{margin:12px 22px 0;flex-wrap:nowrap;gap:12px}
+.canvas-toolbar .toolbar-right{display:flex;align-items:center;gap:10px;flex:none}
+.canvas-toolbar .undo-tools{display:flex;gap:2px}
+.canvas-toolbar .undo-tools .icon-button{width:34px;height:34px;color:var(--hs-ink)}
+.canvas-toolbar .undo-tools .icon-button:disabled{color:#b8c1cf}
+.canvas-toolbar .tool-divider{width:1px;height:22px;background:var(--hs-line);flex:none}
+.canvas-toolbar .drawing-tools{min-width:0}
+.canvas-toolbar .tool-hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.view-studio .paper-stage{max-height:calc(100dvh - 196px)}
+@media(max-width:1000px){.canvas-toolbar .tool-hint{display:none}.zoom-controls input{width:70px}}
+
+/* Linke Spalte: Aussehen oben, Spezielles zum Ausfahren */
+.view-studio .settings-section .ink-controls{display:block;margin:14px 0 4px}
+.view-studio .settings-section .ink-controls>label{display:grid;gap:8px;font-size:13px;font-weight:600;color:var(--hs-muted)}
+.special-settings{margin-top:16px;border:1px solid var(--hs-line);border-radius:12px;background:#fff;overflow:hidden}
+.special-settings>summary{display:flex;align-items:center;gap:10px;padding:13px 14px;font-size:14px;font-weight:600;color:var(--hs-ink);cursor:pointer;list-style:none}
+.special-settings>summary::-webkit-details-marker{display:none}
+.special-settings>summary .chev{margin-left:auto;transition:transform .2s;color:var(--hs-muted)}
+.special-settings[open]>summary .chev{transform:rotate(180deg)}
+.special-settings[open]>summary{border-bottom:1px solid var(--hs-line)}
+.special-body{padding:12px 14px 14px;display:grid;gap:12px}
+.special-body .pen-width{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--hs-muted)}
+.special-body .pen-width select{border:1px solid var(--hs-line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--hs-ink)}
+.special-body .margin-head{font-size:13px;font-weight:600;color:var(--hs-muted)}
+.special-body .range-label,.special-body .margin-controls,.special-body .blank-lines{margin:0}
+
+/* Arbeitsblatt ausfüllen */
+.worksheet-panel{margin-top:14px;border:1px solid var(--hs-line-strong);border-radius:12px;background:var(--hs-soft);padding:12px}
+.worksheet-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.worksheet-head strong{font-size:14px;color:var(--hs-ink)}
+.worksheet-head span{font-size:12px;color:var(--hs-muted)}
+.worksheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.worksheet-actions .button{justify-content:center;background:#fff;border-color:var(--hs-line);color:var(--hs-ink);font-size:13px;min-height:36px;padding:6px 8px}
+.worksheet-actions .button.active{background:var(--hs-navy);border-color:var(--hs-navy);color:#fff}
+.field-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:340px;overflow:auto}
+.field-list li{display:flex;align-items:flex-start;gap:8px;background:#fff;border:1px solid var(--hs-line);border-radius:10px;padding:6px 6px 6px 8px}
+.field-list li.active{border-color:var(--hs-navy);box-shadow:0 0 0 2px #24406f22}
+.field-num{flex:none;display:grid;place-items:center;width:22px;height:22px;margin-top:4px;border-radius:50%;background:var(--hs-navy-2);color:#fff;font-size:11px;font-weight:700}
+.field-list textarea{flex:1;min-width:0;min-height:30px;resize:vertical;border:0;padding:5px 2px;font:inherit;font-size:14px;color:var(--hs-ink);background:transparent;outline:none}
+.field-list .icon-button{flex:none;width:28px;height:28px;color:var(--hs-muted)}
+.worksheet-hint{margin:0;font-size:13px;line-height:1.45;color:var(--hs-muted)}
+.paper.tool-field{cursor:crosshair;touch-action:none}
+.field-layer rect{cursor:text}
+
+/* Einstellungen: Auswahl-Zeilen */
+.st-row.st-select select{margin-left:auto;max-width:55%;border:0;background:transparent;font:inherit;font-size:15px;color:var(--hs-muted);text-align:right;text-align-last:right;cursor:pointer}
+.st-row.st-select select:focus{outline:2px solid var(--hs-navy-2);border-radius:6px}
+
+/* Bibliothek: Auswahlmodus */
+.gn-check{position:absolute;top:8px;right:8px;z-index:3;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:#13254a33;box-shadow:0 1px 4px #13254a40;color:#fff;pointer-events:none}
+.gn-check.on{background:var(--hs-navy)}
+.gn-item.picked .gn-cover{outline:3px solid var(--hs-navy-2);outline-offset:4px;border-radius:6px}
+.gn-selecting{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.gn-pick-count{font-size:14px;color:var(--hs-muted);margin-right:4px}
+.gn-text-button{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:10px;font-size:15px;font-weight:500;color:var(--hs-ink)}
+.gn-text-button:hover{background:var(--hs-soft)}
+.gn-text-button.danger{color:#c0362c}
+.gn-text-button:disabled{opacity:.4}
+.gn-icon:disabled{opacity:.35}
+
+/* Foto-Import: Hinweis zu Tabellen */
+.photo-result label small{display:block;font-weight:400;font-size:12px;color:var(--hs-muted);margin:2px 0 6px}
+.worksheet-head{flex-direction:column;align-items:flex-start;gap:2px}
+.worksheet-actions{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
+/* Vorlagen als schmale Reihe, damit das Ausfüllen nicht nach unten rutscht */
+.view-studio .template-picker{display:flex;overflow-x:auto;gap:8px;padding-bottom:4px;scrollbar-width:thin}
+.view-studio .template-item,.view-studio .template-add{flex:0 0 76px}
+.view-studio .template-add{min-height:0;font-size:9px}
+.view-studio .template-add small{display:none}
+.view-studio .template-item.active .template-choose{border-color:var(--hs-navy);box-shadow:0 0 0 1px var(--hs-navy)}
+/* Einheitliche Zwischenüberschriften in der linken Spalte */
+.view-studio .paper-label,.view-studio .settings-section .ink-controls>label,.view-studio .two-controls>label{font-size:13px;font-weight:600;color:var(--hs-muted)}
+.view-studio .paper-label{display:block;margin:16px 0 8px}
+.st-row.st-select,.st-row.st-select .st-label{font-weight:400}

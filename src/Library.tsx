@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, Cloud, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { layout, resolvedDrawingInk } from './engine';
 
@@ -62,7 +62,22 @@ export function LibraryShell(props: {
     const f = item.folder; if (!confirm(`Ordner „${f.name}“ löschen? Sein Inhalt wird eine Ebene nach oben verschoben, es geht nichts verloren.`)) return;
     update(l => ({ ...l, folders: (l.folders || []).filter(x => x.id !== f.id).map(x => x.parentId === f.id ? { ...x, parentId: f.parentId, updated: now() } : x), notes: l.notes.map(n => n.folderId === f.id ? { ...n, folderId: f.parentId, updated: now() } : n), deleted: { ...l.deleted, [f.id]: now() } }));
   };
-  const openFolder = (id?: string) => { setFolderId(id); setQuery(''); setSearching(false); if (view !== 'documents') props.setView('documents'); };
+  // Selection mode: pick several documents/folders, select all, delete them at once.
+  const [selecting, setSelecting] = useState(false), [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const itemId = (item: Item) => item.kind === 'folder' ? item.folder.id : item.note.id;
+  const togglePick = (id: string) => setPicked(p => { const next = new Set(p); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const stopSelecting = () => { setSelecting(false); setPicked(new Set()); };
+  const removePicked = () => {
+    const chosen = items.filter(i => picked.has(itemId(i))); if (!chosen.length) return;
+    const folderIds = new Set(chosen.filter(i => i.kind === 'folder').flatMap(i => [...descendants(itemId(i))]));
+    const noteIds = new Set([...chosen.filter(i => i.kind === 'note').map(itemId), ...library.notes.filter(n => n.folderId && folderIds.has(n.folderId)).map(n => n.id)]);
+    const docs = noteIds.size, dirs = chosen.filter(i => i.kind === 'folder').length;
+    if (!confirm(`${[docs ? `${docs} Dokument${docs === 1 ? '' : 'e'}` : '', dirs ? `${dirs} Ordner samt Inhalt` : ''].filter(Boolean).join(' und ')} löschen? Das lässt sich nicht rückgängig machen.`)) return;
+    const at = now();
+    update(l => { const notes = l.notes.filter(n => !noteIds.has(n.id)); if (!notes.length) notes.push(newNote()); return { ...l, notes, folders: (l.folders || []).filter(f => !folderIds.has(f.id)), activeId: notes.some(n => n.id === l.activeId) ? l.activeId : notes[0].id, deleted: { ...l.deleted, ...Object.fromEntries([...noteIds, ...folderIds].map(id => [id, at])) } }; });
+    notify(`${docs + dirs} Element${docs + dirs === 1 ? '' : 'e'} gelöscht.`); stopSelecting();
+  };
+  const openFolder = (id?: string) => { setPicked(new Set()); setFolderId(id); setQuery(''); setSearching(false); if (view !== 'documents') props.setView('documents'); };
   // Drag & drop: documents and folders onto a folder, or out of the current folder.
   // Mouse: drag after a few pixels. Touch (iPad/iPhone): hold briefly, then drag.
   const [drag, setDrag] = useState<{ item: Item; x: number; y: number; over?: string } | null>(null);
@@ -113,10 +128,11 @@ export function LibraryShell(props: {
     const targets = [{ id: undefined as string | undefined, name: 'Dokumente' }, ...folders.filter(f => item.kind !== 'folder' || !descendants(item.folder.id).has(f.id)).map(f => ({ id: f.id as string | undefined, name: f.name }))]
       .filter(t => t.id !== (item.kind === 'folder' ? item.folder.parentId : item.note.folderId));
     const dropping = drag && drag.over === id, dragged = drag && (drag.item.kind === 'folder' ? drag.item.folder.id : drag.item.note.id) === id;
-    return <article key={id} className={`gn-item gn-${item.kind} ${dropping ? 'drop-over' : ''} ${dragged ? 'dragging' : ''}`} data-drop={item.kind === 'folder' ? item.folder.id : undefined}>
+    const isPicked = selecting && picked.has(id);
+    return <article key={id} className={`gn-item gn-${item.kind} ${dropping ? 'drop-over' : ''} ${dragged ? 'dragging' : ''} ${isPicked ? 'picked' : ''}`} data-drop={item.kind === 'folder' ? item.folder.id : undefined}>
       <div className="gn-cover-wrap">
-        <button className="gn-cover" onPointerDown={e => press(e, item)} onContextMenu={e => e.preventDefault()} onClick={() => { if (!suppressClick.current) open(); }} aria-label={`${item.name} öffnen`}>{item.kind === 'folder' ? <FolderIcon color={item.folder.color} /> : <NoteCover note={item.note} profiles={library.profiles} templates={library.templates} />}</button>
-        <button className={`gn-star ${fav ? 'on' : ''}`} aria-pressed={!!fav} aria-label={fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'} onClick={() => toggleFavorite(item)}><Star size={18} /></button>
+        <button className="gn-cover" onPointerDown={e => { if (!selecting) press(e, item); }} onContextMenu={e => e.preventDefault()} onClick={() => { if (suppressClick.current) return; if (selecting) togglePick(id); else open(); }} aria-label={selecting ? `${item.name} ${isPicked ? 'abwählen' : 'auswählen'}` : `${item.name} öffnen`} aria-pressed={selecting ? isPicked : undefined}>{item.kind === 'folder' ? <FolderIcon color={item.folder.color} /> : <NoteCover note={item.note} profiles={library.profiles} templates={library.templates} />}</button>
+        {selecting && <span className={`gn-check ${isPicked ? 'on' : ''}`} aria-hidden="true">{isPicked && <Check size={15} strokeWidth={3} />}</span>}{!selecting && <button className={`gn-star ${fav ? 'on' : ''}`} aria-pressed={!!fav} aria-label={fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'} onClick={() => toggleFavorite(item)}><Star size={18} /></button>}
       </div>
       <div className="gn-caption">
         {renaming === id ? <input className="gn-rename" autoFocus defaultValue={item.name} maxLength={100} aria-label="Neuer Name" onFocus={e => e.currentTarget.select()} onBlur={e => rename(item, e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null); }} />
@@ -175,13 +191,18 @@ export function LibraryShell(props: {
           <div className="gn-filter"><button className="gn-menu-trigger" onClick={() => setMenu(menu === 'filter' ? null : 'filter')} aria-haspopup="menu"><ListFilter size={24} strokeWidth={1.6} /><span>{view === 'favorites' ? 'Dokumente' : filterLabel}</span></button>
             {menu === 'filter' && <Menu><small>Anzeigen</small>{(['all', 'notes', 'folders'] as Filter[]).map(f => <button key={f} role="menuitemradio" aria-checked={filter === f} onClick={() => { setFilter(f); remember('hs-filter', f); setMenu(null); }}>{filter === f ? <Check size={16} /> : <span className="gn-gap" />}{{ all: 'Alle', notes: 'Nur Dokumente', folders: 'Nur Ordner' }[f]}</button>)}<small>Sortieren</small>{(['updated', 'name'] as Sort[]).map(s => <button key={s} role="menuitemradio" aria-checked={sort === s} onClick={() => { setSort(s); remember('hs-sort', s); setMenu(null); }}>{sort === s ? <Check size={16} /> : <span className="gn-gap" />}{s === 'updated' ? 'Zuletzt geändert' : 'Name'}</button>)}</Menu>}
           </div>
-          <div className="gn-actions">
+          {selecting ? <div className="gn-actions gn-selecting">
+            <span className="gn-pick-count">{picked.size} ausgewählt</span>
+            <button className="gn-text-button" onClick={() => setPicked(picked.size === items.length ? new Set() : new Set(items.map(itemId)))}>{picked.size === items.length && items.length ? 'Keine auswählen' : 'Alle auswählen'}</button>
+            <button className="gn-text-button danger" disabled={!picked.size} onClick={removePicked}><Trash2 size={17} />Löschen</button>
+            <button className="gn-new-button" onClick={stopSelecting}>Fertig</button>
+          </div> : <div className="gn-actions">
             {view === 'documents' && <div className="gn-new"><button className="gn-new-button gn-menu-trigger" onClick={() => setMenu(menu === 'new' ? null : 'new')} aria-haspopup="menu"><span>+</span>Neu</button>
-              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafelbild)</button></Menu>}</div>}
+              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafel)</button></Menu>}</div>}
             <button className="gn-icon" aria-label={layoutMode === 'grid' ? 'Als Liste anzeigen' : 'Als Raster anzeigen'} title={layoutMode === 'grid' ? 'Liste' : 'Raster'} onClick={() => { const next = layoutMode === 'grid' ? 'list' : 'grid'; setLayoutMode(next); remember('hs-layout', next); }}>{layoutMode === 'grid' ? <LayoutGrid size={24} strokeWidth={1.6} /> : <List size={24} strokeWidth={1.6} />}</button>
             <span className="gn-divider" />
-            <button className={`gn-icon gn-cloud ${props.saveStatus.includes('fehl') ? 'error' : ''}`} title={props.saveStatus} aria-label={`${props.saveStatus} – Sicherung öffnen`} onClick={props.openSettings}><Cloud size={26} strokeWidth={1.6} /><Check size={11} strokeWidth={3} /></button>
-          </div>
+            <button className="gn-icon" title="Auswählen" aria-label="Auswählen" disabled={!items.length} onClick={() => { setMenu(null); setSelecting(true); }}><CheckCheck size={24} strokeWidth={1.6} /></button>
+          </div>}
         </div>
         {items.length ? <div className={`gn-grid ${layoutMode === 'list' ? 'list' : ''}`}>{items.map(card)}</div>
           : <div className="gn-empty"><EmptyIllustration star={view === 'favorites'} /><p>{query ? `Nichts gefunden für „${query}“.` : view === 'favorites' ? 'Es befinden sich keine Dokumente in „Favoriten“.' : 'Dieser Ordner ist leer.'}</p>{view === 'documents' && !query && <button className="gn-new-button" onClick={() => props.createNote(folderId)}><span>+</span>Neues Dokument</button>}</div>}

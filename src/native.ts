@@ -1,14 +1,8 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 export type VisionLine = { text: string; confidence: number; x: number; y: number; width: number; height: number };
-type SyncFolder = { connected: boolean; name?: string; iCloud?: boolean };
 interface HandwriteNativePlugin {
   recognizeText(options: { image: string; languages?: string[] }): Promise<{ lines: VisionLine[] }>;
-  pickSyncFolder(): Promise<SyncFolder>;
-  syncStatus(): Promise<SyncFolder>;
-  disconnectSync(): Promise<void>;
-  readSyncFile(options: { name: string }): Promise<{ data: string | null; modified?: string }>;
-  writeSyncFile(options: { name: string; data: string }): Promise<void>;
   takeSharedImages(): Promise<{ images: string[] }>;
 }
 
