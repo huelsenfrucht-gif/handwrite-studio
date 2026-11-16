@@ -392,3 +392,11 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 .view-studio .paper-label,.view-studio .settings-section .ink-controls>label,.view-studio .two-controls>label{font-size:13px;font-weight:600;color:var(--hs-muted)}
 .view-studio .paper-label{display:block;margin:16px 0 8px}
 .st-row.st-select,.st-row.st-select .st-label{font-weight:400}
+
+/* Vor langen Exporten: Zustimmung zum Video */
+.reward-ask{max-width:440px;padding:28px 28px 22px;text-align:center}
+.reward-ask .reward-icon{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 14px;border-radius:16px;background:var(--hs-soft);color:var(--hs-navy)}
+.reward-ask h2{font-family:var(--hs-serif);font-size:24px;color:var(--hs-ink);margin:0 0 10px}
+.reward-ask p{margin:0 0 22px;color:var(--hs-muted);font-size:15px;line-height:1.5}
+.reward-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.reward-actions .button.primary{background:var(--hs-navy);border-color:var(--hs-navy)}

@@ -8,17 +8,23 @@ import { Capacitor } from '@capacitor/core';
  * which never earn money but also never risk the account.
  * The app ID also has to be set in ios/App/App/Info.plist (GADApplicationIdentifier).
  *
- * Placement: a full-screen ad before every export (not for backups) and
- * before a new handwriting is created. No banners.
+ * Placement (no banners):
+ * - a full-screen ad before a short export (1–3 pages) and before a new handwriting,
+ * - a rewarded video before a long export (from REWARD_FROM_PAGES pages). Rewarded
+ *   ads pay most, but Google requires that the user chooses to watch them, so the
+ *   app asks first ("Video ansehen und exportieren").
+ * Ad length is decided by Google; showing several ads in a row is not allowed.
  */
 export const ADMOB = {
   interstitialId: 'ca-app-pub-3940256099942544/4411468910',
+  rewardedId: 'ca-app-pub-3940256099942544/1712485313',
 };
+export const REWARD_FROM_PAGES = 4;
 const TESTING = ADMOB.interstitialId.startsWith('ca-app-pub-3940256099942544');
 
 type AdMobModule = typeof import('@capacitor-community/admob');
 let mod: Promise<AdMobModule> | undefined, ready: Promise<boolean> | undefined, loading: Promise<boolean> | undefined;
-let interstitialReady = false;
+let interstitialReady = false, rewardedReady = false, rewardLoading: Promise<boolean> | undefined;
 const load = () => (mod ??= import('@capacitor-community/admob'));
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -33,7 +39,7 @@ export function initAds(): Promise<boolean> {
       const tracking = await AdMob.trackingAuthorizationStatus();
       if (tracking.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
       await AdMob.initialize({ initializeForTesting: TESTING });
-      void prepareInterstitial();
+      void prepareInterstitial(); void prepareRewarded();
       return true;
     } catch { return false; }
   })());
@@ -68,6 +74,40 @@ export async function showInterstitialAd(): Promise<void> {
     await Promise.all(handles.map(h => h.remove()));
   } catch { /* never block the user's action because of an ad */ }
   void prepareInterstitial();
+}
+
+function prepareRewarded() {
+  return (rewardLoading ??= (async () => {
+    try { const { AdMob } = await load(); await AdMob.prepareRewardVideoAd({ adId: ADMOB.rewardedId, isTesting: TESTING }); rewardedReady = true; }
+    catch { rewardedReady = false; }
+    finally { rewardLoading = undefined; }
+    return rewardedReady;
+  })());
+}
+
+/** True in the app, where long exports offer a rewarded video first. */
+export const adsAvailable = () => Capacitor.isNativePlatform() || (import.meta.env.DEV && location.search.includes('ads'));
+
+/**
+ * Shows a rewarded video the user agreed to watch and resolves when it was closed.
+ * Without a video (no connection, no fill) it falls back to a normal full-screen ad,
+ * and never blocks the export.
+ */
+export async function showRewardedAd(): Promise<void> {
+  if (!(await initAds())) return;
+  if (!rewardedReady) await Promise.race([prepareRewarded(), wait(4000)]);
+  if (!rewardedReady) return showInterstitialAd();
+  try {
+    const { AdMob, RewardAdPluginEvents } = await load();
+    rewardedReady = false;
+    let finish = () => {};
+    const closed = new Promise<void>(resolve => { finish = resolve; });
+    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish())]);
+    await AdMob.showRewardVideoAd();
+    await Promise.race([closed, wait(120000)]);
+    await Promise.all(handles.map(h => h.remove()));
+  } catch { /* never block the export because of an ad */ }
+  void prepareRewarded();
 }
 
 /** Lets people change their ad consent later, as the GDPR requires. */
