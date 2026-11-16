@@ -1,0 +1,113 @@
+import type { Stroke } from '../model';
+import type { Region } from './segment';
+
+/** Grayscale copy in which ink is dark on a light background. A blackboard
+ * (dark board, bright chalk) is detected by its overall brightness and inverted. */
+export function inkImage(rgba: Uint8ClampedArray, width: number, height: number) {
+  const gray = new Uint8ClampedArray(width * height); let sum = 0;
+  for (let i = 0; i < gray.length; i++) { const g = .2126 * rgba[i * 4] + .7152 * rgba[i * 4 + 1] + .0722 * rgba[i * 4 + 2]; gray[i] = g; sum += g; }
+  const board = sum / gray.length < 118;
+  if (board) for (let i = 0; i < gray.length; i++) gray[i] = 255 - gray[i];
+  return { gray, board };
+}
+
+/** Adaptive binarisation: a pixel is ink when it is clearly darker than its surroundings. */
+export function binarize(gray: Uint8ClampedArray, width: number, height: number) {
+  const integral = new Float64Array((width + 1) * (height + 1)), stride = width + 1;
+  for (let y = 0; y < height; y++) { let row = 0; for (let x = 0; x < width; x++) { row += gray[y * width + x]; integral[(y + 1) * stride + x + 1] = integral[y * stride + x + 1] + row; } }
+  const r = Math.max(10, Math.min(40, Math.round(Math.min(width, height) / 30))), ink = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const x0 = Math.max(0, x - r), x1 = Math.min(width, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(height, y + r + 1);
+    const mean = (integral[y1 * stride + x1] - integral[y0 * stride + x1] - integral[y1 * stride + x0] + integral[y0 * stride + x0]) / ((x1 - x0) * (y1 - y0)), g = gray[y * width + x];
+    if (g < 90 || g < Math.min(215, mean - 22)) ink[y * width + x] = 1;
+  }
+  return ink;
+}
+
+export type Component = Region & { id: number; pixels: number };
+/** 8-connected ink blobs with their bounding boxes. */
+export function components(ink: Uint8Array, width: number, height: number) {
+  const label = new Int32Array(width * height), out: Component[] = [], stack: number[] = [];
+  for (let start = 0; start < ink.length; start++) {
+    if (!ink[start] || label[start]) continue;
+    const id = out.length + 1; let minX = width, minY = height, maxX = 0, maxY = 0, pixels = 0;
+    label[start] = id; stack.push(start);
+    while (stack.length) {
+      const i = stack.pop()!, x = i % width, y = (i - x) / width; pixels++;
+      if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const j = ny * width + nx; if (ink[j] && !label[j]) { label[j] = id; stack.push(j); }
+      }
+    }
+    out.push({ id, x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1, pixels });
+  }
+  return { label, list: out };
+}
+
+export type Layout = { textHeight: number; labels: (Region & { parts: number[] })[]; diagram: number[] };
+/** Splits a board photo into handwriting (letters grouped to words and labels)
+ * and diagram ink (lines, arrows, circles and boxes of a mind map). */
+export function analyseBoard(list: Component[]): Layout {
+  const blobs = list.filter(c => c.pixels >= 6);
+  const sizes = blobs.filter(c => c.height >= 5 && c.width < c.height * 3).map(c => c.height).sort((a, b) => a - b);
+  const textHeight = sizes.length ? sizes[Math.floor(sizes.length * .6)] : 20;
+  const isLine = (c: Component) => { const long = Math.max(c.width, c.height), thickness = c.pixels / Math.max(1, long); return long > textHeight * 3.2 && thickness < textHeight * .35; };
+  const textLike = (c: Component) => c.height <= textHeight * 2.3 && c.height >= textHeight * .28 && !isLine(c) && c.pixels / (c.width * c.height) > .05;
+  const letters = blobs.filter(textLike), small = blobs.filter(c => c.height < textHeight * .28 && c.width < textHeight * .6);
+  const diagram = new Set(blobs.filter(c => !textLike(c) && !small.includes(c)).map(c => c.id));
+  // Union neighbouring letters on a common baseline into one label.
+  const parent = new Map(letters.map(c => [c.id, c.id])), find = (id: number): number => { let p = parent.get(id)!; while (p !== parent.get(p)) p = parent.get(p)!; parent.set(id, p); return p; };
+  const sorted = [...letters].sort((a, b) => a.x - b.x);
+  for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++) {
+    const a = sorted[i], b = sorted[j]; if (b.x - (a.x + a.width) > textHeight * 1.15) break;
+    const overlap = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+    if (overlap > Math.min(a.height, b.height) * .35) parent.set(find(a.id), find(b.id));
+  }
+  // Sorted by x, a later letter can lie far beyond the break; a second pass
+  // over the grouped boxes merges what is still adjacent.
+  const groups = new Map<number, Component[]>(); for (const c of letters) { const root = find(c.id); groups.set(root, [...(groups.get(root) || []), c]); }
+  let labels = [...groups.values()].map(parts => { const x = Math.min(...parts.map(p => p.x)), y = Math.min(...parts.map(p => p.y)), r = Math.max(...parts.map(p => p.x + p.width)), b = Math.max(...parts.map(p => p.y + p.height)); return { x, y, width: r - x, height: b - y, parts: parts.map(p => p.id) }; });
+  for (let merged = true; merged;) {
+    merged = false;
+    outer: for (let i = 0; i < labels.length; i++) for (let j = 0; j < labels.length; j++) {
+      if (i === j) continue; const a = labels[i], b = labels[j], gap = b.x - (a.x + a.width), overlap = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+      if (gap > -textHeight * .3 && gap < textHeight * 1.15 && overlap > Math.min(a.height, b.height) * .45) {
+        const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); labels[i] = { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x, height: Math.max(a.y + a.height, b.y + b.height) - y, parts: [...a.parts, ...b.parts] };
+        labels.splice(j, 1); merged = true; break outer;
+      }
+    }
+  }
+  // A single isolated mark is more likely part of the drawing (an arrow head, a tick).
+  labels = labels.filter(l => { const keep = l.parts.length > 1 || l.width > textHeight * .9; if (!keep) l.parts.forEach(id => diagram.add(id)); return keep; });
+  // Dots (i, ä, punctuation) belong to the nearest label, otherwise they are dropped as noise.
+  for (const d of small) { const host = labels.find(l => d.x >= l.x - textHeight * .4 && d.x <= l.x + l.width + textHeight * .4 && d.y >= l.y - textHeight * .9 && d.y <= l.y + l.height + textHeight * .3); if (host) { host.parts.push(d.id); const top = Math.min(host.y, d.y); host.height += host.y - top; host.y = top; } }
+  labels.sort((a, b) => a.y - b.y || a.x - b.x);
+  return { textHeight, labels, diagram: [...diagram] };
+}
+
+/** Black-on-white RGBA image containing only the given components. */
+export function maskImage(label: Int32Array, width: number, height: number, ids: Iterable<number>, region: Region = { x: 0, y: 0, width, height }, pad = 0) {
+  const keep = new Set(ids), w = region.width + pad * 2, h = region.height + pad * 2, rgba = new Uint8ClampedArray(w * h * 4).fill(255);
+  for (let y = 0; y < region.height; y++) for (let x = 0; x < region.width; x++) {
+    const sx = region.x + x, sy = region.y + y; if (sx < 0 || sy < 0 || sx >= width || sy >= height) continue;
+    if (keep.has(label[sy * width + sx])) { const j = ((y + pad) * w + x + pad) * 4; rgba[j] = rgba[j + 1] = rgba[j + 2] = 0; }
+  }
+  return { rgba, width: w, height: h };
+}
+
+/** Lines of text in reading order, with a blank line where the spacing to the
+ * previous line is clearly larger than the usual line pitch (a new paragraph). */
+export function joinLines(lines: { y: number; height: number; text: string }[]) {
+  const kept = lines.map(l => ({ ...l, text: l.text.replace(/\s+/g, ' ').trim() })).filter(l => l.text);
+  const pitches = kept.slice(1).map((l, i) => l.y - kept[i].y).filter(p => p > 0).sort((a, b) => a - b);
+  const heights = kept.map(l => l.height).sort((a, b) => a - b), pitch = pitches.length >= 2 ? pitches[Math.floor((pitches.length - 1) / 2)] : (heights[Math.floor(heights.length / 2)] || 1) * 1.6;
+  return kept.map((l, i) => (i === 0 ? '' : l.y - kept[i - 1].y > pitch * 1.55 ? '\n\n' : '\n') + l.text).join('');
+}
+
+/** Bounding box of strokes. */
+export function bounds(strokes: Stroke[]) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of strokes) for (const p of s) { if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; }
+  return minX === Infinity ? { minX: 0, minY: 0, maxX: 0, maxY: 0 } : { minX, minY, maxX, maxY };
+}

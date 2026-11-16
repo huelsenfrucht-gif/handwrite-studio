@@ -7,14 +7,26 @@ export type Profile = { id: string; name: string; created: string; glyphs: Recor
 export type Paper = 'lined' | 'grid' | 'blank' | 'custom';
 /** A user's own paper (image or PDF pages, e.g. a worksheet) as A4 JPEG data URLs. */
 export type Template = { id: string; name: string; pages: string[]; created: string };
-export type Settings = { size: number; lineHeight: number; wordSpacing: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number; templateId?: string; templatePages?: number };
+export type Settings = { size: number; lineHeight: number; wordSpacing: number; variation: number; color: string; penWidth: number; paper: Paper; profileId: string; seed: number; templateId?: string; templatePages?: number;
+  /** Text margins in millimetres (A4 = 210 mm wide). Undefined = default. */
+  marginLeft?: number; marginRight?: number;
+  /** Empty ruled lines kept free at the top of every page, additionally on the first page, and at the bottom. */
+  linesTop?: number; linesFirstPage?: number; linesBottom?: number;
+  /** Extra space between letters in percent of the letter width. */
+  letterSpacing?: number };
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };
 export type Annotation = { id: string; page: number; points: Stroke; color: string; width: number };
 export type Drawing = { id: string; page: number; name: string; strokes: Stroke[]; strokeColors?: string[]; x: number; y: number; scale: number; width: number; height: number; color: string; penWidth: number; hiddenStrokes?: number[]; deleted?: boolean };
-export type Note = { id: string; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
-export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string; templates?: Template[] };
+export type Note = { id: string; folderId?: string; favorite?: boolean; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; updated: string };
+export type Folder = { id: string; name: string; color: string; parentId?: string; favorite?: boolean; created: string; updated: string };
+export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string; templates?: Template[]; folders?: Folder[] };
+export const FOLDER_COLORS = ['#5aa9f8', '#f25c5c', '#9b2c2c', '#38b2ac', '#f6ad55', '#9f7aea', '#68d391', '#a0aec0'];
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
+export const MM = PAGE.width / 210;
+export const DEFAULT_MARGIN_MM = PAGE.margin / MM;
+/** Left and right text margin in page pixels. */
+export function textMargins(s: Settings) { const l = (s.marginLeft ?? DEFAULT_MARGIN_MM) * MM, r = (s.marginRight ?? DEFAULT_MARGIN_MM) * MM; return { left: l, right: PAGE.width - r }; }
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();
 // Geometry of Goodnotes' standard A4 papers, measured from the bundled
