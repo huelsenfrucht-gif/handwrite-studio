@@ -6,7 +6,7 @@ import { PAGE, uid, type Field } from './model';
  * - answer lines ("Name: ________"), several equal lines below each other as one field.
  * Works on the grey values of the scanned page; coordinates are returned in page units.
  */
-export type Rect = { x: number; y: number; width: number; height: number; rows?: number; header?: boolean };
+export type Rect = { x: number; y: number; width: number; height: number; rows?: number; header?: boolean; kind?: 'cell' | 'line' };
 type HLine = { y1: number; y2: number; x1: number; x2: number };
 type VLine = { x1: number; x2: number; y1: number; y2: number };
 
@@ -70,7 +70,7 @@ export function findAnswerAreas(gray: Uint8Array | Uint8ClampedArray, w: number,
         const cell = { x: xs[i], y: (a.y1 + a.y2) / 2, width: xs[i + 1] - xs[i], height: (b.y1 + b.y2) / 2 - (a.y1 + a.y2) / 2 };
         if (cell.width < w * .02 || cell.width * cell.height > w * h * .45) continue;
         const m = Math.max(4, w * .004);
-        if (inkShare(gray, w, cell.x + m, cell.y + m, cell.x + cell.width - m, cell.y + cell.height - m) < .003) cells.push(cell);
+        if (inkShare(gray, w, cell.x + m, cell.y + m, cell.x + cell.width - m, cell.y + cell.height - m) < .003) cells.push({ ...cell, kind: 'cell' });
       }
       break;
     }
@@ -92,7 +92,7 @@ export function findAnswerAreas(gray: Uint8Array | Uint8ClampedArray, w: number,
     const prev = merged.at(-1);
     if (prev && last && Math.abs(prev.x - r.x) < tol && Math.abs(last.width - r.width) < tol * 2 && r.stop <= last.line.y2 + 3 && r.stop >= last.line.y1 - 3) { prev.rows = (prev.rows || 1) + 1; prev.height = r.y + r.height - prev.y; }
     // A rule right under another, different rule with nothing in between is the edge of a box, not an answer line.
-    else if (!sorted.some(o => o !== r.line && r.stop <= o.y2 + 3 && r.stop >= o.y1 - 3 && Math.min(o.x2, r.line.x2) - Math.max(o.x1, r.line.x1) > .6 * Math.max(o.x2 - o.x1, r.line.x2 - r.line.x1))) merged.push({ x: r.x, y: r.y, width: r.width, height: r.height });
+    else if (!sorted.some(o => o !== r.line && r.stop <= o.y2 + 3 && r.stop >= o.y1 - 3 && Math.min(o.x2, r.line.x2) - Math.max(o.x1, r.line.x1) > .6 * Math.max(o.x2 - o.x1, r.line.x2 - r.line.x1))) merged.push({ x: r.x, y: r.y, width: r.width, height: r.height, kind: 'line' });
     last = r;
   }
   // Name, date and class at the top of the sheet are not answers: marked so they are not filled automatically.
@@ -109,7 +109,7 @@ export async function detectFields(image: string, page: number): Promise<Field[]
   const data = ctx.getImageData(0, 0, w, h).data, gray = new Uint8Array(w * h);
   for (let i = 0; i < gray.length; i++) gray[i] = (data[i * 4] * 299 + data[i * 4 + 1] * 587 + data[i * 4 + 2] * 114) / 1000;
   const k = PAGE.width / w;
-  return findAnswerAreas(gray, w, h).map(r => ({ id: uid(), page, x: r.x * k, y: r.y * k, width: r.width * k, height: r.height * k, text: '', ...(r.rows && r.rows > 1 ? { rows: r.rows } : {}), ...(r.header ? { role: 'header' as const } : {}) }));
+  return findAnswerAreas(gray, w, h).map(r => ({ id: uid(), page, x: r.x * k, y: r.y * k, width: r.width * k, height: r.height * k, text: '', ...(r.rows && r.rows > 1 ? { rows: r.rows } : {}), ...(r.header ? { role: 'header' as const } : {}), ...(r.kind ? { kind: r.kind } : {}) }));
 }
 
 const TABLE = /^\s*\|.*\|\s*$/, RULE = /^[\s|:\-]+$/;
@@ -133,8 +133,18 @@ export function distributeAnswers(text: string, fields: Field[]) {
   const lines = text.replace(/\r/g, '').split('\n');
   let i = 0, left = 0;
   const put = (value: string) => { if (i < slots.length) out.set(slots[i++].id, value); else left++; };
+  const empty = (line: string) => /^[-–—]$/.test(line);
+  // Exactly one line per field (the format the AI prompt asks for): taken over 1:1, "-" leaves a field empty.
+  // A numbering "1. … 2. …" that an AI adds anyway is removed.
+  const given = lines.map(l => l.trim()).filter(Boolean);
+  if (given.length === slots.length && !given.some(l => TABLE.test(l))) {
+    const numbered = given.every((l, k) => new RegExp(`^${k + 1}[.):]\\s`).test(l));
+    given.forEach(l => { const v = numbered ? l.replace(/^\d+[.):]\s*/, '') : l; put(empty(v) ? '' : v); });
+    return { fields: fields.map(f => f.role === 'header' ? f : { ...f, text: out.get(f.id) ?? '' }), filled: [...out.values()].filter(Boolean).length, left };
+  }
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n].trim();
+    if (empty(line)) { put(''); continue; }
     if (!line || RULE.test(line) && line.includes('-')) continue;
     if (TABLE.test(line)) {
       if (RULE.test(lines[n + 1] || '') && (lines[n + 1] || '').includes('-')) continue; // header row of a table
@@ -153,4 +163,46 @@ export function distributeAnswers(text: string, fields: Field[]) {
     if (parts.length >= 3 && parts.every(p => p.length <= 40)) parts.forEach(put); else if (clean) put(clean);
   }
   return { fields: fields.map(f => f.role === "header" ? f : { ...f, text: out.get(f.id) ?? "" }), filled: [...out.values()].filter(Boolean).length, left };
+}
+
+/** What kind of answer a field expects, for the AI prompt. */
+function fieldType(f: Field): 'cell' | 'gap' | 'line' | 'area' | 'box' {
+  if (f.kind === 'cell') return 'cell';
+  if (f.rows && f.rows > 1) return 'area';
+  if (f.kind === 'line') return f.width > PAGE.width * .55 ? 'line' : 'gap';
+  return 'box';
+}
+
+/**
+ * A prompt for ChatGPT & Co. that matches this worksheet: it tells the AI how many fields there are,
+ * in which order and what kind of answer each group expects, and asks for exactly one line per field,
+ * so the reply can be pasted and lands in the right fields.
+ */
+export function answerPrompt(fields: Field[]) {
+  const rows = readingOrder(fields.filter(f => f.role !== 'header')), slots = rows.flat();
+  const rowIndex = new Map(rows.flatMap((r, i) => r.map(f => [f.id, i] as const)));
+  const groups: { type: ReturnType<typeof fieldType>; from: number; to: number; ids: string[] }[] = [];
+  slots.forEach((f, i) => { const t = fieldType(f), g = groups.at(-1); if (g && g.type === t) { g.to = i; g.ids.push(f.id); } else groups.push({ type: t, from: i, to: i, ids: [f.id] }); });
+  const range = (g: typeof groups[number]) => g.from === g.to ? `Zeile ${g.from + 1}` : `Zeile ${g.from + 1}–${g.to + 1}`;
+  const describe = (g: typeof groups[number]) => {
+    const n = g.to - g.from + 1;
+    if (g.type === 'cell') {
+      const tableRows = new Set(g.ids.map(id => rowIndex.get(id))).size, cols = Math.max(...[...new Set(g.ids.map(id => rowIndex.get(id)))].map(r => g.ids.filter(id => rowIndex.get(id) === r).length));
+      return `${range(g)}: die ${n} leeren Zellen einer Tabelle (${tableRows} Zeile${tableRows === 1 ? '' : 'n'} mit je ${cols} leeren Spalte${cols === 1 ? '' : 'n'}), Zeile für Zeile von links nach rechts. Vorgedruckte Zellen und die Kopfzeile auslassen. Knapp, höchstens ein kurzer Satz.`;
+    }
+    if (g.type === 'gap') return `${range(g)}: ${n === 1 ? 'eine Lücke' : `${n} Lücken`} im Text – jeweils nur das fehlende Wort oder die kurze Angabe, ohne den umgebenden Satz.`;
+    if (g.type === 'line') return `${range(g)}: ${n === 1 ? 'eine Antwortlinie' : `${n} Antwortlinien`} unter einer Frage oder Aufgabe – jeweils eine kurze, vollständige Antwort in einem Satz.`;
+    if (g.type === 'area') return `${range(g)}: ${n === 1 ? 'ein Antwortbereich' : `${n} Antwortbereiche`} mit mehreren Linien – jeweils eine ausführlichere Antwort in einer einzigen Zeile.`;
+    return `${range(g)}: ${n === 1 ? 'ein markiertes Feld' : `${n} markierte Felder`} – jeweils die passende Antwort.`;
+  };
+  return [
+    'Fülle das angehängte Arbeitsblatt aus.',
+    '',
+    `Antworte ausschließlich mit genau ${slots.length} Zeilen – eine Zeile pro Antwortfeld, in genau dieser Reihenfolge. Keine Nummerierung, keine Überschriften, keine Leerzeilen, keine Erklärungen, kein Markdown, keine Tabelle.`,
+    '',
+    'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
+    ...groups.map(describe),
+    '',
+    'Wenn du ein Feld nicht beantworten kannst, schreibe in diese Zeile nur ein „-“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.',
+  ].join('\n');
 }

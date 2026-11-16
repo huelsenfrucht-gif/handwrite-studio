@@ -22,7 +22,9 @@ export type Field = { id: string; page: number; x: number; y: number; width: num
   /** Several answer lines below each other: the text sits on each of them. */
   rows?: number;
   /** Name, date, class: never filled from the answer text. */
-  role?: 'header' };
+  role?: 'header';
+  /** Found as an empty table cell or above an answer line; drawn by hand otherwise. */
+  kind?: 'cell' | 'line' };
 export type Note = { id: string; folderId?: string; favorite?: boolean; title: string; text: string; renderedText: string; settings: Settings; edits: Record<string, Edit>; annotations: Annotation[]; drawings?: Drawing[]; fields?: Field[]; updated: string };
 export type Folder = { id: string; name: string; color: string; parentId?: string; favorite?: boolean; created: string; updated: string };
 export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId: string; templates?: Template[]; folders?: Folder[];

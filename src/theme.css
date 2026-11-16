@@ -400,3 +400,19 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 .reward-ask p{margin:0 0 22px;color:var(--hs-muted);font-size:15px;line-height:1.5}
 .reward-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .reward-actions .button.primary{background:var(--hs-navy);border-color:var(--hs-navy)}
+
+/* Mit KI ausfüllen */
+.ai-help{max-width:620px}
+.ai-steps{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.ai-steps>li{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--hs-line);border-radius:14px;background:#fff}
+.ai-steps h3{margin:2px 0 4px;font-size:16px;color:var(--hs-ink)}
+.ai-steps p{margin:0 0 10px;font-size:14px;line-height:1.5;color:var(--hs-muted)}
+.ai-steps>li>div{flex:1;min-width:0}
+.ai-steps .button.primary{background:var(--hs-navy);border-color:var(--hs-navy)}
+.ai-prompt{margin-top:10px}
+.ai-prompt summary{cursor:pointer;font-size:13px;color:var(--hs-navy-2);font-weight:600}
+.ai-prompt textarea{margin-top:8px;width:100%;min-height:180px;font-size:12px;line-height:1.45;border:1px solid var(--hs-line);border-radius:10px;padding:10px;color:var(--hs-ink);background:var(--hs-bg);resize:vertical}
+.ai-reply{width:100%;min-height:130px;margin:0 0 10px;border:1px solid var(--hs-line-strong);border-radius:10px;padding:10px;font:inherit;font-size:14px;color:var(--hs-ink);resize:vertical}
+.ai-foot{margin:14px 2px 0;font-size:13px;color:var(--hs-muted)}
+.ai-link{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:0;font-size:12px;font-weight:600;color:var(--hs-navy-2);cursor:pointer}
+.worksheet-actions .ai-button{grid-column:1/-1;background:var(--hs-navy);border-color:var(--hs-navy);color:#fff}
