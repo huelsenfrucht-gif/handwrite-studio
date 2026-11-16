@@ -1,4 +1,4 @@
-import { type Library, initialLibrary } from './model';
+import { type Library, initialLibrary, simplify } from './model';
 import { recalibrateWord } from './contextual';
 const DB='handwrite-studio';
 async function db(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('library');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
@@ -40,5 +40,7 @@ export function validateLibrary(value:unknown):Library {
  if(v.deleted!==undefined){if(!v.deleted||typeof v.deleted!=='object'||Array.isArray(v.deleted)||Object.keys(v.deleted).length>20000||!Object.entries(v.deleted).every(([k,t])=>k.length<=100&&str(t,100)))return fail();}
  if(points>2000000||!v.notes.some(n=>n.id===v.activeId))return fail();
  for(const p of v.profiles)if(p.words)p.words=p.words.map(recalibrateWord);
+ // Older handwritings stored every pencil sample (≈600 points per letter); long documents then ran out of memory on iPad.
+ for(const p of v.profiles)for(const gs of Object.values(p.glyphs))for(const g of gs)if(g.strokes.some(s=>s.length>24))g.strokes=g.strokes.map(s=>simplify(s));
  return v;
 }

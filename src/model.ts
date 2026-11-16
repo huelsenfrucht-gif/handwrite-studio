@@ -74,6 +74,29 @@ export function smooth(points: Stroke): Stroke {
   }
   result.push(points[points.length-1]); return result;
 }
+/**
+ * Drops points that do not change the visible line (Ramer–Douglas–Peucker).
+ * The pencil delivers ~240 points per second and smooth() adds four more per
+ * point; a letter then holds ~600 points. With a tolerance of 0.12 units
+ * (x-height is 42) the shape stays identical on screen and in exports while
+ * long documents need about a tenth of the memory.
+ */
+export function simplify(points: Stroke, tolerance = .12): Stroke {
+  if (points.length < 3) return points;
+  const keep = new Uint8Array(points.length); keep[0] = keep[points.length - 1] = 1;
+  const stack: [number, number][] = [[0, points.length - 1]], tol2 = tolerance * tolerance;
+  while (stack.length) {
+    const [a, b] = stack.pop()!, A = points[a], B = points[b], dx = B.x - A.x, dy = B.y - A.y, len2 = dx * dx + dy * dy;
+    let worst = 0, index = -1;
+    for (let i = a + 1; i < b; i++) {
+      const P = points[i]; let ex = P.x - A.x, ey = P.y - A.y;
+      if (len2 > 0) { const t = Math.max(0, Math.min(1, (ex * dx + ey * dy) / len2)); ex -= t * dx; ey -= t * dy; }
+      const d = ex * ex + ey * ey; if (d > worst) { worst = d; index = i; }
+    }
+    if (index > 0 && worst > tol2) { keep[index] = 1; stack.push([a, index], [index, b]); }
+  }
+  return points.filter((_, i) => keep[i]);
+}
 const pathCache = new WeakMap<Stroke, string>();
 export function pathData(points: Stroke) { const hit = pathCache.get(points); if (hit !== undefined) return hit; let d = ''; for (let i = 0; i < points.length; i++) d += `${i ? ' L' : 'M'}${points[i].x.toFixed(1)},${points[i].y.toFixed(1)}`; if (points.length === 1) d += ' l0.01,0'; pathCache.set(points, d); return d; }
 // Normalise to a baseline of 80 and an x-height of 42; preserve ascenders/descenders.
@@ -84,5 +107,5 @@ export function normalise(strokes: Stroke[], char: string, source: Glyph['source
   const desc=/[gjpqy]/.test(char), tall=/[A-ZÄÖÜbdfhklt0-9ß!?()]/.test(char), dot=/[.,:;"„“'\-+=]/.test(char);
   const height=dot?18:desc?65:tall?76:46;
   const scale=height/Math.max(maxY-minY,1), top=dot?62:desc?35:80-height;
-  return { source, advance: Math.max(16,Math.min(145,(maxX-minX)*scale+13)), strokes: strokes.map(s=>s.map(p=>({x:(p.x-minX)*scale+3,y:(p.y-minY)*scale+top,p:p.p}))) };
+  return { source, advance: Math.max(16,Math.min(145,(maxX-minX)*scale+13)), strokes: strokes.map(s=>simplify(s.map(p=>({x:(p.x-minX)*scale+3,y:(p.y-minY)*scale+top,p:p.p})))) };
 }

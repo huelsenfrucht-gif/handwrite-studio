@@ -61,7 +61,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
 export function layout(note: Note, profiles: Profile[]) {
  let cache=layoutCache.get(profiles);if(!cache){cache=new Map();layoutCache.set(profiles,cache);}
  const key=JSON.stringify(note.settings)+'\u0000'+note.renderedText;let core=cache.get(key);
- if(!core){core=layoutCore(note,profiles);if(cache.size>24)cache.delete(cache.keys().next().value!);cache.set(key,core);}
+ if(!core){core=layoutCore(note,profiles);/* a long document can take hundreds of MB per layout: keep only a few */if(cache.size>=3)cache.delete(cache.keys().next().value!);cache.set(key,core);}
  const lastInk=[...note.annotations,...(note.drawings||[])].reduce((n,a)=>Math.max(n,a.page),0);
  const templatePages=note.settings.paper==='custom'?note.settings.templatePages||0:0;
  return {...core,pages:Math.max(core.pages,lastInk+1,templatePages)};
