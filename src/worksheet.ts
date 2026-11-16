@@ -192,8 +192,9 @@ function fieldType(f: Field): 'cell' | 'gap' | 'line' | 'area' | 'box' {
 export function answerPrompt(fields: Field[]) {
   const rows = readingOrder(fields.filter(f => f.role !== 'header')), slots = rows.flat();
   const rowIndex = new Map(rows.flatMap((r, i) => r.map(f => [f.id, i] as const)));
-  const groups: { type: ReturnType<typeof fieldType>; from: number; to: number; ids: string[] }[] = [];
-  slots.forEach((f, i) => { const t = fieldType(f), g = groups.at(-1); if (g && g.type === t) { g.to = i; g.ids.push(f.id); } else groups.push({ type: t, from: i, to: i, ids: [f.id] }); });
+  const groups: { type: ReturnType<typeof fieldType>; page: number; from: number; to: number; ids: string[] }[] = [];
+  slots.forEach((f, i) => { const t = fieldType(f), g = groups.at(-1); if (g && g.type === t && g.page === f.page) { g.to = i; g.ids.push(f.id); } else groups.push({ type: t, page: f.page, from: i, to: i, ids: [f.id] }); });
+  const pages = [...new Set(slots.map(f => f.page))].sort((a, b) => a - b), multi = pages.length > 1;
   const range = (g: typeof groups[number]) => g.from === g.to ? `Zeile ${g.from + 1}` : `Zeile ${g.from + 1}–${g.to + 1}`;
   const describe = (g: typeof groups[number]) => {
     const n = g.to - g.from + 1;
@@ -206,13 +207,16 @@ export function answerPrompt(fields: Field[]) {
     if (g.type === 'area') return `${range(g)}: ${n === 1 ? 'ein Antwortbereich' : `${n} Antwortbereiche`} mit mehreren Linien – jeweils eine ausführlichere Antwort in einer einzigen Zeile.`;
     return `${range(g)}: ${n === 1 ? 'ein markiertes Feld' : `${n} markierte Felder`} – jeweils die passende Antwort.`;
   };
+  const order = multi
+    ? pages.flatMap((p, k) => [`Seite ${k + 1}:`, ...groups.filter(g => g.page === p).map(g => `  ${describe(g)}`)])
+    : groups.map(describe);
   return [
-    'Fülle das angehängte Arbeitsblatt aus.',
+    multi ? `Fülle die ${pages.length} angehängten Arbeitsblatt-Seiten aus. Sie gehören zusammen und sind in der richtigen Reihenfolge angehängt (zuerst Seite 1, dann Seite 2 …).` : 'Fülle das angehängte Arbeitsblatt aus.',
     '',
     `Antworte ausschließlich mit genau ${slots.length} Antworten – eine pro Antwortfeld, in genau dieser Reihenfolge. Setze direkt nach jeder Antwort das Zeichen ${ANSWER_END} (auch nach der letzten) und schreibe jede Antwort in eine eigene Zeile. Benutze das Zeichen ${ANSWER_END} sonst nirgends. Keine Nummerierung, keine Überschriften, keine Erklärungen, kein Markdown, keine Tabelle.`,
     '',
-    'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
-    ...groups.map(describe),
+    multi ? 'Reihenfolge: Seite für Seite, auf jeder Seite von oben nach unten, innerhalb einer Zeile von links nach rechts. Die Zählung läuft über alle Seiten weiter. Felder für Name, Datum und Klasse zählen nicht mit.' : 'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
+    ...order,
     '',
     `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
     '',

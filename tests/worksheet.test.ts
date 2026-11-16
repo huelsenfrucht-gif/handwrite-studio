@@ -102,4 +102,11 @@ b) Fehlende Einigkeit, Widerstand der Fürsten.`, fields);
     expect(textAt(r, 134, 1515)).toBe('Die Fürsten waren sich nicht einig.');
     expect(r.left).toBe(0);
   });
+  it('describes several sheets page by page with one running count', () => {
+    const second = fields.filter(f => f.role !== 'header').slice(10, 16).map((f, k) => ({ ...f, id: `p2-${k}`, page: 1 }));
+    const prompt = answerPrompt([...fields, ...second]);
+    expect(prompt).toContain('Fülle die 2 angehängten Arbeitsblatt-Seiten aus');
+    expect(prompt).toContain('genau 24 Antworten');
+    expect(prompt).toContain('Seite 2:\n  Zeile 19–24: 6 Lücken');
+  });
 });
