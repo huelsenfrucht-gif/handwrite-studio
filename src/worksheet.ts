@@ -174,7 +174,7 @@ function fieldType(f: Field): 'cell' | 'gap' | 'line' | 'area' | 'box' {
 }
 
 /**
- * A prompt for ChatGPT & Co. that matches this worksheet: it tells the AI how many fields there are,
+ * A prompt for an AI chat that matches this worksheet: it tells the AI how many fields there are,
  * in which order and what kind of answer each group expects, and asks for exactly one line per field,
  * so the reply can be pasted and lands in the right fields.
  */

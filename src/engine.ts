@@ -20,6 +20,28 @@ function joinStroke(prev:Glyph,cur:Glyph,gap=0):Stroke|undefined{
  if(distance<1.5||distance>26+gap)return;
  return connect(start,entry,0);
 }
+/**
+ * Text as it is pasted from anywhere (AI chats, websites, PDFs, notes): keeps every line break,
+ * empty line, indent, list and table, but removes the formatting characters that are not meant
+ * to be written by hand (**bold**, # headings, `code`, > quotes, [links](…), invisible characters).
+ */
+export function cleanText(text: string) {
+  return text.normalize('NFC').replace(/\r\n?|[\u2028\u2029\u0085]/g, '\n').replace(/[\u00a0\u202f\u2007]/g, ' ').replace(/[\u200b-\u200d\u2060\ufeff]/g, '')
+    .split('\n').map(line => {
+      if (/^\s*```/.test(line)) return null;
+      if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return ''; // horizontal rule
+      return line
+        .replace(/^(\s{0,3})#{1,6}\s+/, '$1').replace(/\s+#+\s*$/, '')
+        .replace(/^(\s*)>\s?/, '$1')
+        .replace(/^(\s*)\+(?=\s)/, '$1-')
+        .replace(/\*\*(\S(?:.*?\S)?)\*\*/g, '$1').replace(/__(\S(?:.*?\S)?)__/g, '$1')
+        .replace(/(^|[^\p{L}\p{N}*])\*(?!\s)([^*\n]*?[^\s*])\*(?![\p{L}\p{N}*])/gu, '$1$2')
+        .replace(/(^|[^\p{L}\p{N}_])_(?!\s)([^_\n]*?[^\s_])_(?![\p{L}\p{N}_])/gu, '$1$2')
+        .replace(/`([^`\n]+)`/g, '$1')
+        .replace(/!?\[([^\]\n]+)\]\([^)\n]*\)/g, '$1')
+        .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, '$1');
+    }).filter((line): line is string => line !== null).join('\n');
+}
 /** Table rows written as "| a | b |"; a row of dashes ("|---|---|") only separates the header. */
 const TABLE_ROW=/^[ \t]*\|.*\|[ \t]*$/,TABLE_RULE=/^[ \t|:\-]+$/;
 export const tableCells=(row:string)=>row.trim().slice(1,-1).split('|').map(c=>c.trim());
@@ -42,10 +64,15 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  const flow=(text:string)=>{
   // "* ", "- " or "• " at the start of a line is a list item: write a real
   // handwritten dot and indent wrapped lines under the text, not the dot.
-  const tokens=text.replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•').match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
+  let numbered=0;
+  const tokens=cleanText(text).replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•').match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
   for(const token of tokens) {
-   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}if(bullet){indent=x;bullet=false;}continue;}
-   if(lineStart){bullet=token==='•';lineStart=false;}
+   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}
+    // Wrapped lines stay under the text: after a list dot or number ("1." "a)"), and for indented lines.
+    if(bullet||numbered===2||lineStart){indent=x;bullet=false;numbered=0;}continue;}
+   if(lineStart){bullet=token==='•';numbered=/^(\d{1,3}|\p{L})$/u.test(token)?1:0;lineStart=false;}
+   else if(numbered===1)numbered=token==='.'||token===')'?2:0;
+   else numbered=0;
    const chars=Array.from(token),word=profile?composeWord(token,profile,rand):null;
    if(chars.length>1&&word?.kind==='original')originalWords++;if(chars.length>1&&word?.kind==='contextual')contextualWords++;if(word?.glyphs.some(g=>g.raster))rasterWords++;
    const sources=chars.map((c,i)=>word?.glyphs[i]||(demoGlyphs[c]||[missingGlyph])[0]);
@@ -105,7 +132,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  };
  // Plain paragraphs flow; blocks of "| … |" lines become tables. On a worksheet the text goes into the fields instead.
  const worksheet=s.paper==='custom'&&(note.fields||[]).some(f=>f.role!=='header');
- const blocks=worksheet?[]:note.renderedText.normalize('NFC').replace(/\r/g,'').split('\n');
+ const blocks=worksheet?[]:cleanText(note.renderedText).split('\n');
  for(let i=0;i<blocks.length;){
   if(TABLE_ROW.test(blocks[i])){const start=i;while(i<blocks.length&&TABLE_ROW.test(blocks[i]))i++;table(blocks.slice(start,i));index++;continue;}
   const start=i;while(i<blocks.length&&!TABLE_ROW.test(blocks[i]))i++;
