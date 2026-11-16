@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Camera, Check, ChevronDown, ChevronRight, Cloud, Copy, FilePlus2, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Cloud, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { layout, resolvedDrawingInk } from './engine';
 
@@ -64,6 +64,8 @@ export function LibraryShell(props: {
   };
   const openFolder = (id?: string) => { setFolderId(id); setQuery(''); setSearching(false); if (view !== 'documents') props.setView('documents'); };
   const filterLabel = { all: 'Alle', notes: 'Dokumente', folders: 'Ordner' }[filter];
+  const home = view === 'documents' && !folderId && !query;
+  const recent = useMemo(() => [...library.notes].sort((a, b) => b.updated.localeCompare(a.updated))[0], [library.notes]);
   const title = searching && query ? 'Suche' : view === 'favorites' ? 'Favoriten' : view === 'profiles' ? 'Meine Handschriften' : current?.name || 'Dokumente';
 
   const card = (item: Item) => {
@@ -94,24 +96,41 @@ export function LibraryShell(props: {
 
   return <div className={`gn-shell ${collapsed ? 'collapsed' : ''}`}>
     <aside className="gn-sidebar" aria-label="Bibliothek">
-      <button className="gn-collapse" aria-label={collapsed ? 'Seitenleiste einblenden' : 'Seitenleiste ausblenden'} onClick={() => setCollapsed(c => !c)}><SidebarIcon /></button>
+      <div className="gn-brand"><PenLine size={28} strokeWidth={1.6} /><span>Handwrite<br />Studio</span>
+        <button className="gn-collapse" aria-label="Seitenleiste ausblenden" onClick={() => setCollapsed(true)}><SidebarIcon /></button></div>
       <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
-        <button className={view === 'documents' && !searching ? 'active' : ''} onClick={() => { props.setView('documents'); openFolder(undefined); }}><DocsIcon active={view === 'documents'} />Dokumente</button>
-        <button className={view === 'favorites' ? 'active' : ''} onClick={() => { props.setView('favorites'); setQuery(''); setSearching(false); }}><FavIcon active={view === 'favorites'} />Favoriten</button>
+        <button className={view === 'documents' && !searching ? 'active' : ''} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={21} strokeWidth={1.6} />Dokumente</button>
+        <button className={view === 'favorites' ? 'active' : ''} onClick={() => { props.setView('favorites'); setQuery(''); setSearching(false); }}><Star size={21} strokeWidth={1.6} />Favoriten</button>
         <button className={view === 'profiles' ? 'active' : ''} onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span>Handschriften</button>
-        <button onClick={props.openStudio}><Pencil size={22} strokeWidth={1.6} />Zuletzt geöffnet</button>
+        <button onClick={props.openStudio}><Clock3 size={21} strokeWidth={1.6} />Zuletzt geöffnet</button>
       </nav>
-      <button className="gn-help" onClick={props.openHelp}>Hilfe</button>
+      <hr />
+      <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
+        <button onClick={props.openSettings}><Settings size={21} strokeWidth={1.6} />Einstellungen</button>
+        <button onClick={props.openHelp}><CircleHelp size={21} strokeWidth={1.6} />Hilfe</button>
+      </nav>
     </aside>
     {collapsed && <button className="gn-expand" aria-label="Seitenleiste einblenden" onClick={() => setCollapsed(false)}><SidebarIcon /></button>}
     <div className="gn-pill">
       {searching ? <span className="gn-search"><Search size={18} /><input autoFocus placeholder="Suchen" aria-label="Dokumente und Ordner suchen" value={query} onChange={e => { setQuery(e.target.value); if (view === 'profiles') props.setView('documents'); }} /><button aria-label="Suche schließen" onClick={() => { setQuery(''); setSearching(false); }}><X size={16} /></button></span>
         : view !== 'profiles' && <button aria-label="Suchen" title="Suchen" onClick={() => setSearching(true)}><Search size={24} strokeWidth={1.7} /></button>}
-      <button className="gn-gear" aria-label="Einstellungen" title="Einstellungen" onClick={props.openSettings}><Settings size={24} strokeWidth={1.7} /></button>
+      {collapsed && <button className="gn-gear" aria-label="Einstellungen" title="Einstellungen" onClick={props.openSettings}><Settings size={24} strokeWidth={1.7} /></button>}
     </div>
     <main className="gn-main">
       {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
-      <h1>{title}</h1>
+      {home ? <section className="gn-hero">
+        <div className="gn-hero-text"><h1>Dokumente</h1><p>Schreib deinen Text, den Rest erledigt deine Handschrift.</p>
+          <button className="gn-primary" onClick={() => props.createNote()}>Neues Dokument<ChevronRight size={20} /></button></div>
+        {recent && <button className="gn-recent" onClick={() => props.openNote(recent.id)} aria-label={`${recent.title || 'Unbenannt'} weiterschreiben`}>
+          <span className="gn-recent-stack"><span className="gn-sheet-back" /><NoteCover note={recent} profiles={library.profiles} templates={library.templates} /></span>
+          <span className="gn-recent-label"><small>Zuletzt bearbeitet</small><strong>{recent.title || 'Unbenannt'}</strong><em>Weiterschreiben<ChevronRight size={15} /></em></span>
+        </button>}
+      </section> : <h1>{title}</h1>}
+      {home && <div className="gn-quick">
+        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto übernehmen</span><ChevronRight size={18} /></button>
+        <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Handschrift anlegen</span><ChevronRight size={18} /></button>
+        <button onClick={createFolder}><FolderPlus size={24} strokeWidth={1.5} /><span>Ordner erstellen</span><ChevronRight size={18} /></button>
+      </div>}
       {view === 'profiles' ? props.children : <>
         <div className="gn-toolbar">
           <div className="gn-filter"><button className="gn-menu-trigger" onClick={() => setMenu(menu === 'filter' ? null : 'filter')} aria-haspopup="menu"><ListFilter size={24} strokeWidth={1.6} /><span>{view === 'favorites' ? 'Dokumente' : filterLabel}</span></button>
@@ -151,6 +170,4 @@ function FolderIcon({ color }: { color: string }) {
   </svg>;
 }
 const SidebarIcon = () => <svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="23" rx="5" /><path d="M12 1.5v23M5 7h3.5M5 11h3.5M5 15h3.5" /></svg>;
-const DocsIcon = ({ active }: { active: boolean }) => <svg width="30" height="26" viewBox="0 0 30 26" aria-hidden="true"><path d="M2 5.5C2 3.6 3.6 2 5.5 2h6.3c1 0 1.9.4 2.5 1.2L16 5.5h8.5c1.9 0 3.5 1.6 3.5 3.5v11.5c0 1.9-1.6 3.5-3.5 3.5h-19C3.6 24 2 22.4 2 20.5z" fill={active ? '#36b6f5' : 'none'} stroke={active ? '#1d9be0' : 'currentColor'} strokeWidth="1.8" /><path d="M2 9.5h26" stroke={active ? '#7fd3fb' : 'currentColor'} strokeWidth="1.8" /></svg>;
-const FavIcon = ({ active }: { active: boolean }) => <svg width="26" height="28" viewBox="0 0 26 28" aria-hidden="true"><path d="M4 4.5C4 3.1 5.1 2 6.5 2h13C20.9 2 22 3.1 22 4.5V26l-9-5.5L4 26z" fill={active ? '#f0453a' : 'none'} stroke={active ? '#f0453a' : 'currentColor'} strokeWidth="1.8" strokeLinejoin="round" /><path d="m13 7.2 1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill={active ? '#fff' : 'none'} stroke={active ? 'none' : 'currentColor'} strokeWidth="1.4" strokeLinejoin="round" /></svg>;
 const EmptyIllustration = ({ star }: { star: boolean }) => <svg width="130" height="170" viewBox="0 0 130 170" aria-hidden="true"><rect x="8" y="22" width="114" height="146" rx="4" fill="#dcecf8" /><rect x="8" y="150" width="114" height="18" rx="3" fill="#cfe6f8" /><path d="M42 66h30" stroke="#64a9ec" strokeWidth="3" strokeLinecap="round" />{star && <><path d="m104 18 4 8 9 1.3-6.5 6.3 1.5 8.9-8-4.2-8 4.2 1.5-8.9-6.5-6.3 9-1.3z" fill="#f59c8f" /><path d="M93 5l4 6M104 2v6M115 5l-4 6" stroke="#64a9ec" strokeWidth="1.5" strokeLinecap="round" /></>}</svg>;

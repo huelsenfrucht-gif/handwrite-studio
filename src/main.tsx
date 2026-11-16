@@ -8,6 +8,7 @@ import './guided.css';
 import './drawing.css';
 import './fixes.css';
 import './library.css';
+import './theme.css';
 import {loadAdSense} from './adsense';
 import {UpdateBanner} from './UpdateBanner';
 createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App/></AppErrorBoundary><UpdateBanner/></StrictMode>);
