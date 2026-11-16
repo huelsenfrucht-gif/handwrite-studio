@@ -110,3 +110,18 @@ b) Fehlende Einigkeit, Widerstand der Fürsten.`, fields);
     expect(prompt).toContain('Seite 2:\n  Zeile 19–24: 6 Lücken');
   });
 });
+
+describe('answers never leave their field', () => {
+  const inside = (r: ReturnType<typeof layout>, f: { x: number; y: number; width: number; height: number }) => r.glyphs.flatMap(g => g.strokes.flat()).every(p => p.x >= f.x && p.x <= f.x + f.width && p.y >= f.y && p.y <= f.y + f.height);
+  it.each([
+    ['a long answer in a small box', { x: 100, y: 100, width: 90, height: 22 }, 'Die Gesellschaft war in drei Stände eingeteilt und der Dritte Stand trug alle Lasten.'],
+    ['one very long word', { x: 300, y: 300, width: 40, height: 20 }, 'Nationalversammlung'],
+    ['a ruled area with too much text', { x: 80, y: 500, width: 300, height: 60, rows: 2 }, 'Wort '.repeat(80)],
+    ['a tiny box', { x: 50, y: 900, width: 20, height: 8 }, 'Revolutionäre forderten Freiheit, Gleichheit und Brüderlichkeit.'],
+  ])('%s', (_, box, text) => {
+    const n = newNote(); n.fields = [{ id: 'f', page: 0, text, ...box }];
+    const r = layout(n, []);
+    expect(r.glyphs.length).toBeGreaterThan(0);
+    expect(inside(r, box)).toBe(true);
+  });
+});

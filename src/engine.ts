@@ -163,25 +163,42 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
   const text=blocks.slice(start,i).join('\n')+(i<blocks.length?'\n':'');tracking=true;curLine=start;flow(text);tracking=false;
  }
  // Worksheet answers: each field's text is written into its box, as large as the box allows
- // (never larger than the document's font size), centred for one line, top-aligned for more.
+ // (never larger than the document's font size). The ink never leaves the box: what is written is
+ // measured, made smaller until it fits, and as a last resort scaled into the box.
+ const inkBox=(from:number)=>{let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;for(const g of glyphs.slice(from)){for(const st of g.strokes)for(const p of st){if(p.x<x1)x1=p.x;if(p.x>x2)x2=p.x;if(p.y<y1)y1=p.y;if(p.y>y2)y2=p.y;}if(g.raster){x1=Math.min(x1,g.raster.x);y1=Math.min(y1,g.raster.y);x2=Math.max(x2,g.raster.x+g.raster.width);y2=Math.max(y2,g.raster.y+g.raster.height);}}return x1===Infinity?null:{x1,y1,x2,y2};};
+ const moveInk=(from:number,map:(p:{x:number;y:number})=>{x:number;y:number})=>{for(const g of glyphs.slice(from)){g.strokes=g.strokes.map(st=>st.map(p=>({...p,...map(p)})));const o=map({x:g.x,y:g.y});g.x=o.x;g.y=o.y;if(g.raster){const r=map({x:g.raster.x,y:g.raster.y}),r2=map({x:g.raster.x+g.raster.width,y:g.raster.y+g.raster.height});g.raster={...g.raster,x:r.x,y:r.y,width:r2.x-r.x,height:r2.y-r.y};}}};
  (note.fields||[]).forEach((field,n)=>{
   if(!field.text.trim())return;
-  const base=index,keepSize=size,keepLh=lh,pad=Math.min(10,Math.max(3,field.width*.03));index=10000000+n*100000;
+  const base=index,keepSize=size,keepLh=lh,pad=Math.min(10,Math.max(2,field.width*.03)),edge=s.penWidth/2+1;
+  const box={x1:field.x+edge,y1:field.y+edge,x2:field.x+field.width-edge,y2:field.y+field.height-edge};
+  index=10000000+n*100000;
+  let done=false;
   if(field.rows&&field.rows>1){
-   // Ruled answer area: one line of text on each printed line.
-   const row=field.height/field.rows;size=Math.min(s.size,row/1.15)/100;lh=row;
-   boxed(field.text,field.x+pad,field.x+field.width-pad,field.y+row-Math.max(2,row*.14)-80*size,field.page);
-   size=keepSize;lh=keepLh;index=base;return;
+   // Ruled answer area: one line of text on each printed line, if it fits that way.
+   // Too much text for the lines: write a little smaller (down to 60 %) before leaving the lines.
+   const row=field.height/field.rows;lh=row;
+   for(let f=Math.min(s.size,row/1.15);!done&&f>=Math.min(s.size,row/1.15)*.6;f*=.92){
+    size=f/100;
+    const {from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,field.y+row-Math.max(2,row*.14)-80*size,field.page),b=inkBox(from);
+    if(b&&lines<=field.rows&&b.x1>=box.x1&&b.x2<=box.x2&&b.y1>=box.y1&&b.y2<=box.y2)done=true;else glyphs.length=from;
+   }
   }
-  let f=Math.min(s.size,field.height/1.15);
-  for(let k=0;k<16;k++){
-   size=f/100;lh=f*1.25;
-   const baseline=field.y+(field.height-.96*f)/2+76*size,{from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,baseline-80*size,field.page);
-   const height=(lines-1)*lh+.96*f;
-   if(lines===1)break;
-   if(height<=field.height-6||f<=6){const shift=field.y+3+76*size-baseline;for(const g of glyphs.slice(from)){g.y+=shift;g.strokes=g.strokes.map(st=>st.map(p=>({...p,y:p.y+shift})));if(g.raster)g.raster={...g.raster,y:g.raster.y+shift};}break;}
+  let f=Math.min(s.size,field.height/1.15),from=glyphs.length;
+  for(let k=0;!done&&k<40;k++){
+   size=f/100;lh=f*1.25;from=glyphs.length;
+   const {lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,field.y,field.page),b=inkBox(from);
+   if(!b){done=true;break;}
+   const bw=b.x2-b.x1,bh=b.y2-b.y1;
+   if((bw<=box.x2-box.x1&&bh<=box.y2-box.y1)||f<2.5){
+    // One line sits in the middle of the box, several lines start at the top.
+    const dy=(lines>1?box.y1:box.y1+(box.y2-box.y1-bh)/2)-b.y1,dx=b.x1<box.x1?box.x1-b.x1:b.x2>box.x2?box.x2-b.x2:0;
+    moveInk(from,p=>({x:p.x+dx,y:p.y+dy}));done=true;break;
+   }
    glyphs.length=from;f*=.9;
   }
+  // Last resort (very long text, tiny box): scale everything into the box.
+  const b=inkBox(from);
+  if(b&&(b.x1<box.x1-.01||b.x2>box.x2+.01||b.y1<box.y1-.01||b.y2>box.y2+.01)){const k=Math.min(1,(box.x2-box.x1)/Math.max(1,b.x2-b.x1),(box.y2-box.y1)/Math.max(1,b.y2-b.y1));moveInk(from,p=>({x:box.x1+(p.x-b.x1)*k,y:box.y1+(p.y-b.y1)*k}));}
   size=keepSize;lh=keepLh;index=base;
  });
  const highlights=[...bars.values()].map(b=>({...b,x:b.x-3,width:b.width+6}));

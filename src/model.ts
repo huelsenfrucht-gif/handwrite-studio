@@ -41,8 +41,10 @@ export type PlacedGlyph = { id: string; char: string; page: number; strokes: Str
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const MM = PAGE.width / 210;
 export const DEFAULT_MARGIN_MM = PAGE.margin / MM;
+/** Standard text margins of a new page: 8.5 mm left, 12 mm right. */
+export const DEFAULT_MARGIN_LEFT_MM = 8.5, DEFAULT_MARGIN_RIGHT_MM = 12;
 /** Left and right text margin in page pixels. */
-export function textMargins(s: Settings) { const l = (s.marginLeft ?? DEFAULT_MARGIN_MM) * MM, r = (s.marginRight ?? DEFAULT_MARGIN_MM) * MM; return { left: l, right: PAGE.width - r }; }
+export function textMargins(s: Settings) { const l = (s.marginLeft ?? DEFAULT_MARGIN_LEFT_MM) * MM, r = (s.marginRight ?? DEFAULT_MARGIN_RIGHT_MM) * MM; return { left: l, right: PAGE.width - r }; }
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
 export const uid = () => crypto.randomUUID();
 // Geometry of Goodnotes' standard A4 papers, measured from the bundled

@@ -450,14 +450,15 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 .sp-toggle.on{color:var(--hs-ink)}
 .sp-toggle svg{flex:none;padding:5px;box-sizing:content-box;border-radius:8px;background:#fff;border:1px solid var(--hs-line);color:var(--hs-muted)}
 .sp-toggle.on svg{background:var(--hs-navy);border-color:var(--hs-navy);color:#fff}
-.sp-hl{display:flex;gap:6px;flex:none}
-.sp-hl button{width:20px;height:20px;border-radius:50%;border:1px solid #13254a26;cursor:pointer;padding:0}
-.sp-hl button.on{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--hs-navy-2)}
 .sp .special-settings{margin-top:6px}
 .sp .special-body .two-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sp .worksheet-panel{margin-top:4px}
 .sp-mark{flex-direction:column;align-items:flex-start;gap:9px}
 .sp-toggle{white-space:nowrap}
-.sp-hl{padding-left:36px}
 .sp .special-body .range-label,.sp .special-body .stepper-row>span:first-child,.sp .special-body .margin-head,.sp .special-body .pen-width,.sp .special-body .two-controls>label{font-size:13px;font-weight:600;color:var(--hs-muted)}
 .sp .range-label span{color:var(--hs-ink);font-weight:500}
+.sp-mark .sp-hl{padding:0;margin:0}
+.sp-hl button svg{color:#13254a}
+.sp .color-swatches{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.sp .color-swatches button{width:26px;height:26px;min-width:26px;border-radius:50%;display:grid;place-items:center}
+.sp .color-swatches input[type=color]{width:30px;height:30px;padding:0;border:1px solid var(--hs-line);border-radius:8px;background:#fff;cursor:pointer}
