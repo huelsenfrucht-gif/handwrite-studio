@@ -39,7 +39,7 @@ export function findRules(gray: Uint8Array | Uint8ClampedArray, w: number, h: nu
   // A slightly tilted scan breaks one long rule into pieces on neighbouring pixel rows: join them again.
   const joined: HLine[] = [];
   for (const l of hs.filter(l => l.y2 - l.y1 < thick).sort((a, b) => a.x1 - b.x1)) {
-    const near = joined.find(j => Math.abs((j.y1 + j.y2) / 2 - (l.y1 + l.y2) / 2) <= 4 && l.x1 <= j.x2 + w * .02);
+    const near = joined.find(j => Math.abs((j.y1 + j.y2) / 2 - (l.y1 + l.y2) / 2) <= 4 && l.x1 <= j.x2 + 4);
     if (near) { near.x2 = Math.max(near.x2, l.x2); near.y1 = Math.min(near.y1, l.y1); near.y2 = Math.max(near.y2, l.y2); } else joined.push({ ...l });
   }
   return { hs: joined, vs: vs.filter(l => l.x2 - l.x1 < thick) };
@@ -68,7 +68,8 @@ export function findAnswerAreas(gray: Uint8Array | Uint8ClampedArray, w: number,
       borders.add(a); borders.add(b);
       for (let i = 0; i < xs.length - 1; i++) {
         const cell = { x: xs[i], y: (a.y1 + a.y2) / 2, width: xs[i + 1] - xs[i], height: (b.y1 + b.y2) / 2 - (a.y1 + a.y2) / 2 };
-        if (cell.width < w * .02 || cell.width * cell.height > w * h * .45) continue;
+        // Small squares are tick boxes (multiple choice), not places to write.
+        if (cell.width < w * .045 || cell.height < h * .012 || cell.width * cell.height > w * h * .45) continue;
         const m = Math.max(4, w * .004);
         if (inkShare(gray, w, cell.x + m, cell.y + m, cell.x + cell.width - m, cell.y + cell.height - m) < .003) cells.push({ ...cell, kind: 'cell' });
       }
@@ -76,28 +77,38 @@ export function findAnswerAreas(gray: Uint8Array | Uint8ClampedArray, w: number,
     }
   }
   // Answer lines: rules that are not borders of a box; the free space above is the writing area.
-  // Pieces of box or table borders (broken by rounded corners or anti-aliasing) are skipped.
+  // Pieces of box or table borders (broken by rounded corners or anti-aliasing) are skipped,
+  // as are the top/bottom edges of frames (a vertical side starts or ends at one of their ends).
   const borderList = [...borders], onBorder = (l: HLine) => borderList.some(b => Math.abs((b.y1 + b.y2) / 2 - (l.y1 + l.y2) / 2) < tol && l.x2 >= b.x1 - tol * 4 && l.x1 <= b.x2 + tol * 4);
+  const reach = h * .02, near = (v: VLine, x: number) => Math.abs((v.x1 + v.x2) / 2 - x) < tol * 1.2 && v.y2 - v.y1 > h * .02;
+  const startsAt = (l: HLine, x: number) => vs.some(v => near(v, x) && v.y1 >= l.y1 - tol && v.y1 <= l.y2 + reach), endsAt = (l: HLine, x: number) => vs.some(v => near(v, x) && v.y2 <= l.y2 + tol && v.y2 >= l.y1 - reach);
+  const frameEdge = (l: HLine) => (startsAt(l, l.x1) && startsAt(l, l.x2)) || (endsAt(l, l.x1) && endsAt(l, l.x2));
+  // Answer lines are printed black; frames, separators and shaded bands are grey.
+  const darkness = (l: HLine) => { let t = 0, n = 0; for (let x = l.x1; x <= l.x2; x += 2) { let m = 255; for (let y = Math.max(0, l.y1 - 1); y <= Math.min(h - 1, l.y2 + 1); y++) m = Math.min(m, gray[y * w + x]); t += m; n++; } return t / n; };
+  // A long rule broken by small circles or marks (a time line, a separator) is no answer line.
+  const broken = (l: HLine) => hs.some(o => o !== l && Math.abs((o.y1 + o.y2) / 2 - (l.y1 + l.y2) / 2) <= 6 && ((o.x1 >= l.x2 && o.x1 - l.x2 <= w * .015) || (o.x2 <= l.x1 && l.x1 - o.x2 <= w * .015)));
+  const atEdge = (l: HLine) => l.x1 < w * .01 || l.x2 > w * .99 || l.y1 > h * .985;
+  // A short line is a gap in a sentence: there is printed text right next to it on the same line.
+  const besideText = (l: HLine) => { const top = l.y1 - h * .018, bottom = l.y1 - 2; return inkShare(gray, w, l.x2 + 4, top, Math.min(w, l.x2 + w * .15), bottom) > .01 || inkShare(gray, w, Math.max(0, l.x1 - w * .15), top, l.x1 - 4, bottom) > .01; };
   const lines: (Rect & { stop: number; line: HLine })[] = [];
   for (const l of sorted) {
-    if (borders.has(l) || onBorder(l) || vs.some(v => Math.abs((v.x1 + v.x2) / 2 - l.x1) < tol && v.y2 >= l.y1 - tol && v.y1 <= l.y2 + tol && v.y2 - v.y1 > h * .02)) continue;
+    if (borders.has(l) || onBorder(l) || atEdge(l) || frameEdge(l) || broken(l) || darkness(l) > 100 || (l.x2 - l.x1 < w * .2 && !besideText(l))) continue;
     const max = Math.round(h * .03), x1 = l.x1 + 2, x2 = l.x2 - 2; let free = 0, y = l.y1 - 3;
     for (; y > l.y1 - max && y > 0; y--) { if (inkShare(gray, w, x1, y, x2, y + 1) > .01) break; free++; }
-    if (free >= h * .015) lines.push({ x: l.x1, y: l.y1 - free - 2, width: l.x2 - l.x1, height: free + 2, stop: y, line: l });
+    if (free >= h * .009) lines.push({ x: l.x1, y: l.y1 - free - 2, width: l.x2 - l.x1, height: free + 2, stop: y, line: l });
   }
-  // Equal lines right below each other (nothing printed in between) form one writing area with several rows.
-  const merged: Rect[] = [];
-  let last: (typeof lines)[number] | undefined;
+  // Wide lines right below each other (nothing printed in between) form one writing area with several rows.
+  // Short gaps in a text are never joined, even when two of them stand exactly below each other.
+  const merged: (Rect & { lastLine: HLine })[] = [];
   for (const r of lines) {
-    const prev = merged.at(-1);
-    if (prev && last && Math.abs(prev.x - r.x) < tol && Math.abs(last.width - r.width) < tol * 2 && r.stop <= last.line.y2 + 3 && r.stop >= last.line.y1 - 3) { prev.rows = (prev.rows || 1) + 1; prev.height = r.y + r.height - prev.y; }
-    // A rule right under another, different rule with nothing in between is the edge of a box, not an answer line.
-    else if (!sorted.some(o => o !== r.line && r.stop <= o.y2 + 3 && r.stop >= o.y1 - 3 && Math.min(o.x2, r.line.x2) - Math.max(o.x1, r.line.x1) > .6 * Math.max(o.x2 - o.x1, r.line.x2 - r.line.x1))) merged.push({ x: r.x, y: r.y, width: r.width, height: r.height, kind: 'line' });
-    last = r;
+    const wide = r.width > w * .28;
+    const area = wide ? merged.find(m => m.kind === 'line' && Math.abs(m.x - r.x) < tol * 3 && Math.abs(m.width - r.width) < tol * 6 && r.stop <= m.lastLine.y2 + 4 && r.stop >= m.lastLine.y1 - 4) : undefined;
+    if (area) { area.rows = (area.rows || 1) + 1; area.height = r.y + r.height - area.y; area.lastLine = r.line; }
+    else merged.push({ x: r.x, y: r.y, width: r.width, height: r.height, kind: 'line', lastLine: r.line });
   }
-  // Name, date and class at the top of the sheet are not answers: marked so they are not filled automatically.
+  // Name, date and class at the top of the sheet are not answers.
   for (const r of merged) if (!r.rows && r.y + r.height < h * .15) r.header = true;
-  return [...cells, ...merged];
+  return [...cells, ...merged.filter(r => !r.header).map(({ lastLine: _, ...r }) => r)];
 }
 
 /** Loads a template page and returns the answer fields in page units. */
@@ -216,6 +227,7 @@ export function answerPrompt(fields: Field[]) {
     `Antworte ausschließlich mit genau ${slots.length} Antworten – eine pro Antwortfeld, in genau dieser Reihenfolge. Setze direkt nach jeder Antwort das Zeichen ${ANSWER_END} (auch nach der letzten) und schreibe jede Antwort in eine eigene Zeile. Benutze das Zeichen ${ANSWER_END} sonst nirgends. Keine Nummerierung, keine Überschriften, keine Erklärungen, kein Markdown, keine Tabelle.`,
     '',
     multi ? 'Reihenfolge: Seite für Seite, auf jeder Seite von oben nach unten, innerhalb einer Zeile von links nach rechts. Die Zählung läuft über alle Seiten weiter. Felder für Name, Datum und Klasse zählen nicht mit.' : 'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
+    'Ankreuzaufgaben (Multiple Choice, Richtig/Falsch) und kleine Kästchen zum Zuordnen oder Nummerieren gehören nicht dazu – ignoriere sie komplett.',
     ...order,
     '',
     `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
