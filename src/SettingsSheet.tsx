@@ -50,7 +50,7 @@ export function SettingsSheet(props: {
         <Group title="Hilfe">
           <Row icon={<CircleHelp size={18} />} label="So funktioniert’s" onClick={props.onHelp} chevron />
           <details className="st-row st-details"><summary><span className="st-icon"><Info size={18} /></span><span className="st-label">Über die Schriftanalyse</span><ChevronRight size={18} className="st-chevron" /></summary>
-            <div className="st-details-body"><p>Die Einrichtung lernt dein persönliches Alphabet aus kurzen Zeilen in klein und GROSS oder aus a–z und A–Z einzeln. Mehrere Durchläufe liefern natürliche Varianten.</p><p>Mit dem Apple Pencil werden Zwischenpunkte und Druck direkt aufgenommen und geglättet – so bleibt dein echter Schreibweg erhalten. Die Ausgabe ist bearbeitbare Vektortinte.</p></div>
+            <div className="st-details-body"><p>Die Einrichtung lernt dein persönliches Alphabet: Du schreibst a–z und A–Z einzeln. Mehrere Durchläufe liefern natürliche Varianten.</p><p>Mit dem Apple Pencil werden Zwischenpunkte und Druck direkt aufgenommen und geglättet – so bleibt dein echter Schreibweg erhalten. Die Ausgabe ist bearbeitbare Vektortinte.</p></div>
           </details>
         </Group>
 

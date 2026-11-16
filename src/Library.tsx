@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Cloud, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, Cloud, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { layout, resolvedDrawingInk } from './engine';
 
@@ -54,7 +54,7 @@ export function LibraryShell(props: {
   const rename = (item: Item, name: string) => { const value = name.trim().slice(0, 100); setRenaming(null); if (!value) return; if (item.kind === 'folder') editFolder(item.folder.id, f => ({ ...f, name: value })); else editNote(item.note.id, n => ({ ...n, title: value, updated: now() })); };
   const toggleFavorite = (item: Item) => { if (item.kind === 'folder') update(l => ({ ...l, folders: (l.folders || []).map(f => f.id === item.folder.id ? { ...f, favorite: !f.favorite, updated: now() } : f) })); else editNote(item.note.id, n => ({ ...n, favorite: !n.favorite, updated: now() })); };
   const descendants = (id: string): Set<string> => { const out = new Set([id]); let grew = true; while (grew) { grew = false; for (const f of folders) if (f.parentId && out.has(f.parentId) && !out.has(f.id)) { out.add(f.id); grew = true; } } return out; };
-  const move = (item: Item, target?: string) => { setMenu(null); if (item.kind === 'folder') editFolder(item.folder.id, f => ({ ...f, parentId: target })); else editNote(item.note.id, n => ({ ...n, folderId: target, updated: now() })); notify(`„${item.name}“ verschoben nach ${target ? folders.find(f => f.id === target)?.name : 'Dokumente'}.`); };
+  const moveItem = (item: Item, target?: string) => { setMenu(null); if (item.kind === 'folder') editFolder(item.folder.id, f => ({ ...f, parentId: target })); else editNote(item.note.id, n => ({ ...n, folderId: target, updated: now() })); notify(`„${item.name}“ verschoben nach ${target ? folders.find(f => f.id === target)?.name : 'Dokumente'}.`); };
   const duplicate = (n: Note) => { const copy = { ...structuredClone(n), id: uid(), title: `${n.title} – Kopie`, favorite: false, updated: now() }; update(l => ({ ...l, notes: [copy, ...l.notes] })); setMenu(null); notify('Dokument dupliziert.'); };
   const remove = (item: Item) => {
     setMenu(null);
@@ -63,6 +63,45 @@ export function LibraryShell(props: {
     update(l => ({ ...l, folders: (l.folders || []).filter(x => x.id !== f.id).map(x => x.parentId === f.id ? { ...x, parentId: f.parentId, updated: now() } : x), notes: l.notes.map(n => n.folderId === f.id ? { ...n, folderId: f.parentId, updated: now() } : n), deleted: { ...l.deleted, [f.id]: now() } }));
   };
   const openFolder = (id?: string) => { setFolderId(id); setQuery(''); setSearching(false); if (view !== 'documents') props.setView('documents'); };
+  // Drag & drop: documents and folders onto a folder, or out of the current folder.
+  // Mouse: drag after a few pixels. Touch (iPad/iPhone): hold briefly, then drag.
+  const [drag, setDrag] = useState<{ item: Item; x: number; y: number; over?: string } | null>(null);
+  const suppressClick = useRef(false);
+  const dropTarget = (x: number, y: number, item: Item) => {
+    const el = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('[data-drop]');
+    if (!el) return undefined;
+    const target = el.dataset.drop!, id = target === 'root' ? undefined : target;
+    const parent = item.kind === 'folder' ? item.folder.parentId : item.note.folderId;
+    if (id === parent || (item.kind === 'folder' && id && descendants(item.folder.id).has(id))) return undefined;
+    return target;
+  };
+  const press = (e: ReactPointerEvent, item: Item) => {
+    if (e.button !== 0 || renaming) return;
+    const touch = e.pointerType !== 'mouse', sx = e.clientX, sy = e.clientY, pid = e.pointerId;
+    let active = false, last = { x: sx, y: sy }, timer = 0;
+    const begin = () => { active = true; suppressClick.current = true; setMenu(null); navigator.vibrate?.(10); setDrag({ item, x: last.x, y: last.y }); };
+    const blockScroll = (ev: TouchEvent) => { if (active) ev.preventDefault(); };
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return;
+      last = { x: ev.clientX, y: ev.clientY };
+      const dist = Math.hypot(last.x - sx, last.y - sy);
+      if (!active) { if (touch) { if (dist > 10) end(); } else if (dist > 6) begin(); return; }
+      setDrag({ item, ...last, over: dropTarget(last.x, last.y, item) });
+    };
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pid) return;
+      if (active) { const target = dropTarget(ev.clientX, ev.clientY, item); if (target) moveItem(item, target === 'root' ? undefined : target); }
+      end();
+    };
+    const end = () => {
+      clearTimeout(timer); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancel); document.removeEventListener('touchmove', blockScroll);
+      if (active) { setDrag(null); setTimeout(() => { suppressClick.current = false; }, 50); }
+    };
+    const cancel = (ev: PointerEvent) => { if (ev.pointerId === pid && !active) end(); };
+    if (touch) timer = window.setTimeout(begin, 380);
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', cancel);
+    document.addEventListener('touchmove', blockScroll, { passive: false });
+  };
   const filterLabel = { all: 'Alle', notes: 'Dokumente', folders: 'Ordner' }[filter];
   const home = view === 'documents' && !folderId && !query;
   const recent = useMemo(() => [...library.notes].sort((a, b) => b.updated.localeCompare(a.updated))[0], [library.notes]);
@@ -73,9 +112,10 @@ export function LibraryShell(props: {
     const open = () => item.kind === 'folder' ? openFolder(item.folder.id) : props.openNote(item.note.id);
     const targets = [{ id: undefined as string | undefined, name: 'Dokumente' }, ...folders.filter(f => item.kind !== 'folder' || !descendants(item.folder.id).has(f.id)).map(f => ({ id: f.id as string | undefined, name: f.name }))]
       .filter(t => t.id !== (item.kind === 'folder' ? item.folder.parentId : item.note.folderId));
-    return <article key={id} className={`gn-item gn-${item.kind}`}>
+    const dropping = drag && drag.over === id, dragged = drag && (drag.item.kind === 'folder' ? drag.item.folder.id : drag.item.note.id) === id;
+    return <article key={id} className={`gn-item gn-${item.kind} ${dropping ? 'drop-over' : ''} ${dragged ? 'dragging' : ''}`} data-drop={item.kind === 'folder' ? item.folder.id : undefined}>
       <div className="gn-cover-wrap">
-        <button className="gn-cover" onClick={open} aria-label={`${item.name} öffnen`}>{item.kind === 'folder' ? <FolderIcon color={item.folder.color} /> : <NoteCover note={item.note} profiles={library.profiles} templates={library.templates} />}</button>
+        <button className="gn-cover" onPointerDown={e => press(e, item)} onContextMenu={e => e.preventDefault()} onClick={() => { if (!suppressClick.current) open(); }} aria-label={`${item.name} öffnen`}>{item.kind === 'folder' ? <FolderIcon color={item.folder.color} /> : <NoteCover note={item.note} profiles={library.profiles} templates={library.templates} />}</button>
         <button className={`gn-star ${fav ? 'on' : ''}`} aria-pressed={!!fav} aria-label={fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'} onClick={() => toggleFavorite(item)}><Star size={18} /></button>
       </div>
       <div className="gn-caption">
@@ -87,7 +127,7 @@ export function LibraryShell(props: {
           <button role="menuitem" onClick={() => { setMenu(null); toggleFavorite(item); }}><Star size={16} />{fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten'}</button>
           {item.kind === 'note' && <button role="menuitem" onClick={() => duplicate(item.note)}><Copy size={16} />Duplizieren</button>}
           {item.kind === 'folder' && <div className="gn-colors" role="group" aria-label="Ordnerfarbe"><Palette size={16} />{FOLDER_COLORS.map(c => <button key={c} style={{ background: c }} aria-label={`Farbe ${c}`} className={item.folder.color === c ? 'on' : ''} onClick={() => editFolder(item.folder.id, f => ({ ...f, color: c }))}>{item.folder.color === c && <Check size={11} />}</button>)}</div>}
-          {targets.length > 0 && <details className="gn-move"><summary><FolderInput size={16} />Verschieben nach …<ChevronRight size={14} /></summary>{targets.map(t => <button key={t.id || 'root'} role="menuitem" onClick={() => move(item, t.id)}>{t.name}</button>)}</details>}
+          {targets.length > 0 && <details className="gn-move"><summary><FolderInput size={16} />Verschieben nach …<ChevronRight size={14} /></summary>{targets.map(t => <button key={t.id || 'root'} role="menuitem" onClick={() => moveItem(item, t.id)}>{t.name}</button>)}</details>}
           <button role="menuitem" className="danger" onClick={() => remove(item)}><Trash2 size={16} />Löschen</button>
         </div>}
       </div>
@@ -99,10 +139,9 @@ export function LibraryShell(props: {
       <div className="gn-brand"><PenLine size={28} strokeWidth={1.6} /><span>Handwrite<br />Studio</span>
         <button className="gn-collapse" aria-label="Seitenleiste ausblenden" onClick={() => setCollapsed(true)}><SidebarIcon /></button></div>
       <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
-        <button className={view === 'documents' && !searching ? 'active' : ''} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={21} strokeWidth={1.6} />Dokumente</button>
+        <button data-drop="root" className={`${view === 'documents' && !searching ? 'active' : ''} ${drag?.over === 'root' ? 'drop-over' : ''}`} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={21} strokeWidth={1.6} />Dokumente</button>
         <button className={view === 'favorites' ? 'active' : ''} onClick={() => { props.setView('favorites'); setQuery(''); setSearching(false); }}><Star size={21} strokeWidth={1.6} />Favoriten</button>
         <button className={view === 'profiles' ? 'active' : ''} onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span>Handschriften</button>
-        <button onClick={props.openStudio}><Clock3 size={21} strokeWidth={1.6} />Zuletzt geöffnet</button>
       </nav>
       <hr />
       <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
@@ -117,7 +156,7 @@ export function LibraryShell(props: {
       {collapsed && <button className="gn-gear" aria-label="Einstellungen" title="Einstellungen" onClick={props.openSettings}><Settings size={24} strokeWidth={1.7} /></button>}
     </div>
     <main className="gn-main">
-      {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
+      {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button data-drop="root" className={drag?.over === 'root' ? 'drop-over' : ''} onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button data-drop={f.id} className={drag?.over === f.id ? 'drop-over' : ''} onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
       {home ? <section className="gn-hero">
         <div className="gn-hero-text"><h1>Dokumente</h1><p>Schreib deinen Text, den Rest erledigt deine Handschrift.</p>
           <button className="gn-primary" onClick={() => props.createNote()}>Neues Dokument<ChevronRight size={20} /></button></div>
@@ -127,9 +166,9 @@ export function LibraryShell(props: {
         </button>}
       </section> : <h1>{title}</h1>}
       {home && <div className="gn-quick">
-        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto übernehmen</span><ChevronRight size={18} /></button>
-        <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Handschrift anlegen</span><ChevronRight size={18} /></button>
-        <button onClick={createFolder}><FolderPlus size={24} strokeWidth={1.5} /><span>Ordner erstellen</span><ChevronRight size={18} /></button>
+        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto</span><ChevronRight size={18} /></button>
+        <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Neue Handschrift</span><ChevronRight size={18} /></button>
+        <button onClick={createFolder}><FolderPlus size={24} strokeWidth={1.5} /><span>Neuer Ordner</span><ChevronRight size={18} /></button>
       </div>}
       {view === 'profiles' ? props.children : <>
         <div className="gn-toolbar">
@@ -147,7 +186,9 @@ export function LibraryShell(props: {
         {items.length ? <div className={`gn-grid ${layoutMode === 'list' ? 'list' : ''}`}>{items.map(card)}</div>
           : <div className="gn-empty"><EmptyIllustration star={view === 'favorites'} /><p>{query ? `Nichts gefunden für „${query}“.` : view === 'favorites' ? 'Es befinden sich keine Dokumente in „Favoriten“.' : 'Dieser Ordner ist leer.'}</p>{view === 'documents' && !query && <button className="gn-new-button" onClick={() => props.createNote(folderId)}><span>+</span>Neues Dokument</button>}</div>}
       </>}
+      {drag && current && view === 'documents' && <div className={`gn-dropout ${drag.over === (current.parentId || 'root') ? 'drop-over' : ''}`} data-drop={current.parentId || 'root'}><CornerLeftUp size={18} />Hierher ziehen: raus aus „{current.name}“</div>}
     </main>
+    {drag && <div className="gn-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">{drag.item.kind === 'folder' ? <FolderIcon color={drag.item.folder.color} /> : <NoteCover note={drag.item.note} profiles={library.profiles} templates={library.templates} />}<span>{drag.over ? (drag.over === 'root' ? 'Nach Dokumente' : `In „${folders.find(f => f.id === drag.over)?.name}“`) : drag.item.name}</span></div>}
   </div>;
 }
 

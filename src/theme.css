@@ -180,3 +180,92 @@ body{background:var(--hs-bg)}
 .recommended{background:var(--hs-soft);color:var(--hs-navy-2)}
 .guided-steps{border-color:var(--hs-line)}
 .calibration-copy strong{font-family:var(--hs-serif)}
+
+/* ── Feinschliff Studio ── */
+/* Tab-Leiste: echte Reiter mit Luft nach oben; in der App kommt die Statusleiste obendrauf statt die Reiter zu quetschen. */
+.document-tabs{height:calc(54px + env(safe-area-inset-top));padding:calc(8px + env(safe-area-inset-top)) 12px 0 6px;gap:4px;align-items:stretch;scrollbar-width:none}
+.native-app .document-tabs{padding-top:calc(8px + env(safe-area-inset-top))}
+.document-tabs::-webkit-scrollbar{display:none}
+.document-tabs>button{height:auto;border-radius:10px 10px 0 0;gap:12px;padding:0 18px;font-size:14px;line-height:1}
+.document-tabs>button svg{opacity:.75}
+.document-tabs>button.active svg{opacity:1;color:var(--hs-navy)}
+.document-tabs>.library-home,.document-tabs>.tab-new{border-radius:10px;margin-bottom:6px;min-width:46px;padding:0 12px}
+.document-tabs>.library-home svg,.document-tabs>.tab-new svg{opacity:1}
+.view-studio .workspace{min-height:calc(100dvh - 130px - env(safe-area-inset-top))}
+
+/* Leeres Blatt: Hinweis auf eigener Fläche, damit die Linien nicht durch die Schrift laufen. */
+.paper-empty{left:50%;right:auto;transform:translateX(-50%);width:min(78%,520px);padding:26px 26px 22px;border-radius:16px;background:#ffffffeb;box-shadow:0 0 0 1px var(--hs-line);color:var(--hs-muted)}
+.paper-empty>svg{color:var(--hs-navy-2);margin-bottom:14px}
+.paper-empty h3{font-family:var(--hs-serif);font-weight:700;font-size:24px;color:var(--hs-ink);margin-bottom:8px}
+.paper-empty p{font-size:13px;line-height:1.5;color:var(--hs-muted)}
+
+/* Kleine Statuspunkte und Hinweise */
+.tiny-dot{background:var(--hs-navy-2);width:5px;height:5px}
+.profile-hint{color:var(--hs-muted)}
+.preview-footer{color:var(--hs-muted)}
+
+/* Deaktivierter Hauptknopf: ruhig grau statt verwaschenem Blau */
+.button.primary:disabled{opacity:1;background:#cfd6e2;border-color:#cfd6e2;color:#fff}
+.view-studio .controls{scrollbar-width:thin;scrollbar-color:#c9d1dd transparent}
+
+/* Schieberegler überall gleich, auch auf iPad/iPhone (Safari zeichnet sonst seinen eigenen Regler) */
+input[type=range]{-webkit-appearance:none;appearance:none;height:22px;padding:0;border:0;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:#d8dee8}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 1.5px var(--hs-navy),0 2px 5px #13254a33}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:#d8dee8}
+input[type=range]::-moz-range-progress{height:4px;border-radius:4px;background:var(--hs-navy)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 1.5px var(--hs-navy),0 2px 5px #13254a33}
+input[type=range]:focus-visible{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var(--hs-navy),0 0 0 5px #24406f33}
+
+/* ── Hilfe ── */
+.help-content{padding:22px 28px 26px}
+.help-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.help-steps li{display:flex;gap:16px;align-items:flex-start;padding:16px 18px;border:1px solid var(--hs-line);border-radius:14px;background:#fff}
+.help-num{flex:0 0 30px;height:30px;display:grid;place-items:center;border-radius:50%;background:var(--hs-navy);color:#fff;font-size:14px;font-weight:600}
+.help-steps h3{margin:4px 0 4px;font-size:16px;font-weight:600;color:var(--hs-ink)}
+.help-steps p{margin:0;font-size:14px;line-height:1.5;color:var(--hs-muted)}
+.help-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px}
+.help-foot span{font-size:13px;color:var(--hs-muted)}
+.help-foot .button{margin:0}
+@media(max-width:600px){.help-content{padding:16px}.help-foot{flex-direction:column-reverse;align-items:stretch}.help-foot span{text-align:center}}
+
+/* ── Ziehen & Ablegen ── */
+.gn-cover{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.gn-item.dragging{opacity:.35}
+.gn-item.drop-over .gn-folder-svg{transform:scale(1.08);filter:drop-shadow(0 8px 16px #13254a40) brightness(1.06)}
+.gn-folder-svg{transition:transform .15s,filter .15s}
+.gn-item.drop-over .gn-title{background:var(--hs-soft);color:var(--hs-navy)}
+.gn-sidebar nav button.drop-over{background:#ffffff2e;box-shadow:inset 0 0 0 2px #ffffff80}
+.gn-crumbs button.drop-over{background:var(--hs-soft);border-radius:6px;box-shadow:0 0 0 2px var(--hs-navy)}
+.gn-ghost{position:fixed;z-index:200;pointer-events:none;transform:translate(-50%,-60%) rotate(-3deg);display:flex;flex-direction:column;align-items:center;gap:8px;filter:drop-shadow(0 14px 24px #13254a40)}
+.gn-ghost .gn-page{width:72px}
+.gn-ghost .gn-folder-svg{width:90px}
+.gn-ghost span{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 11px;border-radius:20px;background:var(--hs-navy);color:#fff;font-size:13px;font-weight:500}
+.gn-dropout{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:10px;padding:16px 24px;border:2px dashed var(--hs-line-strong);border-radius:14px;background:#fff;color:var(--hs-ink);font-size:15px;font-weight:500;box-shadow:0 10px 30px -10px #13254a40;animation:st-fade .15s}
+.gn-dropout.drop-over{border-color:var(--hs-navy);background:var(--hs-soft);color:var(--hs-navy)}
+@media(min-width:821px){.gn-shell:not(.collapsed) .gn-dropout{left:calc(50% + var(--gn-side) / 2)}}
+.help-content>.help-foot{padding:0;position:static}
+
+/* Startbereich passt sich der Breite an (iPad hoch/quer, Fenster) */
+.gn-hero{flex-wrap:wrap;row-gap:28px}
+.gn-hero-text{flex:1 1 380px}
+.gn-primary{white-space:nowrap}
+.gn-quick{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.gn-quick button>span:not(.gn-hand){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Ladebildschirm */
+.load-screen{color:var(--hs-navy);background:var(--hs-bg)}
+.load-screen h1{font-family:var(--hs-serif);font-weight:700;color:var(--hs-ink)}
+.load-screen p{color:var(--hs-muted)}
+.eyebrow{color:var(--hs-muted)}
+.modal-header p,.modal-intro{color:var(--hs-muted)}
+.photo-drop,.photo-drop strong{color:var(--hs-navy-2)}
+.gn-ghost .gn-page{background-image:none!important;background-color:#fff}
+.guided-steps{background:var(--hs-bg)}
+.guided-steps li{color:var(--hs-muted)}
+.guided-steps li.done{color:var(--hs-muted)}
+.guided-steps li.active{color:var(--hs-ink)}
+.mini-alphabet span{border-color:var(--hs-line);color:var(--hs-muted)}
+.mini-alphabet span.done{background:var(--hs-soft);color:var(--hs-navy)}
+.training-pad,.calibration-pad{border-color:var(--hs-line-strong);background:#fff}
