@@ -81,7 +81,10 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  const heads=s.highlightHeadings?headingLines(note.renderedText):new Set<number>(),bars=new Map<string,Highlight>();
  const last=Math.max(rows.first+lh,rows.last-(s.linesBottom||0)*lh),top=Math.min(last-lh,rows.first-80*size+(s.linesTop||0)*lh),firstTop=Math.min(last-lh,top+(s.linesFirstPage||0)*lh);
  let left=margins.left,right=margins.right,x=left,y=firstTop,page=0,index=0,originalWords=0,contextualWords=0,rasterWords=0,indent=left,lineStart=true,bullet=false;
- const line=()=>{x=indent;y+=lh;if(paging&&y+80*size>last){page++;y=top;}};
+ // Line starts wander a little to the right, as much as set (up to about 4 mm).
+ const shift=(s.lineStartShift||0)/100*16,lineStart0=()=>tracking&&shift?rand()*shift:0;
+ let lastShift=0;
+ const line=()=>{lastShift=lineStart0();x=indent+lastShift;y+=lh;if(paging&&y+80*size>last){page++;y=top;}};
  const ink=(strokes:Stroke[])=>{const pts=strokes.flat(),minX=Math.min(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y));glyphs.push({id:String(index++),char:'',page,strokes,x:minX,y:minY,width:Math.max(1,Math.max(...pts.map(p=>p.x))-minX),height:Math.max(1,Math.max(...pts.map(p=>p.y))-minY),fallback:false,unsupported:false});};
  /** Writes running text between left and right, wrapping words and starting new lines/pages. */
  const flow=(text:string)=>{
@@ -92,7 +95,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
   for(const token of tokens) {
    if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;if(tracking)curLine++;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}
     // Wrapped lines stay under the text: after a list dot or number ("1." "a)"), and for indented lines.
-    if(bullet||numbered===2||lineStart){indent=x;bullet=false;numbered=0;}continue;}
+    if(bullet||numbered===2||lineStart){indent=lineStart?x-lastShift:x;bullet=false;numbered=0;}continue;}
    if(lineStart){bullet=token==='•';numbered=/^(\d{1,3}|\p{L})$/u.test(token)?1:0;lineStart=false;}
    else if(numbered===1)numbered=token==='.'||token===')'?2:0;
    else numbered=0;

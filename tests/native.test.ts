@@ -27,6 +27,6 @@ describe('layout from photos', () => {
       box('wirft ab', 100, 240), box('immergrün', 500, 240),
       box('Fazit', 100, 340), box('Unterpunkt', 220, 380),
     ]);
-    expect(text).toBe('Merkmale\n\n| Laubbaum | Nadelbaum |\n| Blätter | Nadeln |\n| wirft ab | immergrün |\n\nFazit\n\tUnterpunkt');
+    expect(text).toBe('Merkmale\n| Laubbaum | Nadelbaum |\n| Blätter | Nadeln |\n| wirft ab | immergrün |\n\nFazit\n\tUnterpunkt');
   });
 });

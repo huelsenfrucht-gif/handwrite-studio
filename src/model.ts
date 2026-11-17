@@ -15,7 +15,9 @@ export type Settings = { size: number; lineHeight: number; wordSpacing: number; 
   /** Extra space between letters in percent of the letter width. */
   letterSpacing?: number;
   /** Mark all headings with a highlighter in this colour. */
-  highlightHeadings?: boolean; highlightColor?: string };
+  highlightHeadings?: boolean; highlightColor?: string;
+  /** How far line starts wander to the right, like in real handwriting (0–100 %). */
+  lineStartShift?: number };
 /** The highlighter colours of Goodnotes' standard set. */
 export const HIGHLIGHT_COLORS = ['#ffdd33', '#8be05a', '#6cc6ff', '#ff86c8', '#ffaa45'];
 export type Edit = { dx?: number; dy?: number; deleted?: boolean; color?: string; hiddenStrokes?: number[] };

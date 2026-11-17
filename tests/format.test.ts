@@ -38,3 +38,17 @@ describe('marking headings', () => {
     for (const b of bars) { expect(b.height).toBeGreaterThan(8); expect(b.width).toBeGreaterThan(20); }
   });
 });
+
+describe('line starts', () => {
+  it('stay on the margin by default and wander to the right when set', () => {
+    const n = newNote(); n.renderedText = Array.from({ length: 12 }, (_, i) => `Zeile ${i}`).join('\n');
+    const starts = (r: ReturnType<typeof layout>) => [...new Map(r.glyphs.filter(g => g.char === 'Z').map(g => [Math.round(g.y), g.x])).values()];
+    const plain = starts(layout(n, []));
+    expect(Math.max(...plain) - Math.min(...plain)).toBeLessThan(.5);
+    n.settings = { ...n.settings, lineStartShift: 100 };
+    const moved = starts(layout(n, []));
+    expect(Math.max(...moved) - Math.min(...moved)).toBeGreaterThan(4);
+    expect(Math.min(...moved)).toBeGreaterThanOrEqual(Math.min(...plain) - .5);
+    expect(Math.max(...moved)).toBeLessThanOrEqual(Math.min(...plain) + 16.5);
+  });
+});

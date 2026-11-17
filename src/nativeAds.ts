@@ -9,10 +9,11 @@ import { Capacitor } from '@capacitor/core';
  * The app ID also has to be set in ios/App/App/Info.plist (GADApplicationIdentifier).
  *
  * Placement (no banners):
- * - a full-screen ad before a short export (1–3 pages) and before a new handwriting,
- * - a rewarded video before a long export (from REWARD_FROM_PAGES pages). Rewarded
- *   ads pay most, but Google requires that the user chooses to watch them, so the
- *   app asks first ("Video ansehen und exportieren").
+ * - when text is written in handwriting ("In Handschrift verwandeln", "In die Felder schreiben"):
+ *   a full-screen ad for 1–3 pages, a rewarded video from REWARD_FROM_PAGES pages (Google requires
+ *   that the user chooses to watch it, so the app asks first), at most once per AD_COOLDOWN,
+ * - a full-screen ad before a new handwriting and before saving or loading a backup.
+ * Exports themselves are free of ads.
  * Ad length is decided by Google; showing several ads in a row is not allowed.
  */
 export const ADMOB = {
@@ -20,6 +21,8 @@ export const ADMOB = {
   rewardedId: 'ca-app-pub-3940256099942544/1712485313',
 };
 export const REWARD_FROM_PAGES = 4;
+/** At most one ad for writing text within this time, so trying settings out stays free of ads. */
+export const AD_COOLDOWN = 2 * 60 * 1000;
 const TESTING = ADMOB.interstitialId.startsWith('ca-app-pub-3940256099942544');
 
 type AdMobModule = typeof import('@capacitor-community/admob');

@@ -102,7 +102,7 @@ export function joinLines(lines: { y: number; height: number; text: string }[]) 
   const kept = lines.map(l => ({ ...l, text: l.text.replace(/\s+/g, ' ').trim() })).filter(l => l.text);
   const pitches = kept.slice(1).map((l, i) => l.y - kept[i].y).filter(p => p > 0).sort((a, b) => a - b);
   const heights = kept.map(l => l.height).sort((a, b) => a - b), pitch = pitches.length >= 2 ? pitches[Math.floor((pitches.length - 1) / 2)] : (heights[Math.floor(heights.length / 2)] || 1) * 1.6;
-  return kept.map((l, i) => (i === 0 ? '' : l.y - kept[i - 1].y > pitch * 1.55 ? '\n\n' : '\n') + l.text).join('');
+  return kept.map((l, i) => (i === 0 ? '' : l.y - kept[i - 1].y > pitch * 1.9 ? '\n\n' : '\n') + l.text).join('');
 }
 
 /** Bounding box of strokes. */
@@ -157,7 +157,8 @@ export function linesToText(lines: TextBox[]) {
   }
   const pitches = entries.slice(1).map((l, i) => l.y - entries[i].end).filter(p => p > 0).sort((a, b) => a - b);
   const pitch = pitches.length >= 2 ? pitches[Math.floor((pitches.length - 1) / 2)] : size * 1.6;
-  return entries.map((e, i) => (i === 0 ? '' : e.table || entries[i - 1].table || e.y - entries[i - 1].end > pitch * 1.55 ? '\n\n' : '\n') + e.text).join('');
+  // Exactly one text line per line on the photo; an empty line only where the photo really has an empty line.
+  return entries.map((e, i) => (i === 0 ? '' : e.y - entries[i - 1].end - size > size * 1.6 ? '\n\n' : '\n') + e.text).join('');
 }
 
 /** Ink blobs that lie inside a recognised text box are letters; everything else is drawing. */
