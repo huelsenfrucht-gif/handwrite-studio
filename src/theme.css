@@ -575,3 +575,9 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 .gn-grid{contain:layout paint}
 .gn-cover-wrap{contain:layout paint}
 .gn-main{transition:none!important}
+/* Karten in der linken Spalte nie zusammenquetschen – die Spalte scrollt stattdessen */
+.view-studio .controls.sp>*{flex-shrink:0}
+/* Schritt-Karten nie breiter als die Spalte (Grid-Mindestbreite durch Textfeld/Buttons) */
+.ws-steps{grid-template-columns:minmax(0,1fr)}
+.ws-step,.ws-step>*{min-width:0}
+.ws-step textarea{box-sizing:border-box;max-width:100%}
