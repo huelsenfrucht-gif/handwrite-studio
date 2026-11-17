@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Megaphone, PenLine, Smartphone, Type, X } from 'lucide-react';
+import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, Smartphone, Type, X } from 'lucide-react';
 import { PEN_WIDTHS, type Library, type Profile } from './model';
+
+/** Public pages (privacy policy, support) on the website. */
+const SITE = 'https://huelsenfrucht-gif.github.io/handwrite-studio/';
 
 /** Settings in the style of the library: plain grouped rows. */
 export function SettingsSheet(props: {
@@ -33,8 +36,9 @@ export function SettingsSheet(props: {
           <Row icon={<ArchiveRestore size={18} />} label="Sicherung laden" onClick={props.onRestore} chevron />
         </Group>
 
-        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt nur vor einem Export und vor einer neuen Handschrift.">
+        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt beim Schreiben in Handschrift (höchstens alle 2 Minuten), vor einer neuen Handschrift und bei Sicherungen. Exporte sind werbefrei.">
           <Row icon={<Megaphone size={18} />} label="Werbe-Einstellungen" onClick={props.onAdPrivacy} chevron />
+          <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />
         </Group> : <Group title="App" >
           <Row icon={<Smartphone size={18} />} label="Zum Home-Bildschirm" onClick={props.onHomeScreen} chevron />
           <Row icon={<Maximize2 size={18} />} label={props.fullscreen ? 'Vollbild beenden' : 'Vollbild'} onClick={props.onFullscreen} chevron />
@@ -42,6 +46,8 @@ export function SettingsSheet(props: {
 
         <Group title="Hilfe">
           <Row icon={<CircleHelp size={18} />} label="So funktioniert’s" onClick={props.onHelp} chevron />
+          {!native && <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />}
+          <Row icon={<Mail size={18} />} label="Hilfe & Kontakt" onClick={() => window.open(`${SITE}support.html`, '_blank')} chevron />
           <details className="st-row st-details"><summary><span className="st-icon"><Info size={18} /></span><span className="st-label">Über die Schriftanalyse</span><ChevronRight size={18} className="st-chevron" /></summary>
             <div className="st-details-body"><p>Die Einrichtung lernt dein persönliches Alphabet: Du schreibst a–z und A–Z einzeln. Mehrere Durchläufe liefern natürliche Varianten.</p><p>Mit dem Apple Pencil werden Zwischenpunkte und Druck direkt aufgenommen und geglättet – so bleibt dein echter Schreibweg erhalten. Die Ausgabe ist bearbeitbare Vektortinte.</p></div>
           </details>
