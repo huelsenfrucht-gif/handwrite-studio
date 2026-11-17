@@ -37,14 +37,16 @@ export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId
   /** Deleted item ids with deletion time, so a sync does not bring them back. */
   deleted?: Record<string, string>;
   /** Choices from the settings for every new document. */
-  defaults?: { profileId?: string; penWidth?: number } };
+  defaults?: { profileId?: string; penWidth?: number; marginLeft?: number; marginRight?: number; lineStartShift?: number } };
 export const FOLDER_COLORS = ['#5aa9f8', '#f25c5c', '#9b2c2c', '#38b2ac', '#f6ad55', '#9f7aea', '#68d391', '#a0aec0'];
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
 export const MM = PAGE.width / 210;
 export const DEFAULT_MARGIN_MM = PAGE.margin / MM;
-/** Standard text margins of a new page: 8.5 mm left, 12 mm right. */
+/** Fallback for documents without stored margins (keeps older documents unchanged). */
 export const DEFAULT_MARGIN_LEFT_MM = 8.5, DEFAULT_MARGIN_RIGHT_MM = 12;
+/** Standards for new documents (changeable under Einstellungen → Neue Dokumente). */
+export const NEW_MARGIN_LEFT_MM = 5.5, NEW_MARGIN_RIGHT_MM = 12, DEFAULT_LINE_START_SHIFT = 50;
 /** Left and right text margin in page pixels. */
 export function textMargins(s: Settings) { const l = (s.marginLeft ?? DEFAULT_MARGIN_LEFT_MM) * MM, r = (s.marginRight ?? DEFAULT_MARGIN_RIGHT_MM) * MM; return { left: l, right: PAGE.width - r }; }
 export const ALPHABET = 'abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789.,!?;:-+()„“/=@%';
@@ -76,7 +78,7 @@ export function paperRules(s: Settings): Rule[] {
   if (ruleCache.size > 30) ruleCache.clear(); ruleCache.set(key, rules); return rules;
 }
 export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, variation: 100, penWidth: 1.7, color: '#000000', profileId: 'demo', seed: 42 };
-export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
+export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, marginLeft: defaults?.marginLeft ?? NEW_MARGIN_LEFT_MM, marginRight: defaults?.marginRight ?? NEW_MARGIN_RIGHT_MM, lineStartShift: defaults?.lineStartShift ?? DEFAULT_LINE_START_SHIFT, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');
   note.text = note.renderedText = 'Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.';

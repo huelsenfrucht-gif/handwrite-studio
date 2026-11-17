@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, UserRound, Smartphone, Type, X } from 'lucide-react';
-import { PEN_WIDTHS, type Library, type Profile } from './model';
+import { AlignLeft, AlignRight, ArchiveRestore, ChevronRight, IndentIncrease, Minus, Plus, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, UserRound, Smartphone, Type, X } from 'lucide-react';
+import { DEFAULT_LINE_START_SHIFT, NEW_MARGIN_LEFT_MM, NEW_MARGIN_RIGHT_MM, PEN_WIDTHS, type Library, type Profile } from './model';
 import { isUnder16, setUnder16 } from './nativeAds';
 
 /** Public pages (privacy policy, support) on the website. */
@@ -21,9 +21,12 @@ export function SettingsSheet(props: {
     <section className="st-sheet" role="dialog" aria-modal="true" aria-labelledby="st-title">
       <header className="st-head"><h2 id="st-title">Einstellungen</h2><button className="st-close" aria-label="Einstellungen schließen" onClick={close}><X size={20} /></button></header>
       <div className="st-scroll">
-        <Group title="Neue Dokumente" footer="Gilt für jedes neue Dokument. Im Studio kannst du beides pro Dokument ändern.">
+        <Group title="Neue Dokumente" footer="Gilt für jedes neue Dokument. Im Studio kannst du alles pro Dokument unter „Spezielle Einstellungen“ ändern.">
           <label className="st-row st-select"><span className="st-icon"><Type size={18} /></span><span className="st-label">Standardschrift</span><select value={props.defaults.profileId && props.profiles.some(p => p.id === props.defaults.profileId) ? props.defaults.profileId : 'demo'} onChange={e => props.onDefaults({ profileId: e.target.value })}><option value="demo">Studio-Schrift · Demo</option>{props.profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label className="st-row st-select"><span className="st-icon"><PenLine size={18} /></span><span className="st-label">Stiftstärke</span><select value={props.defaults.penWidth ?? 1.7} onChange={e => props.onDefaults({ penWidth: +e.target.value })}>{PEN_WIDTHS.map(v => <option key={v} value={v}>{v.toLocaleString('de')} px</option>)}</select></label>
+          <Stepper icon={<AlignLeft size={18} />} label="Textrand links" value={props.defaults.marginLeft ?? NEW_MARGIN_LEFT_MM} min={0} max={40} step={0.5} unit="mm" onChange={v => props.onDefaults({ marginLeft: v })} />
+          <Stepper icon={<AlignRight size={18} />} label="Textrand rechts" value={props.defaults.marginRight ?? NEW_MARGIN_RIGHT_MM} min={0} max={40} step={0.5} unit="mm" onChange={v => props.onDefaults({ marginRight: v })} />
+          <Stepper icon={<IndentIncrease size={18} />} label="Zeilenanfänge versetzt" value={props.defaults.lineStartShift ?? DEFAULT_LINE_START_SHIFT} min={0} max={100} step={5} unit="%" onChange={v => props.onDefaults({ lineStartShift: v })} />
         </Group>
 
         <Group title="Bibliothek">
@@ -69,4 +72,13 @@ function Group({ title, footer, children }: { title: string; footer?: string; ch
 function Row({ icon, label, detail, onClick, chevron, danger, accent }: { icon: ReactNode; label: string; detail?: ReactNode; onClick?: () => void; chevron?: boolean; danger?: boolean; accent?: boolean }) {
   const body = <><span className="st-icon">{icon}</span><span className={`st-label ${danger ? 'danger' : ''} ${accent ? 'accent' : ''}`}>{label}</span>{detail !== undefined && <span className="st-detail">{detail}</span>}{chevron && <ChevronRight size={18} className="st-chevron" />}</>;
   return onClick ? <button className="st-row" onClick={onClick}>{body}</button> : <div className="st-row static">{body}</div>;
+}
+
+/** Zeile mit − Wert + ; große Tippflächen, Wert gedrückt halten wiederholt. */
+function Stepper({ icon, label, value, min, max, step, unit, onChange }: { icon: ReactNode; label: string; value: number; min: number; max: number; step: number; unit: string; onChange: (v: number) => void }) {
+  const set = (v: number) => onChange(+Math.min(max, Math.max(min, v)).toFixed(2));
+  return <div className="st-row st-stepper"><span className="st-icon">{icon}</span><span className="st-label">{label}</span>
+    <span className="st-step"><button type="button" aria-label={`${label} verringern`} disabled={value <= min} onClick={() => set(value - step)}><Minus size={16} /></button>
+      <output>{value.toLocaleString('de')} {unit}</output>
+      <button type="button" aria-label={`${label} erhöhen`} disabled={value >= max} onClick={() => set(value + step)}><Plus size={16} /></button></span></div>;
 }

@@ -11,7 +11,7 @@ describe('pasted text keeps its formatting', () => {
     expect(cleanText('3 * 4 = 12 und a_b_c, Stern*')).toBe('3 * 4 = 12 und a_b_c, Stern*');
   });
   it('writes wrapped lines of numbered and indented items under their text', () => {
-    const n = newNote(); n.renderedText = '1. ' + 'Wort '.repeat(40) + '\n    eingerückt ' + 'Wort '.repeat(40);
+    const n = newNote(); n.settings.lineStartShift = 0; n.renderedText = '1. ' + 'Wort '.repeat(40) + '\n    eingerückt ' + 'Wort '.repeat(40);
     const g = layout(n, []).glyphs, firstWord = g.find(x => x.char === 'W')!;
     const rows = new Map<number, number>(); for (const x of g) if (x.char === 'W') rows.set(Math.round(x.y), Math.min(rows.get(Math.round(x.y)) ?? Infinity, x.x));
     const starts = [...rows.values()];
@@ -30,7 +30,7 @@ describe('marking headings', () => {
     expect(found).toEqual(['Die Französische Revolution', 'Einleitung', 'Ursachen:']);
   });
   it('draws one highlighter bar per heading line, only when switched on', () => {
-    const n = newNote(); n.renderedText = text;
+    const n = newNote(); n.settings.lineStartShift = 0; n.renderedText = text;
     expect(layout(n, []).highlights).toHaveLength(0);
     n.settings = { ...n.settings, highlightHeadings: true };
     const bars = layout(n, []).highlights;
@@ -40,8 +40,8 @@ describe('marking headings', () => {
 });
 
 describe('line starts', () => {
-  it('stay on the margin by default and wander to the right when set', () => {
-    const n = newNote(); n.renderedText = Array.from({ length: 12 }, (_, i) => `Zeile ${i}`).join('\n');
+  it('stay on the margin at 0 % and wander to the right when set', () => {
+    const n = newNote(); n.settings.lineStartShift = 0; n.renderedText = Array.from({ length: 12 }, (_, i) => `Zeile ${i}`).join('\n');
     const starts = (r: ReturnType<typeof layout>) => [...new Map(r.glyphs.filter(g => g.char === 'Z').map(g => [Math.round(g.y), g.x])).values()];
     const plain = starts(layout(n, []));
     expect(Math.max(...plain) - Math.min(...plain)).toBeLessThan(.5);
@@ -50,5 +50,14 @@ describe('line starts', () => {
     expect(Math.max(...moved) - Math.min(...moved)).toBeGreaterThan(4);
     expect(Math.min(...moved)).toBeGreaterThanOrEqual(Math.min(...plain) - .5);
     expect(Math.max(...moved)).toBeLessThanOrEqual(Math.min(...plain) + 16.5);
+  });
+});
+
+describe('new document standards', () => {
+  it('start with 5.5 mm / 12 mm margins and 50 % shifted line starts, taken from the library defaults when set', () => {
+    const a = newNote();
+    expect([a.settings.marginLeft, a.settings.marginRight, a.settings.lineStartShift]).toEqual([5.5, 12, 50]);
+    const b = newNote(undefined, { marginLeft: 7, marginRight: 15, lineStartShift: 0 });
+    expect([b.settings.marginLeft, b.settings.marginRight, b.settings.lineStartShift]).toEqual([7, 15, 0]);
   });
 });

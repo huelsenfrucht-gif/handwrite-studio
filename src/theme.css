@@ -631,3 +631,56 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 @media(max-width:820px){.gn-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}}
 .ws-own-toggle{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-size:13px;font-weight:600;color:var(--hs-navy-2);cursor:pointer}
 .ws-own>.sp-textbox{margin-top:8px}
+
+/* ── Studio: größere, schnellere Bedienelemente ─────────────────────────── */
+/* Kein Doppeltipp-Zoom/Verzögerung, kein grauer iOS-Tippschatten. */
+.view-studio button,.view-studio select,.view-studio summary,.view-studio label,.st-sheet button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.view-studio button:not(:disabled):active,.st-step button:not(:disabled):active{transform:scale(.94);transition:transform .06s}
+.view-studio button{transition:transform .12s,background-color .12s}
+
+/* Eigener Schieber: 44 pt hohe Greiffläche, großer Griff, gefüllte Spur. */
+.hs-slider{position:relative;height:44px;display:flex;align-items:center;touch-action:pan-y;cursor:pointer;outline:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.hs-slider-track{position:relative;flex:1;height:6px;margin:0 13px;border-radius:6px;background:#d8dee8}
+.hs-slider-fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--hs-navy)}
+.hs-slider-thumb{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--hs-navy),0 2px 6px #13254a40;transition:transform .1s}
+.hs-slider:active .hs-slider-thumb{transform:scale(1.12)}
+.hs-slider:focus-visible .hs-slider-thumb{box-shadow:0 0 0 1.5px var(--hs-navy),0 0 0 6px #24406f33}
+.hs-slider-row{display:block}
+.hs-slider-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:-4px}
+.hs-slider-title{font-size:13px;font-weight:600;color:var(--hs-muted)}
+.hs-slider-value{font-size:13px;font-weight:600;color:var(--hs-ink);font-variant-numeric:tabular-nums}
+.zoom-controls .hs-slider{width:130px;flex:none}
+.zoom-controls .hs-slider-track{margin:0 11px}
+.zoom-controls .hs-slider-thumb{width:22px;height:22px;margin:-11px 0 0 -11px}
+@media(max-width:1000px){.zoom-controls .hs-slider{display:none}}
+
+/* Plus/Minus-Felder, Farben, Werkzeuge: Tippflächen mindestens 40–44 pt. */
+.view-studio .number-control{height:44px;border-radius:10px;border-color:var(--hs-line)}
+.view-studio .number-control button{min-width:44px;height:100%;justify-content:center;padding:0;color:var(--hs-navy-2)}
+.view-studio .number-control button:disabled{color:#c3cad6}
+.view-studio .number-control output{font-size:13.5px;font-weight:600;color:var(--hs-ink);font-variant-numeric:tabular-nums}
+.sp .color-swatches{gap:10px}
+.sp .color-swatches button{width:34px;height:34px;min-width:34px}
+.sp .color-swatches input[type=color]{width:38px;height:38px}
+.canvas-toolbar .undo-tools .icon-button,.view-studio .zoom-controls .icon-button,.view-studio .drawing-tools .icon-button{width:42px;height:42px}
+.view-studio .special-body .pen-width select,.sp-fold-body .pen-width select{min-height:40px;padding:6px 10px;font-size:14px}
+.sp-toggle{min-height:40px}
+.sp-toggle svg{padding:8px}
+.view-studio .special-settings>summary{min-height:48px}
+
+/* Einstellungen: Plus/Minus-Zeilen */
+.st-row.st-stepper{font-weight:400}
+.st-step{margin-left:auto;display:flex;align-items:center;gap:4px}
+.st-step button{display:grid;place-items:center;width:40px;height:36px;border:1px solid var(--hs-line);border-radius:9px;background:#fff;color:var(--hs-navy-2);cursor:pointer;touch-action:manipulation}
+.st-step button:disabled{color:#c3cad6;cursor:default}
+.st-step output{min-width:62px;text-align:center;font-size:15px;color:var(--hs-ink);font-variant-numeric:tabular-nums}
+/* Spalte darf nie breiter als die Karte werden (sonst rutschen Werte rechts heraus). */
+.view-studio .special-body{grid-template-columns:minmax(0,1fr)}
+.view-studio .special-body>*{min-width:0}
+.sp .special-body .two-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.view-studio .two-controls .number-control{min-width:0}
+.view-studio .two-controls .number-control button{min-width:36px}
+.view-studio .two-controls .number-control output{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.view-studio .two-controls .number-control small{display:none}
+.view-studio .two-controls .number-control output{overflow:visible}
+.view-studio .special-body .pen-width select{min-width:96px;flex:none}
