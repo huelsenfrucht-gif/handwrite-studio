@@ -36,7 +36,7 @@ export function SettingsSheet(props: {
           <Row icon={<ArchiveRestore size={18} />} label="Sicherung laden" onClick={props.onRestore} chevron />
         </Group>
 
-        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt beim Schreiben in Handschrift (höchstens alle 2 Minuten), vor einer neuen Handschrift und bei Sicherungen. Exporte sind werbefrei.">
+        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt beim Schreiben in Handschrift, vor einer neuen Handschrift und bei Sicherungen. Exporte sind werbefrei.">
           <Row icon={<Megaphone size={18} />} label="Werbe-Einstellungen" onClick={props.onAdPrivacy} chevron />
           <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />
         </Group> : <Group title="App" >

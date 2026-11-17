@@ -3,8 +3,8 @@ import { Camera, Check, ImagePlus, X } from 'lucide-react';
 import { recognizeLine } from './recognizer';
 import { segmentPage } from './segment';
 import { correctGermanWord, loadGermanLexicon } from './lexicon';
-import { inkImage, joinLines, linesToText } from './boardAnalysis';
-import { visionText } from '../native';
+import { documentToText, inkImage, joinLines, linesToText } from './boardAnalysis';
+import { visionDocument, visionText } from '../native';
 
 const canvasOf = (rgba: Uint8ClampedArray, width: number, height: number) => { const c = document.createElement('canvas'); c.width = width; c.height = height; c.getContext('2d')!.putImageData(new ImageData(rgba, width, height), 0, 0); return c; };
 const grayToRGBA = (gray: Uint8ClampedArray) => { const out = new Uint8ClampedArray(gray.length * 4); for (let i = 0; i < gray.length; i++) { out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = gray[i]; out[i * 4 + 3] = 255; } return out; };
@@ -73,10 +73,28 @@ const correct = (text: string, lexicon?: Lexicon) => {
  * lines, paragraphs, indented points and tables ("| a | b |") as they stand on the photo.
  * Only the text is taken over; drawings on the board are not copied.
  */
+/** Prompt for an AI chat that copies the photo exactly; every line ends with ¦ so no copy method can lose a line. */
+export const TRANSCRIBE_PROMPT = `Schreibe den Text auf dem angehängten Foto (Tafel, Heft, Buch oder Arbeitsblatt) exakt ab.
+
+Regeln:
+- Jede Zeile genau so wie auf dem Foto: gleiche Zeilenumbrüche, nichts zusammenfassen, nichts weglassen, nichts ergänzen.
+- Setze an das Ende JEDER Zeile das Zeichen ¦ – auch an leere Zeilen (dann steht dort nur ¦).
+- Tabellen: jede Tabellenzeile als | Zelle | Zelle | und danach ¦.
+- Eingerückte Unterpunkte mit einem Tabulator am Zeilenanfang.
+- Keine Überschrift, keine Erklärung, kein Markdown, keine Zeichnungen beschreiben.
+- Benutze das Zeichen ¦ sonst nirgends.`;
+/** Turns an AI reply in the ¦ format back into lines, however it was copied. */
+export function fromMarkedLines(reply: string) {
+  if (!/[¦￤]/.test(reply)) return reply.trim();
+  const lines = reply.replace(/\r/g, '').split(/[¦￤]/).map(l => l.replace(/^\s*\n/, '').replace(/\n/g, ' ').replace(/[ ]+$/,'').replace(/^ (?=\S)/, ''));
+  if (!lines.at(-1)?.trim()) lines.pop();
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function PhotoText({ initialFiles, onClose, onText }: { initialFiles?: File[]; onClose: () => void; onText: (text: string) => void }) {
   const input = useRef<HTMLInputElement>(null), cancelled = useRef(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [photo, setPhoto] = useState('');
-  const [text, setText] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null), [aiOpen, setAiOpen] = useState(false), [aiReply, setAiReply] = useState('');
   useEffect(() => () => { if (photo) URL.revokeObjectURL(photo); }, [photo]);
   useEffect(() => () => { cancelled.current = true; }, []);
   // Photos shared from the Photos app are read right away.
@@ -89,7 +107,11 @@ export function PhotoText({ initialFiles, onClose, onText }: { initialFiles?: Fi
     for (let f = 0; f < files.length; f++) {
       // In the iOS app Apple's own text recognition reads print, boards and handwriting best.
       setBusy(`Foto ${f + 1}/${files.length} wird gelesen …`);
-      const original = await loadImage(files[f], 2400), vision = await visionText(canvasOf(original.data, original.width, original.height));
+      const original = await loadImage(files[f], 2800), photo = canvasOf(original.data, original.width, original.height);
+      // iPadOS 26: Apple's document reading keeps every line, paragraphs and tables exactly.
+      const doc = await visionDocument(photo);
+      if (doc) { parts.push(documentToText(doc)); continue; }
+      const vision = await visionText(photo);
       if (vision?.length) { parts.push(linesToText(vision.map(l => ({ text: l.text, x: l.x * original.width, y: l.y * original.height, width: l.width * original.width, height: l.height * original.height })))); continue; }
       const image = await loadImage(files[f], 2200), { gray } = inkImage(image.data, image.width, image.height), rgba = grayToRGBA(gray), source = canvasOf(rgba, image.width, image.height);
       const found = segmentPage(rgba, image.width, image.height), heights = found.map(r => r.height).sort((a, b) => a - b), median = heights[Math.floor(heights.length / 2)] || 1;
@@ -133,6 +155,7 @@ export function PhotoText({ initialFiles, onClose, onText }: { initialFiles?: Fi
       {error && <p className="warning-text">{error}</p>}
       {text !== null && !busy && <div className="photo-result">
         {photo && <img src={photo} alt="Dein Foto" />}
+        <div className="photo-ai"><button className="text-link" onClick={() => setAiOpen(o => !o)}>Nicht genau genug? Mit KI abschreiben lassen</button>{aiOpen && <div className="photo-ai-body"><p>1. Prompt kopieren · 2. Bei der KI mit diesem Foto einfügen · 3. Antwort hier einfügen</p><button className="button" onClick={() => void navigator.clipboard?.writeText(TRANSCRIBE_PROMPT)}>Prompt kopieren</button><textarea value={aiReply} placeholder="Antwort der KI hier einfügen …" onChange={e => setAiReply(e.target.value)} /><button className="button primary" disabled={!aiReply.trim()} onClick={() => { setText(fromMarkedLines(aiReply)); setAiOpen(false); setAiReply(''); }}>Antwort übernehmen</button></div>}</div>
         <label>Erkannter Text – bitte kurz prüfen<small>Tabellen stehen als „| Spalte | Spalte |“ und werden mit Linien geschrieben.</small><textarea value={text} maxLength={100000} onChange={e => setText(e.target.value)} /></label>
         <div className="button-row"><button className="button" onClick={() => input.current?.click()}><ImagePlus size={16} />Anderes Foto</button><button className="button primary" disabled={!text.trim()} onClick={() => onText(text.trim())}><Check size={16} />In meine Handschrift umwandeln</button></div>
       </div>}

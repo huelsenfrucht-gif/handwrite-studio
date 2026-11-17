@@ -13,6 +13,7 @@ public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "HandwriteNative"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "recognizeDocument", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeSharedImages", returnType: CAPPluginReturnPromise),
     ]
 
@@ -41,6 +42,52 @@ public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve(["lines": lines])
             } catch {
                 call.reject("Texterkennung fehlgeschlagen: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: Document structure (iOS 26): paragraphs, exact lines and tables
+
+    /// Reads a photo of a board, a book page or a worksheet as a document: every printed line stays a line,
+    /// tables come back as "| a | b |" rows, blocks are separated by an empty line. Not available → reject.
+    @objc func recognizeDocument(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("image"), let data = Data(base64Encoded: base64), let image = UIImage(data: data), let cgImage = image.cgImage else {
+            call.reject("Das Bild konnte nicht gelesen werden."); return
+        }
+        guard #available(iOS 26.0, *) else { call.reject("unavailable"); return }
+        Task {
+            do {
+                var request = RecognizeDocumentsRequest()
+                request.textRecognitionOptions.recognitionLanguages = [Locale.Language(identifier: "de-DE"), Locale.Language(identifier: "en-US")]
+                request.textRecognitionOptions.useLanguageCorrection = true
+                let observations = try await request.perform(on: cgImage)
+                // Blocks in Vision's reading order with their position (top-left origin, normalised).
+                var blocks: [[String: Any]] = []
+                func rect(_ r: NormalizedRect) -> [String: Any] { ["x": r.origin.x, "y": 1 - r.origin.y - r.height, "width": r.width, "height": r.height] }
+                for observation in observations {
+                    let doc = observation.document
+                    var tableBoxes: [CGRect] = []
+                    for table in doc.tables {
+                        let rows = table.rows.map { row in row.map { $0.content.text.transcript.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines) } }
+                        let box = table.boundingRegion.boundingBox
+                        tableBoxes.append(CGRect(x: box.origin.x, y: box.origin.y, width: box.width, height: box.height))
+                        blocks.append(["kind": "table", "rows": rows].merging(rect(box)) { a, _ in a })
+                    }
+                    for paragraph in doc.paragraphs {
+                        let box = paragraph.boundingRegion.boundingBox
+                        let c = CGPoint(x: box.origin.x + box.width / 2, y: box.origin.y + box.height / 2)
+                        if tableBoxes.contains(where: { $0.insetBy(dx: -0.005, dy: -0.005).contains(c) }) { continue }
+                        let lines: [[String: Any]] = paragraph.lines.compactMap { line in
+                            guard let t = line.topCandidates(1).first?.string, !t.isEmpty else { return nil }
+                            return ["text": t].merging(rect(line.boundingBox)) { a, _ in a }
+                        }
+                        if lines.isEmpty { continue }
+                        blocks.append(["kind": "text", "lines": lines].merging(rect(box)) { a, _ in a })
+                    }
+                }
+                call.resolve(["blocks": blocks])
+            } catch {
+                call.reject("Dokumenterkennung fehlgeschlagen: \(error.localizedDescription)")
             }
         }
     }

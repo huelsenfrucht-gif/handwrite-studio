@@ -169,3 +169,32 @@ export function diagramOutside(list: Component[], boxes: Region[], textHeight: n
     return w > 0 && h > 0 && w * h >= c.width * c.height * .6;
   })).map(c => c.id);
 }
+
+type Box = { x: number; y: number; width: number; height: number };
+export type DocumentBlock = Box & ({ kind: 'table'; rows: string[][] } | { kind: 'text'; lines: (Box & { text: string })[] });
+/**
+ * Apple's document reading (paragraphs in reading order, exact lines, tables) → text with the same layout:
+ * every line stays a line, items on one row (e.g. "Name: … Datum: …") stay on one row,
+ * an empty line only where there is real space, tables as "| a | b |".
+ */
+export function documentToText(blocks: DocumentBlock[]) {
+  // Vision splits a printed line at every gap (e.g. at the blanks of a gap text). Pieces at the same
+  // height are joined back into one line, so every line on the photo is exactly one line of text.
+  const pieces = blocks.flatMap(b => b.kind === 'text' ? b.lines.filter(l => l.text.trim()) : []);
+  const heights = pieces.map(l => l.height).sort((a, b) => a - b), lh = heights[Math.floor(heights.length / 2)] || .015;
+  type Row = { y: number; bottom: number; text: string; table?: boolean };
+  const rows: Row[] = [];
+  for (const l of [...pieces].sort((a, b) => a.y + a.height / 2 - (b.y + b.height / 2))) {
+    const mid = l.y + l.height / 2, row = rows.find(r => !r.table && Math.abs((r.y + r.bottom) / 2 - mid) < Math.min(lh, l.height) * .55);
+    if (row) (row as Row & { parts: typeof pieces }).parts.push(l); else rows.push(Object.assign({ y: l.y, bottom: l.y + l.height, text: '' }, { parts: [l] }));
+  }
+  for (const r of rows as (Row & { parts: typeof pieces })[]) {
+    r.parts.sort((a, b) => a.x - b.x);
+    r.text = r.parts.map((p, i) => (i === 0 ? '' : p.x - (r.parts[i - 1].x + r.parts[i - 1].width) > lh * 2.5 ? '   ' : ' ') + p.text.trim()).join('');
+    r.y = Math.min(...r.parts.map(p => p.y)); r.bottom = Math.max(...r.parts.map(p => p.y + p.height));
+  }
+  for (const b of blocks) if (b.kind === 'table') rows.push({ y: b.y, bottom: b.y + b.height, table: true, text: b.rows.map(r => `| ${r.map(c => c.replace(/\|/g, '/').trim()).join(' | ')} |`).join('\n') });
+  // Lines inside a table area belong to the table.
+  const tables = rows.filter(r => r.table), kept = rows.filter(r => r.table || !tables.some(t => (r.y + r.bottom) / 2 > t.y && (r.y + r.bottom) / 2 < t.bottom)).sort((a, b) => a.y - b.y);
+  return kept.map((r, i) => (i === 0 ? '' : r.table || kept[i - 1].table || r.y - kept[i - 1].bottom > lh * 1.3 ? '\n\n' : '\n') + r.text).join('').replace(/\n{3,}/g, '\n\n').trim();
+}

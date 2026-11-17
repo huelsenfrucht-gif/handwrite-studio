@@ -115,7 +115,7 @@ Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem 
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
-Die App läuft komplett offline auf dem Gerät, ohne Konto. Zum Testen: „Neues Dokument“ → Text eintippen → „In Handschrift verwandeln“ (nutzt die mitgelieferte Demo-Handschrift). Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Finger oder Apple Pencil schreiben. Werbung (Google AdMob) erscheint beim Umwandeln von Text, höchstens alle 2 Minuten; ab 4 Seiten wird vorher um Zustimmung für ein Belohnungsvideo gebeten.
+Die App läuft komplett offline auf dem Gerät, ohne Konto. Zum Testen: „Neues Dokument“ → Text eintippen → „In Handschrift verwandeln“ (nutzt die mitgelieferte Demo-Handschrift). Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Finger oder Apple Pencil schreiben. Werbung (Google AdMob) erscheint beim Umwandeln von Text; ab 4 Seiten wird vorher um Zustimmung für ein Belohnungsvideo gebeten.
 ```
 
 ---

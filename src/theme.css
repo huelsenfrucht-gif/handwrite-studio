@@ -489,3 +489,38 @@ input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px var
 .ex-info[open] summary svg{transform:rotate(180deg)}
 .ex-info p{margin:0 0 10px;font-size:13.5px;line-height:1.5;color:var(--hs-muted)}
 .ex-info a{display:inline-block;margin:0 0 12px;font-size:13px;color:var(--hs-navy-2)}
+
+/* Studio: feste Oberfläche – nur die linke Spalte und das Blatt scrollen, nie die ganze Seite */
+html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;overscroll-behavior:none}
+.app-shell.view-studio{position:fixed;inset:0;display:flex;overflow:hidden}
+.view-studio .main{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow:hidden}
+.view-studio .document-tabs{flex:none}
+.view-studio .topbar,.view-studio .workspace-footnote{display:none}
+.view-studio .workspace{flex:1;min-height:0!important;height:auto!important;display:grid;grid-template-columns:330px minmax(0,1fr);overflow:hidden}
+.view-studio .controls.sp{height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.view-studio .preview-panel{min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.view-studio .paper-stage{flex:1;min-height:0;max-height:none!important;overflow:auto;overscroll-behavior:contain}
+.view-studio .preview-footer{flex:none}
+@media(max-width:900px){.view-studio .workspace{grid-template-columns:290px minmax(0,1fr)}}
+.toolbar-export{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border:0;border-radius:10px;background:var(--hs-navy);color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.toolbar-export:hover{background:var(--hs-navy-hover)}
+@media(max-width:1000px){.toolbar-export{padding:0 10px}.zoom-controls input{display:none}}
+
+/* Linke Spalte: ruhige Abschnitts-Titel statt großer Überschriften */
+.sp-title{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--hs-muted)}
+.sp-card{gap:12px}
+
+/* Arbeitsblatt: Prüfschritt vor dem Einsetzen */
+.review-bar{flex:none;display:flex;align-items:center;gap:10px;margin:10px 22px 0;padding:12px 14px;border:1px solid var(--hs-line-strong);border-radius:14px;background:#fff;box-shadow:0 6px 18px -10px #13254a40}
+.review-text{flex:1;min-width:0;display:grid;gap:2px}
+.review-text strong{font-size:15px;color:var(--hs-ink)}
+.review-text span{font-size:13px;color:var(--hs-muted);line-height:1.4}
+.review-bar .button{flex:none;min-height:36px;border-radius:10px;background:#fff;border:1px solid var(--hs-line);color:var(--hs-ink);font-size:13.5px}
+.review-bar .button.active{background:var(--hs-soft);border-color:var(--hs-navy-2)}
+.review-bar .button.primary{background:var(--hs-navy);border-color:var(--hs-navy);color:#fff}
+@media(max-width:1000px){.review-bar{flex-wrap:wrap}.review-text{flex-basis:100%}}
+.photo-ai{margin:6px 0 10px}
+.photo-ai .text-link{border:0;background:none;padding:0;color:var(--hs-navy-2);font-weight:600;font-size:13.5px;cursor:pointer}
+.photo-ai-body{display:grid;gap:8px;margin-top:10px;padding:12px;border:1px solid var(--hs-line);border-radius:12px;background:var(--hs-bg)}
+.photo-ai-body p{margin:0;font-size:13px;color:var(--hs-muted)}
+.photo-ai-body textarea{min-height:110px;border:1px solid var(--hs-line);border-radius:10px;padding:10px;font:inherit;font-size:14px}
