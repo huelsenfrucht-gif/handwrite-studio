@@ -94,7 +94,7 @@ handschrift,schrift,goodnotes,arbeitsblatt,hausaufgaben,schule,notizen,text,penc
 
 **Neues in dieser Version:** `Erste Version.`
 
-**Screenshots (iPad 13″):** die vier Bilder aus `appstore/screenshots-ipad-13/` in dieser Reihenfolge hochladen (2064 × 2752 – genau die geforderte Größe).
+**Screenshots (iPad 13″):** die fünf Bilder aus `appstore/screenshots-ipad-13/` in der Reihenfolge der Nummern hochladen (2064 × 2752, hochkant – genau die geforderte Größe).
 
 **App-Icon:** ist bereits in der App enthalten (`appstore/app-icon-1024.png` nur als Vorschau).
 
