@@ -561,3 +561,6 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 .sp-fold-body .pen-width{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;color:var(--hs-muted)}
 .sp-fold-body .pen-width select{border:1px solid var(--hs-line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--hs-ink)}
 .sp-fold-body .field-list{max-height:none}
+/* Die Zeile der Arbeitsfläche darf nie höher als der Bildschirm werden, sonst kann die linke Spalte nicht scrollen */
+.view-studio .workspace{grid-template-rows:minmax(0,1fr)}
+.view-studio .controls.sp{min-height:0;max-height:100%;touch-action:pan-y}
