@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
-import { layout, resolvedDrawingInk } from './engine';
+import { firstPageLayout, resolvedDrawingInk } from './engine';
 
 export type LibraryView = 'documents' | 'favorites' | 'profiles';
 type Filter = 'all' | 'notes' | 'folders';
@@ -218,10 +218,42 @@ const NoteCover = memo(function NoteCover({ note, profiles, templates }: { note:
   return <span className={`gn-page paper-${note.settings.paper}`} style={background ? { backgroundImage: `url(${background})` } : undefined}><MiniPreview note={note} profiles={profiles} /></span>;
 });
 
-export function MiniPreview({ note, profiles }: { note: Note; profiles: Profile[] }) {
-  const data = layout(note, profiles);
-  return <svg viewBox="0 0 794 1123" aria-hidden="true">{data.glyphs.filter(g => g.page === 0 && !note.edits[g.id]?.deleted).slice(0, 600).map(g => { const e = note.edits[g.id]; return <g key={g.id} transform={`translate(${e?.dx || 0},${e?.dy || 0})`}>{g.raster && <image href={g.raster.data} x={g.raster.x} y={g.raster.y} width={g.raster.width} height={g.raster.height} preserveAspectRatio="none" />}{!g.hiddenByRaster && g.strokes.filter((_, i) => !e?.hiddenStrokes?.includes(i)).map((s, i) => <path key={i} d={pathData(s)} fill="none" stroke={e?.color || note.settings.color} strokeWidth={note.settings.penWidth + 1.5} strokeLinecap="round" />)}</g>; })}{(note.drawings || []).filter(d => d.page === 0 && !d.deleted).flatMap(d => resolvedDrawingInk(d).map((ink, i) => <path key={`${d.id}-${i}`} d={pathData(ink.points)} fill="none" stroke={ink.color} strokeWidth={d.penWidth * d.scale + 1} strokeLinecap="round" />))}</svg>;
+// Covers are drawn once per document version and kept, so switching views or folding the sidebar
+// does not lay out every document again (that made the library stutter with many documents).
+const coverCache = new Map<string, { strokes: { d: string; color: string; w: number }[]; rasters: { href: string; x: number; y: number; w: number; h: number }[] }>();
+function coverData(note: Note, profiles: Profile[]) {
+  const key = `${note.id}:${note.updated}:${note.settings.profileId}:${profiles.find(p => p.id === note.settings.profileId)?.updated || ''}`;
+  let hit = coverCache.get(key);
+  if (hit) return hit;
+  const strokes: { d: string; color: string; w: number }[] = [], rasters: { href: string; x: number; y: number; w: number; h: number }[] = [];
+  const byColor = new Map<string, string[]>();
+  for (const g of firstPageLayout(note, profiles).slice(0, 900)) {
+    const e = note.edits[g.id]; if (e?.deleted) continue;
+    const dx = e?.dx || 0, dy = e?.dy || 0, color = e?.color || note.settings.color;
+    if (g.raster) rasters.push({ href: g.raster.data, x: g.raster.x + dx, y: g.raster.y + dy, w: g.raster.width, h: g.raster.height });
+    if (g.hiddenByRaster) continue;
+    const list = byColor.get(color) || []; byColor.set(color, list);
+    g.strokes.forEach((s, i) => { if (!e?.hiddenStrokes?.includes(i)) list.push(pathData(dx || dy ? s.map(p => ({ ...p, x: p.x + dx, y: p.y + dy })) : s)); });
+  }
+  for (const [color, ds] of byColor) strokes.push({ d: ds.join(' '), color, w: note.settings.penWidth + 1.5 });
+  for (const d of (note.drawings || []).filter(d => d.page === 0 && !d.deleted)) for (const ink of resolvedDrawingInk(d)) strokes.push({ d: pathData(ink.points), color: ink.color, w: d.penWidth * d.scale + 1 });
+  hit = { strokes, rasters };
+  if (coverCache.size > 400) coverCache.delete(coverCache.keys().next().value!);
+  coverCache.set(key, hit);
+  return hit;
 }
+export const MiniPreview = memo(function MiniPreview({ note, profiles }: { note: Note; profiles: Profile[] }) {
+  // Drawn only when the cover comes into view; until then an empty page (no work for off-screen covers).
+  const ref = useRef<SVGSVGElement>(null), [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el || visible) return;
+    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return; }
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { setVisible(true); io.disconnect(); } }, { rootMargin: '300px' });
+    io.observe(el); return () => io.disconnect();
+  }, [visible]);
+  const data = visible ? coverData(note, profiles) : null;
+  return <svg ref={ref} viewBox="0 0 794 1123" aria-hidden="true">{data?.rasters.map((r, i) => <image key={i} href={r.href} x={r.x} y={r.y} width={r.w} height={r.h} preserveAspectRatio="none" />)}{data?.strokes.map((s, i) => <path key={i} d={s.d} fill="none" stroke={s.color} strokeWidth={s.w} strokeLinecap="round" />)}</svg>;
+});
 
 function FolderIcon({ color }: { color: string }) {
   return <svg className="gn-folder-svg" viewBox="0 0 210 170" aria-hidden="true">

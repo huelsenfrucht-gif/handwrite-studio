@@ -81,6 +81,7 @@ Regeln:
 - Setze an das Ende JEDER Zeile das Zeichen ¦ – auch an leere Zeilen (dann steht dort nur ¦).
 - Tabellen: jede Tabellenzeile als | Zelle | Zelle | und danach ¦.
 - Eingerückte Unterpunkte mit einem Tabulator am Zeilenanfang.
+- Schreibe in der Sprache, die auf dem Foto steht – nichts übersetzen.
 - Keine Überschrift, keine Erklärung, kein Markdown, keine Zeichnungen beschreiben.
 - Benutze das Zeichen ¦ sonst nirgends.`;
 /** Turns an AI reply in the ¦ format back into lines, however it was copied. */

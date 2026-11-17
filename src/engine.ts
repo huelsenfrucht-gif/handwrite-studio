@@ -207,6 +207,11 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  const highlights=[...bars.values()].map(b=>({...b,x:b.x-3,width:b.width+6}));
  return {glyphs,highlights,pages:page+1,missing:[...missing],fallback:[...fallback],originalWords,contextualWords,rasterWords};
 }
+/** First page only, without touching the layout cache (library covers). */
+export function firstPageLayout(note: Note, profiles: Profile[]) {
+ const short={...note,renderedText:note.renderedText.slice(0,3000)};
+ return layoutCore(short,profiles).glyphs.filter(g=>g.page===0);
+}
 export function layout(note: Note, profiles: Profile[]) {
  let cache=layoutCache.get(profiles);if(!cache){cache=new Map();layoutCache.set(profiles,cache);}
  const key=JSON.stringify(note.settings)+'\u0000'+note.renderedText+'\u0000'+JSON.stringify(note.fields||[]);let core=cache.get(key);

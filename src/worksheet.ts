@@ -230,7 +230,7 @@ export function answerPrompt(fields: Field[]) {
     'Ankreuzaufgaben (Multiple Choice, Richtig/Falsch) und kleine Kästchen zum Zuordnen oder Nummerieren gehören nicht dazu – ignoriere sie komplett.',
     ...order,
     '',
-    `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Schreibe auf Deutsch, so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
+    `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Antworte in der Sprache des Arbeitsblatts (z. B. englisches Blatt → englische Antworten), so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
     '',
     'Format:',
     `Antwort 1${ANSWER_END}`,

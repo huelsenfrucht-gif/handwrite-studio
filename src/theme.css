@@ -564,3 +564,14 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 /* Die Zeile der Arbeitsfläche darf nie höher als der Bildschirm werden, sonst kann die linke Spalte nicht scrollen */
 .view-studio .workspace{grid-template-rows:minmax(0,1fr)}
 .view-studio .controls.sp{min-height:0;max-height:100%;touch-action:pan-y}
+
+/* Ordner-Symbol bleibt immer oben links stehen, auch wenn man die Tabs seitlich schiebt */
+.document-tabs{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
+.document-tabs>.library-home{position:sticky;left:0;z-index:3;flex:none;background:var(--hs-navy);margin-bottom:0;border-radius:0;box-shadow:12px 0 12px -10px #0b1730}
+.document-tabs>.library-home:hover{background:var(--hs-navy)}
+.document-tabs>button:not(.library-home):not(.tab-new){flex:none}
+/* Seitenleiste der Bibliothek: Ein-/Ausklappen per Transform statt Breite, damit nichts neu umbricht */
+.gn-sidebar{will-change:transform}
+.gn-grid{contain:layout paint}
+.gn-cover-wrap{contain:layout paint}
+.gn-main{transition:none!important}
