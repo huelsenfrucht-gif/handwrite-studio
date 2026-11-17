@@ -5,60 +5,112 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Handwrite Studio – Dein Text in deiner Handschrift</title>
 <meta name="description" content="Handwrite Studio für iPad: getippten Text in deine eigene Handschrift verwandeln, Arbeitsblätter ausfüllen, als PDF exportieren.">
+<meta name="theme-color" content="#13254a">
 <link rel="icon" href="icon.svg">
-<style>
-:root{--navy:#13254a;--navy2:#24406f;--ink:#14213d;--muted:#5d6a80;--bg:#f4f6fa;--line:#dde3ec;--yellow:#ffdd66}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-a{color:var(--navy2)}
-.hero{background:radial-gradient(120% 90% at 50% 0%,#2d4c80 0%,var(--navy) 60%,#0b1730 100%);color:#fff;padding:64px 20px 72px;text-align:center}
-.hero img{width:112px;height:112px;border-radius:26px;box-shadow:0 18px 40px -16px #000a}
-.hero h1{font-family:ui-serif,"New York",Georgia,serif;font-size:clamp(36px,6vw,58px);line-height:1.1;margin:22px 0 10px;letter-spacing:-1px}
-.hero h1 span{color:var(--yellow);display:block}
-.hero p{max-width:560px;margin:0 auto 26px;color:#d6deec}
-.badge{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:14px;background:#fff;color:var(--navy);font-weight:700;text-decoration:none}
-.badge small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
-main{max-width:920px;margin:0 auto;padding:48px 20px 24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
-.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
-.card h3{margin:0 0 6px;font-size:18px}
-.card p{margin:0;color:var(--muted);font-size:15.5px}
-.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:14px;margin-bottom:10px}
-h2{font-family:ui-serif,"New York",Georgia,serif;font-size:30px;margin:44px 0 16px}
-.note{margin-top:28px;padding:16px 18px;border-radius:14px;background:#fff;border:1px solid var(--line);color:var(--muted);font-size:15px}
-footer{max-width:920px;margin:0 auto;padding:28px 20px 48px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 22px;font-size:15px;color:var(--muted)}
-footer a{color:var(--ink);text-decoration:none}footer a:hover{text-decoration:underline}
-</style>
+<link rel="apple-touch-icon" href="img/icon.png">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<section class="hero">
-  <img src="app-icon.png" alt="App-Symbol von Handwrite Studio">
-  <h1>Dein Text.<span>In deiner Handschrift.</span></h1>
-  <p>Handwrite Studio für iPad verwandelt getippten Text in deine eigene Handschrift – Buchstabe für Buchstabe aus deinem persönlichen Alphabet.</p>
-  <a class="badge" href="#" aria-disabled="true"><span>Bald im App Store<small>für iPad · kostenlos mit Werbung</small></span></a>
-</section>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="img/icon.png" alt=""><span>Handwrite Studio</span></a>
+    <nav class="nav" aria-label="Hauptnavigation">
+      <a href="#so-gehts">So geht’s</a>
+      <a href="#arbeitsblaetter">Arbeitsblätter</a>
+      <a href="#funktionen">Funktionen</a>
+      <a href="support.html">Hilfe</a>
+      <a class="btn btn-dark" href="#laden">Für iPad laden</a>
+    </nav>
+  </div>
+</header>
+
 <main>
-  <h2>So funktioniert’s</h2>
-  <div class="grid">
-    <div class="card"><span class="num">1</span><h3>Handschrift einlernen</h3><p>Schreib a–z und A–Z einmal mit dem Apple Pencil.</p></div>
-    <div class="card"><span class="num">2</span><h3>Text eingeben</h3><p>Tippen, einfügen oder aus PDF und Foto übernehmen.</p></div>
-    <div class="card"><span class="num">3</span><h3>In Handschrift verwandeln</h3><p>Mit Absätzen, Listen, Tabellen und markierten Überschriften.</p></div>
-  </div>
-  <h2>Was die App kann</h2>
-  <div class="grid">
-    <div class="card"><h3>Arbeitsblätter ausfüllen</h3><p>Antwortfelder werden erkannt, du prüfst jede Antwort, dann wird sie in deiner Handschrift eingesetzt.</p></div>
-    <div class="card"><h3>Text aus Fotos</h3><p>Tafel, Heft oder Buchseite fotografieren und den Text übernehmen (experimentell).</p></div>
-    <div class="card"><h3>Export</h3><p>Als PDF für jede Notiz-App und zum Drucken, als SVG oder als Datei zum Öffnen in Goodnotes.</p></div>
-    <div class="card"><h3>Deine Dokumente bleiben bei dir</h3><p>Kein Konto, keine Cloud: Dokumente und Handschriften werden nur auf deinem iPad gespeichert.</p></div>
-  </div>
-  <p class="note">Handwrite Studio ist kostenlos und wird durch Werbung von Google finanziert. Was dabei übertragen wird, steht in der <a href="datenschutz.html">Datenschutzerklärung</a>. Goodnotes ist eine Marke ihres Inhabers; Handwrite Studio ist unabhängig und steht in keiner Verbindung dazu.</p>
+  <section class="wrap hero">
+    <div class="hero-text">
+      <p class="eyebrow">Für iPad und Apple Pencil</p>
+      <h1>Getippt. Und trotzdem <span class="mark">von dir</span> geschrieben.</h1>
+      <p class="lead">Handwrite Studio setzt deinen Text aus deinem eigenen Alphabet zusammen – mit Absätzen, Listen, Tabellen und Überschriften. Das Ergebnis sieht aus wie eine saubere Seite aus deinem Heft.</p>
+      <div class="cta">
+        <!-- Nach der Veröffentlichung: href auf den App-Store-Link setzen, Text „Laden im“ -->
+        <a id="laden" class="store" href="#laden"><small>Bald im</small><b>App Store</b></a>
+        <a class="btn btn-light" href="#so-gehts">So funktioniert’s</a>
+      </div>
+      <p class="fineprint">Kostenlos · kein Konto · Dokumente bleiben auf deinem iPad</p>
+    </div>
+    <figure class="device">
+      <img src="img/studio.jpg" width="1200" height="1600" alt="Das Studio von Handwrite Studio: links Text und Einstellungen, rechts die in Handschrift geschriebene Seite mit markierten Überschriften">
+    </figure>
+  </section>
+
+  <section id="so-gehts" class="band">
+    <div class="wrap">
+      <h2>In drei Schritten zur eigenen Seite</h2>
+      <ol class="steps">
+        <li><span class="n">01</span><h3>Alphabet einlernen</h3><p>Einmal a–z und A–Z mit dem Apple Pencil schreiben. Weitere Durchläufe sorgen für natürliche Abwechslung.</p></li>
+        <li><span class="n">02</span><h3>Text eingeben</h3><p>Tippen, einfügen oder aus einem PDF übernehmen. Formatierung wie Listen und Tabellen bleibt erhalten.</p></li>
+        <li><span class="n">03</span><h3>In Handschrift verwandeln</h3><p>Ein Tipp, und die Seite steht. Einzelne Buchstaben lassen sich danach noch verschieben oder umfärben.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="arbeitsblaetter" class="wrap split">
+    <figure class="device">
+      <img src="img/worksheet.jpg" width="1200" height="1600" loading="lazy" alt="Ein ausgefülltes Arbeitsblatt: Lücken, Tabellenzellen und Antwortlinien sind in Handschrift beschrieben">
+    </figure>
+    <div class="split-text">
+      <p class="eyebrow">Arbeitsblätter</p>
+      <h2>Lücken, Tabellen und Antwortlinien – <span class="mark">genau dort</span>, wo sie hingehören.</h2>
+      <p class="lead">Lade ein Arbeitsblatt als Foto oder PDF. Die App findet die freien Stellen und schreibt deine Antworten hinein, so groß, wie das Feld es zulässt.</p>
+      <ol class="flow">
+        <li><span class="dot">1</span><div><strong>Felder erkennen</strong><span class="t">Name, Datum und Ankreuzkästchen bleiben frei. Fehlt ein Feld, ziehst du es selbst auf.</span></div></li>
+        <li><span class="dot">2</span><div><strong>Antworten eintragen</strong><span class="t">Selbst tippen – oder mit einem passenden Prompt aus einem KI-Dienst deiner Wahl holen.</span></div></li>
+        <li><span class="dot">3</span><div><strong>Prüfen und einsetzen</strong><span class="t">Jede Antwort steht vorab im Feld. Erst wenn alles stimmt, wird geschrieben.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="funktionen" class="features band">
+    <div class="wrap">
+      <h2>Was sonst noch drin ist</h2>
+      <p class="lead">Gedacht für Lernzettel, Mitschriften und Zusammenfassungen, die nach dir aussehen sollen.</p>
+      <div class="features-row">
+        <div class="shot"><img src="img/tables.jpg" loading="lazy" alt="Zusammenfassung zur Zelle mit handgezogener Tabelle und grün markierten Überschriften"></div>
+        <dl class="feat">
+          <div><dt>Tabellen und Textmarker</dt><dd>Tabellen mit gezogenen Linien, alle Überschriften auf Wunsch markiert – Farbe frei wählbar.</dd></div>
+          <div><dt>Papier nach Wahl</dt><dd>Liniert, kariert, blanko oder ein eigenes Bild bzw. PDF als Hintergrund.</dd></div>
+          <div><dt>Export als PDF</dt><dd>Für jede Notiz-App und zum Drucken. Außerdem als SVG oder als Datei zum Öffnen in Goodnotes.</dd></div>
+          <div><dt>Text aus Fotos <span class="tag">experimentell</span></dt><dd>Tafel, Heft oder Buchseite fotografieren und den Text übernehmen.</dd></div>
+          <div><dt>Bibliothek mit Ordnern</dt><dd>Dokumente sortieren, favorisieren und per Ziehen in Ordner legen.</dd></div>
+          <div><dt>Hoch- und Querformat</dt><dd>Gebaut für das iPad, mit Finger und Apple Pencil.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="privacy">
+    <div class="wrap">
+      <div>
+        <h2>Deine Dokumente bleiben auf deinem iPad.</h2>
+        <p>Kein Konto, keine Cloud, kein Upload deiner Texte, Fotos oder Handschriften. Die App ist kostenlos und wird durch Werbung von Google finanziert; welche Geräte- und Nutzungsdaten dabei übertragen werden, steht offen in der Datenschutzerklärung.</p>
+      </div>
+      <div class="links">
+        <a class="l1" href="datenschutz.html">Datenschutzerklärung lesen <span aria-hidden="true">→</span></a>
+        <a class="l2" href="support.html">Hilfe und Kontakt <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
 </main>
-<footer>
-  <span>© 2026 Handwrite Studio</span>
-  <a href="support.html">Hilfe &amp; Kontakt</a>
-  <a href="datenschutz.html">Datenschutz</a>
-  <a href="impressum.html">Impressum</a>
-  <a href="lizenzen.html">Lizenzen</a>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="about"><b>Handwrite Studio</b><span>Goodnotes ist eine Marke ihres Inhabers. Handwrite Studio ist ein unabhängiges Produkt und steht in keiner Verbindung zu Goodnotes.</span></div>
+    <nav aria-label="Rechtliches">
+      <a href="support.html">Hilfe &amp; Kontakt</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="impressum.html">Impressum</a>
+      <a href="lizenzen.html">Lizenzen</a>
+    </nav>
+  </div>
 </footer>
 </body>
 </html>
