@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Camera, Check, ChevronDown, ChevronRight, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { Camera, Check, ChevronRight, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { firstPageLayout, resolvedDrawingInk } from './engine';
 

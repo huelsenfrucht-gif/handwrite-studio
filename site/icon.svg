@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#24406f"/><stop offset="1" stop-color="#13254a"/></linearGradient>
+  <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#060f22" flood-opacity=".45"/></filter>
+ </defs>
+ <rect width="1024" height="1024" fill="url(#bg)"/>
+ <g transform="rotate(-7 512 540)" filter="url(#sh)">
+  <rect x="222" y="190" width="580" height="700" rx="34" fill="#ffffff"/>
+  <g stroke="#d5dbe6" stroke-width="5">
+   <line x1="262" y1="420" x2="762" y2="420"/><line x1="262" y1="520" x2="762" y2="520"/><line x1="262" y1="620" x2="762" y2="620"/><line x1="262" y1="720" x2="762" y2="720"/>
+  </g>
+  <path d="M290 400 C 300 340, 330 330, 335 360 C 340 395, 300 405, 305 375 C 312 340, 360 330, 372 395 C 378 360, 395 340, 412 360 C 425 378, 410 402, 432 400 C 450 398, 452 330, 470 300 C 480 280, 495 290, 488 320 C 478 360, 470 395, 495 400 C 520 405, 520 360, 540 360 C 562 360, 560 400, 585 398 C 605 396, 612 362, 632 362 C 650 362, 652 398, 675 398 C 700 398, 712 370, 730 372"
+        fill="none" stroke="#13254a" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M290 500 C 330 470, 360 505, 400 495 C 440 485, 470 470, 520 492 C 560 508, 600 480, 640 494" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
+  <path d="M290 600 C 320 580, 350 610, 390 596 C 430 582, 470 582, 505 598" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
+  <rect x="262" y="682" width="300" height="46" rx="12" fill="#ffdd33" opacity=".75"/>
+  <path d="M282 715 C 320 692, 350 722, 395 708 C 440 694, 480 700, 530 712" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
+ </g>
+</svg>

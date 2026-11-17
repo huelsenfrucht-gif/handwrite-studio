@@ -1,5 +1,5 @@
 import type { Stroke } from '../model';
-import type { Region } from './segment';
+type Region = { x: number; y: number; width: number; height: number };
 
 /** Grayscale copy in which ink is dark on a light background. A blackboard
  * (dark board, bright chalk) is detected by its overall brightness and inverted. */

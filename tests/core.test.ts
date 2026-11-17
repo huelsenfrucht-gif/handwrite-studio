@@ -5,9 +5,6 @@ import { analyzeWord,composeWord,recalibrateWord,relabelWord,sliceStrokes } from
 import { vectorize } from '../src/vectorize';
 import { validateLibrary } from '../src/storage';
 import { makeSVG } from '../src/export';
-import {decodeStrokeTensor,extractSynthWords} from '../src/synthesis';
-import {editDistance} from '../src/synthesis';
-import {selectStyleImages} from '../src/import/style';
 import {CALIBRATION_LINES,extractCalibrationAlphabet} from '../src/calibration';
 import JSZip from 'jszip';
 const wave:Stroke=Array.from({length:161},(_,i)=>({x:i*2,y:60+30*Math.sin(i/8),p:.2+i/300}));
@@ -36,10 +33,6 @@ describe('connected handwriting',()=>{
  it('clamps unreliable character slices so a photo cannot explode to giant letters',()=>{const sample=analyzeWord([[{x:0,y:0},{x:12,y:100}],[{x:14,y:48},{x:25,y:50}],[{x:28,y:0},{x:45,y:100}]],'Aim','photo','clamped');const ys=sample.strokes.flat().map(p=>p.y);expect(Math.max(...ys)-Math.min(...ys)).toBeLessThan(150);expect(sample.metrics.quality).toBeLessThan(1);});
  it('upgrades old total-height samples once without changing modern samples',()=>{const old=structuredClone(word);delete old.normalization;const upgraded=recalibrateWord(old);expect(upgraded.normalization).toBe(3);expect(upgraded.metrics.baseline).toBe(80);expect(recalibrateWord(upgraded)).toBe(upgraded);});
  it('does not render obsolete generated raster words',()=>{const generated={...analyzeWord([wave],'deine','photo','generated'),synthetic:true,raster:{data:'data:image/png;base64,AA==',x:0,y:20,width:250,height:70}},p:Profile={id:'ai',name:'AI',created:'',glyphs:{},words:[generated]},out=composeWord('deine',p,random(1));expect(out.glyphs.every(g=>!g.raster&&!g.hiddenByRaster)).toBe(true);const n=newNote();n.settings.profileId=p.id;n.renderedText='deine';const rendered=layout(n,[p]);expect(rendered.rasterWords).toBe(0);expect(makeSVG(n,[p],0)).not.toContain('<image id="ai-word-');});
- it('requests only unseen multi-character words from the synthesis model',()=>{expect(extractSynthWords('meine neue neue Idee 7',profile)).toEqual(['neue','Idee']);});
- it('scores OCR candidates by the actual target spelling',()=>{expect(editDistance('handschrift','handschrift')).toBe(0);expect(editDistance('handschrift','hanschrift')).toBe(1);expect(editDistance('abc','xyz')).toBe(3);});
- it('decodes local model deltas into separate editable pen strokes',()=>{const strokes=decodeStrokeTensor([2,3,.2,0,4,-1,.8,1,1,5,.5,0,3,2,.7,1],4);expect(strokes).toHaveLength(2);expect(strokes[0]).toEqual([{x:2,y:3,p:.2},{x:6,y:2,p:.8}]);expect(strokes[1]).toEqual([{x:7,y:7,p:.5},{x:10,y:9,p:.7}]);});
- it('chooses diverse flowing style references instead of five OCR ties',()=>{const candidates=Array.from({length:6},(_,i)=>{const sample={...word,id:`s${i}`,text:['anna','anna','otto','freiheit','europa','minimum'][i],metrics:{...word.metrics,quality:.8,joining:i===0?.1:.9}};return{id:`c${i}`,text:sample.text,image:`image-${i}`,confidence:.98,sample,selected:true,page:'p'};});const images=selectStyleImages(candidates);expect(images).toHaveLength(5);expect(images).not.toContain('image-0');expect(new Set(images).size).toBe(5);});
 });
 describe('document layout and editing',()=>{
  it('changes only word spaces while punctuation stays attached',()=>{const compact=newNote();compact.renderedText='Hi, du';compact.settings.wordSpacing=15;const wide=structuredClone(compact);wide.settings.wordSpacing=90;const a=layout(compact,[]).glyphs,b=layout(wide,[]).glyphs,ai=a.findIndex(g=>g.char==='i'),ac=a.findIndex(g=>g.char===','),ad=a.findIndex(g=>g.char==='d'),bi=b.findIndex(g=>g.char==='i'),bc=b.findIndex(g=>g.char===','),bd=b.findIndex(g=>g.char==='d');expect(a[ac].x-a[ai].x).toBeCloseTo(b[bc].x-b[bi].x);expect(b[bd].x-b[bc].x).toBeGreaterThan(a[ad].x-a[ac].x);});

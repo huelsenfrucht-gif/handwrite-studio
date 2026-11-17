@@ -1,4 +1,4 @@
-name: Website auf GitHub Pages veröffentlichen
+name: Info-Website (Datenschutz, Support, Impressum) veröffentlichen
 
 on:
   push:
@@ -25,12 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
-        env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+      # Die App läuft nur auf dem iPad; veröffentlicht wird nur die statische Info-Website.
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build

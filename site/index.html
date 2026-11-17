@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handwrite Studio – Dein Text in deiner Handschrift</title>
+<meta name="description" content="Handwrite Studio für iPad: getippten Text in deine eigene Handschrift verwandeln, Arbeitsblätter ausfüllen, als PDF exportieren.">
+<link rel="icon" href="icon.svg">
+<style>
+:root{--navy:#13254a;--navy2:#24406f;--ink:#14213d;--muted:#5d6a80;--bg:#f4f6fa;--line:#dde3ec;--yellow:#ffdd66}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--navy2)}
+.hero{background:radial-gradient(120% 90% at 50% 0%,#2d4c80 0%,var(--navy) 60%,#0b1730 100%);color:#fff;padding:64px 20px 72px;text-align:center}
+.hero img{width:112px;height:112px;border-radius:26px;box-shadow:0 18px 40px -16px #000a}
+.hero h1{font-family:ui-serif,"New York",Georgia,serif;font-size:clamp(36px,6vw,58px);line-height:1.1;margin:22px 0 10px;letter-spacing:-1px}
+.hero h1 span{color:var(--yellow);display:block}
+.hero p{max-width:560px;margin:0 auto 26px;color:#d6deec}
+.badge{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:14px;background:#fff;color:var(--navy);font-weight:700;text-decoration:none}
+.badge small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+main{max-width:920px;margin:0 auto;padding:48px 20px 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+.card h3{margin:0 0 6px;font-size:18px}
+.card p{margin:0;color:var(--muted);font-size:15.5px}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:14px;margin-bottom:10px}
+h2{font-family:ui-serif,"New York",Georgia,serif;font-size:30px;margin:44px 0 16px}
+.note{margin-top:28px;padding:16px 18px;border-radius:14px;background:#fff;border:1px solid var(--line);color:var(--muted);font-size:15px}
+footer{max-width:920px;margin:0 auto;padding:28px 20px 48px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 22px;font-size:15px;color:var(--muted)}
+footer a{color:var(--ink);text-decoration:none}footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<section class="hero">
+  <img src="app-icon.png" alt="App-Symbol von Handwrite Studio">
+  <h1>Dein Text.<span>In deiner Handschrift.</span></h1>
+  <p>Handwrite Studio für iPad verwandelt getippten Text in deine eigene Handschrift – Buchstabe für Buchstabe aus deinem persönlichen Alphabet.</p>
+  <a class="badge" href="#" aria-disabled="true"><span>Bald im App Store<small>für iPad · kostenlos mit Werbung</small></span></a>
+</section>
+<main>
+  <h2>So funktioniert’s</h2>
+  <div class="grid">
+    <div class="card"><span class="num">1</span><h3>Handschrift einlernen</h3><p>Schreib a–z und A–Z einmal mit dem Apple Pencil.</p></div>
+    <div class="card"><span class="num">2</span><h3>Text eingeben</h3><p>Tippen, einfügen oder aus PDF und Foto übernehmen.</p></div>
+    <div class="card"><span class="num">3</span><h3>In Handschrift verwandeln</h3><p>Mit Absätzen, Listen, Tabellen und markierten Überschriften.</p></div>
+  </div>
+  <h2>Was die App kann</h2>
+  <div class="grid">
+    <div class="card"><h3>Arbeitsblätter ausfüllen</h3><p>Antwortfelder werden erkannt, du prüfst jede Antwort, dann wird sie in deiner Handschrift eingesetzt.</p></div>
+    <div class="card"><h3>Text aus Fotos</h3><p>Tafel, Heft oder Buchseite fotografieren und den Text übernehmen (experimentell).</p></div>
+    <div class="card"><h3>Export</h3><p>Als PDF für jede Notiz-App und zum Drucken, als SVG oder als Datei zum Öffnen in Goodnotes.</p></div>
+    <div class="card"><h3>Deine Dokumente bleiben bei dir</h3><p>Kein Konto, keine Cloud: Dokumente und Handschriften werden nur auf deinem iPad gespeichert.</p></div>
+  </div>
+  <p class="note">Handwrite Studio ist kostenlos und wird durch Werbung von Google finanziert. Was dabei übertragen wird, steht in der <a href="datenschutz.html">Datenschutzerklärung</a>. Goodnotes ist eine Marke ihres Inhabers; Handwrite Studio ist unabhängig und steht in keiner Verbindung dazu.</p>
+</main>
+<footer>
+  <span>© 2026 Handwrite Studio</span>
+  <a href="support.html">Hilfe &amp; Kontakt</a>
+  <a href="datenschutz.html">Datenschutz</a>
+  <a href="impressum.html">Impressum</a>
+  <a href="lizenzen.html">Lizenzen</a>
+</footer>
+</body>
+</html>

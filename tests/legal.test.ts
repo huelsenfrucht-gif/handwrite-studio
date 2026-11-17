@@ -20,9 +20,9 @@ describe('legal and ad safeguards', () => {
     expect(ads).toContain('MaxAdContentRating.ParentalGuidance');
   });
   it('ships imprint, licences and a precise privacy statement', () => {
-    for (const f of ['impressum', 'lizenzen', 'datenschutz']) expect(readFileSync(`public/${f}.html`, 'utf8').length).toBeGreaterThan(500);
-    const privacy = readFileSync('public/datenschutz.html', 'utf8');
+    for (const f of ['impressum', 'lizenzen', 'datenschutz']) expect(readFileSync(`site/${f}.html`, 'utf8').length).toBeGreaterThan(500);
+    const privacy = readFileSync('site/datenschutz.html', 'utf8');
     expect(privacy).toContain('Werbe-SDK von Google'); expect(privacy).not.toContain('Alle Daten bleiben');
-    expect(readFileSync('public/impressum.html', 'utf8')).toContain('[Vor- und Nachname]');
+    expect(readFileSync('site/impressum.html', 'utf8')).toContain('[Vor- und Nachname]');
   });
 });

@@ -1,6 +1,6 @@
 # Handwrite Studio – Rechtliche und technische Prüfung
 
-Stand: 17.11.2026 · Grundlage: Quellcode dieses Repositorys, Abhängigkeiten, Assets, Konfiguration
+Stand: 17.11.2026 · Nur iPad-App + statische Info-Website (keine Web-App mehr) · Grundlage: Quellcode dieses Repositorys, Abhängigkeiten, Assets, Konfiguration
 
 > **Keine Rechtsberatung.** Dieser Bericht ist eine technische Bestandsaufnahme mit vorsichtiger rechtlicher Einordnung. Er ersetzt keine Prüfung durch eine zugelassene Anwältin bzw. einen zugelassenen Anwalt (IT-, Marken-, Wettbewerbsrecht, Datenschutz). Rechtssicherheit kann nicht garantiert werden.
 
@@ -106,7 +106,7 @@ Netzwerkzugriffe im Web-Code: nur eigene Modelldateien (`/models/…`) und – *
 3. Rechtsgrundlage für nicht-personalisierte Werbung ohne Einwilligung (§ 25 TDDDG) und Ausreichen der Selbstauskunft „unter 16“.
 4. Ob Nutzungsbedingungen nötig sind (z. B. Haftung für importierte Inhalte, keine Nutzung zur Täuschung).
 5. Barrierefreiheit: Anwendbarkeit des BFSG auf eine kostenlose, werbefinanzierte App (Kleinstunternehmen-Ausnahme?).
-6. Leipzig-Corpora-Lizenz der Lexikon-Häufigkeitsliste.
+6. ~~Leipzig-Corpora-Lizenz der Lexikon-Häufigkeitsliste~~ – erledigt: Web-Texterkennung samt Modell und Wörterbuch entfernt.
 7. Gesamteindruck der Oberfläche (UWG § 4 Nr. 3) nach dem Redesign.
 
 ## 9. Veröffentlichungs-Checkliste
@@ -118,3 +118,7 @@ Netzwerkzugriffe im Web-Code: nur eigene Modelldateien (`/models/…`) und – *
 - [ ] Altersfreigabe-Fragebogen
 - [ ] Offene Punkte aus Abschnitt 8 klären
 - [ ] `npm audit`, Testlauf auf echtem iPad (Hoch/Quer), Goodnotes-Export in aktueller Goodnotes-Version öffnen
+
+
+## Nachtrag: nur noch iPad-App
+Die Browser-Version der App wurde eingestellt. Entfernt: eigene Texterkennung (ONNX-Modell de-htr, onnxruntime-web), Korrekturwörterbuch (inkl. Leipzig-/OpenSubtitles-Listen), AdSense-Code. Die Website (`site/`) ist eine statische Info-Seite mit Datenschutz, Support, Impressum und Lizenzen – ohne Cookies, Tracking oder Werbung. Fotos liest in der App ausschließlich Apples Texterkennung auf dem Gerät.
