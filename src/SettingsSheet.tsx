@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, Smartphone, Type, X } from 'lucide-react';
+import { ArchiveRestore, ChevronRight, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, UserRound, Smartphone, Type, X } from 'lucide-react';
 import { PEN_WIDTHS, type Library, type Profile } from './model';
+import { isUnder16, setUnder16 } from './nativeAds';
 
 /** Public pages (privacy policy, support) on the website. */
 const SITE = 'https://huelsenfrucht-gif.github.io/handwrite-studio/';
@@ -12,7 +13,7 @@ export function SettingsSheet(props: {
   onClose: () => void; onBackup: () => void; onRestore: () => void; onAdPrivacy: () => void;
   onHelp: () => void; onProfiles: () => void; onHomeScreen: () => void; onFullscreen: () => void;
 }) {
-  const { native } = props, [closing, setClosing] = useState(false);
+  const { native } = props, [closing, setClosing] = useState(false), [minor, setMinor] = useState(isUnder16());
   const close = () => { setClosing(true); setTimeout(props.onClose, 160); };
   useEffect(() => { const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); });
   const saved = !props.saveStatus.includes('fehl');
@@ -36,8 +37,9 @@ export function SettingsSheet(props: {
           <Row icon={<ArchiveRestore size={18} />} label="Sicherung laden" onClick={props.onRestore} chevron />
         </Group>
 
-        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt beim Schreiben in Handschrift, vor einer neuen Handschrift und bei Sicherungen. Exporte sind werbefrei.">
+        {native ? <Group title="Werbung & Datenschutz" footer="Werbung kommt beim Schreiben in Handschrift, vor einer neuen Handschrift und bei Sicherungen. Unter 16 gibt es nur nicht-personalisierte Werbung und keine Tracking-Abfrage (gilt ab dem nächsten App-Start).">
           <Row icon={<Megaphone size={18} />} label="Werbe-Einstellungen" onClick={props.onAdPrivacy} chevron />
+          <label className="st-row st-select"><span className="st-icon"><UserRound size={18} /></span><span className="st-label">Ich bin unter 16</span><input type="checkbox" className="st-switch" checked={minor} onChange={e => { setUnder16(e.target.checked); setMinor(e.target.checked); }} /></label>
           <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />
         </Group> : <Group title="App" >
           <Row icon={<Smartphone size={18} />} label="Zum Home-Bildschirm" onClick={props.onHomeScreen} chevron />
@@ -48,12 +50,14 @@ export function SettingsSheet(props: {
           <Row icon={<CircleHelp size={18} />} label="So funktioniert’s" onClick={props.onHelp} chevron />
           {!native && <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />}
           <Row icon={<Mail size={18} />} label="Hilfe & Kontakt" onClick={() => window.open(`${SITE}support.html`, '_blank')} chevron />
+          <Row icon={<Info size={18} />} label="Impressum" onClick={() => window.open(`${SITE}impressum.html`, '_blank')} chevron />
+          <Row icon={<FileText size={18} />} label="Lizenzen & Quellen" onClick={() => window.open(`${SITE}lizenzen.html`, '_blank')} chevron />
           <details className="st-row st-details"><summary><span className="st-icon"><Info size={18} /></span><span className="st-label">Über die Schriftanalyse</span><ChevronRight size={18} className="st-chevron" /></summary>
             <div className="st-details-body"><p>Die Einrichtung lernt dein persönliches Alphabet: Du schreibst a–z und A–Z einzeln. Mehrere Durchläufe liefern natürliche Varianten.</p><p>Mit dem Apple Pencil werden Zwischenpunkte und Druck direkt aufgenommen und geglättet – so bleibt dein echter Schreibweg erhalten. Die Ausgabe ist bearbeitbare Vektortinte.</p></div>
           </details>
         </Group>
 
-        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Daten bleiben auf deinem Gerät<br />Handwrite Studio 1.0</p>
+        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Deine Dokumente und Handschriften bleiben auf deinem Gerät<br />Handwrite Studio 1.0</p>
       </div>
     </section>
   </div>;

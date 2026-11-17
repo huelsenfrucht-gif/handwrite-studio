@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Camera, Check, ChevronDown, ChevronRight, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, ChevronRight, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { firstPageLayout, resolvedDrawingInk } from './engine';
 
@@ -43,7 +43,7 @@ export function LibraryShell(props: {
     if (filter === 'notes') list = list.filter(i => i.kind === 'note');
     if (filter === 'folders') list = list.filter(i => i.kind === 'folder');
     const by = sort === 'name' ? (a: Item, b: Item) => a.name.localeCompare(b.name, 'de') : (a: Item, b: Item) => b.updated.localeCompare(a.updated);
-    // Documents first, then folders — like Goodnotes.
+    // Documents first, then folders.
     return [...list.filter(i => i.kind === 'note').sort(by), ...list.filter(i => i.kind === 'folder').sort(by)];
   }, [folders, library.notes, query, view, folderId, filter, sort]);
 
@@ -136,8 +136,7 @@ export function LibraryShell(props: {
       </div>
       <div className="gn-caption">
         {renaming === id ? <input className="gn-rename" autoFocus defaultValue={item.name} maxLength={100} aria-label="Neuer Name" onFocus={e => e.currentTarget.select()} onBlur={e => rename(item, e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null); }} />
-          : <button className="gn-title gn-menu-trigger" onClick={() => setMenu(menu === id ? null : id)} aria-haspopup="menu" aria-expanded={menu === id}><span>{item.name}</span><ChevronDown size={14} /></button>}
-        <small>{stamp(item.updated)}</small>
+          : <div className="hs-card-info"><div className="hs-card-text"><strong>{item.name}</strong><small>{item.kind === 'folder' ? `${library.notes.filter(n => n.folderId === item.folder.id).length + folders.filter(f => f.parentId === item.folder.id).length} Elemente · ` : ''}{stamp(item.updated)}</small></div><button className="hs-more gn-menu-trigger" onClick={() => setMenu(menu === id ? null : id)} aria-haspopup="menu" aria-expanded={menu === id} aria-label={`${item.name}: Aktionen`}><MoreHorizontal size={18} /></button></div>}
         {menu === id && <Menu>
           <button role="menuitem" onClick={() => { setMenu(null); setRenaming(id); }}><Pencil size={16} />Umbenennen</button>
           <button role="menuitem" onClick={() => { setMenu(null); toggleFavorite(item); }}><Star size={16} />{fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten'}</button>
@@ -255,13 +254,9 @@ export const MiniPreview = memo(function MiniPreview({ note, profiles }: { note:
   return <svg ref={ref} viewBox="0 0 794 1123" aria-hidden="true">{data?.rasters.map((r, i) => <image key={i} href={r.href} x={r.x} y={r.y} width={r.w} height={r.h} preserveAspectRatio="none" />)}{data?.strokes.map((s, i) => <path key={i} d={s.d} fill="none" stroke={s.color} strokeWidth={s.w} strokeLinecap="round" />)}</svg>;
 });
 
+/** Folder tile: a stack of coloured sheets with a folder symbol (own design, no desktop folder look-alike). */
 function FolderIcon({ color }: { color: string }) {
-  return <svg className="gn-folder-svg" viewBox="0 0 210 170" aria-hidden="true">
-    <path d="M14 18c0-7 5-12 12-12h52c5 0 8 2 11 6l9 11h86c7 0 12 5 12 12v18H14z" fill={color} style={{ filter: 'brightness(.88)' }} />
-    <rect x="4" y="34" width="202" height="132" rx="14" fill={color} />
-    <rect x="4" y="34" width="202" height="132" rx="14" fill="url(#gn-shine)" />
-    <defs><linearGradient id="gn-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".18" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient></defs>
-  </svg>;
+  return <span className="hs-folder" style={{ ['--fc' as string]: color }} aria-hidden="true"><span className="hs-folder-sheet b" /><span className="hs-folder-sheet a" /><span className="hs-folder-face"><FolderClosed size={30} strokeWidth={1.6} /></span></span>;
 }
 const SidebarIcon = () => <svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="23" rx="5" /><path d="M12 1.5v23M5 7h3.5M5 11h3.5M5 15h3.5" /></svg>;
 const EmptyIllustration = ({ star }: { star: boolean }) => <svg width="130" height="170" viewBox="0 0 130 170" aria-hidden="true"><rect x="8" y="22" width="114" height="146" rx="4" fill="#dcecf8" /><rect x="8" y="150" width="114" height="18" rx="3" fill="#cfe6f8" /><path d="M42 66h30" stroke="#64a9ec" strokeWidth="3" strokeLinecap="round" />{star && <><path d="m104 18 4 8 9 1.3-6.5 6.3 1.5 8.9-8-4.2-8 4.2 1.5-8.9-6.5-6.3 9-1.3z" fill="#f59c8f" /><path d="M93 5l4 6M104 2v6M115 5l-4 6" stroke="#64a9ec" strokeWidth="1.5" strokeLinecap="round" /></>}</svg>;

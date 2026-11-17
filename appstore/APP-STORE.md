@@ -54,7 +54,7 @@ Kostenlos, alle Länder (oder nur Deutschland, Österreich, Schweiz).
 
 **Werbetext** (170 Z., jederzeit änderbar):
 ```
-Tippe Text ein – die App schreibt ihn in deiner eigenen Handschrift. Arbeitsblätter füllen sich aus, Überschriften werden markiert. Fertig für Goodnotes.
+Tippe Text ein – die App schreibt ihn in deiner eigenen Handschrift. Arbeitsblätter ausfüllen, Überschriften markieren, als PDF exportieren.
 ```
 
 **Beschreibung:**
@@ -78,18 +78,19 @@ SIEHT AUS WIE VON HAND
 • Alle Überschriften mit Textmarker markieren – Farbe frei wählbar
 • Liniert, kariert, blanko oder dein eigenes Papier
 
-FÜR GOODNOTES GEMACHT
-Exportiere als Goodnotes-Datei mit echter, radierbarer Stifttinte – oder als PDF für Notability, OneNote und zum Drucken.
+EXPORT FÜR DEINE NOTIZ-APP
+Exportiere als PDF für jede Notiz-App und zum Drucken, als SVG – oder als Datei zum Öffnen in Goodnotes, in der die Schrift als bearbeitbare Stiftstriche erhalten bleibt.
+(Goodnotes ist eine Marke ihres Inhabers; Handwrite Studio ist unabhängig und steht in keiner Verbindung dazu.)
 
 DEINE DATEN BLEIBEN BEI DIR
 Keine Anmeldung, kein Konto, keine Cloud. Alles wird nur auf deinem iPad gespeichert.
 
-Handwrite Studio ist kostenlos und wird durch Werbung finanziert.
+Handwrite Studio ist kostenlos und wird durch Werbung finanziert. KI-Antworten können Fehler enthalten – prüfe sie immer selbst.
 ```
 
 **Keywords** (100 Z., ohne Leerzeichen nach Kommas):
 ```
-handschrift,schrift,goodnotes,arbeitsblatt,hausaufgaben,schule,notizen,text,pencil,mitschrift,lernzettel
+handschrift,schrift,arbeitsblatt,lernzettel,schule,notizen,text,pencil,mitschrift,lernen,ausfüllen
 ```
 
 **Neues in dieser Version:** `Erste Version.`
@@ -115,7 +116,7 @@ Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem 
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
-Die App läuft komplett offline auf dem Gerät, ohne Konto. Zum Testen: „Neues Dokument“ → Text eintippen → „In Handschrift verwandeln“ (nutzt die mitgelieferte Demo-Handschrift). Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Finger oder Apple Pencil schreiben. Werbung (Google AdMob) erscheint beim Umwandeln von Text; ab 4 Seiten wird vorher um Zustimmung für ein Belohnungsvideo gebeten.
+Die App läuft komplett offline auf dem Gerät, ohne Konto. Zum Testen: „Neues Dokument“ → Text eintippen → „In Handschrift verwandeln“ (nutzt die mitgelieferte Demo-Handschrift). Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Finger oder Apple Pencil schreiben. Werbung (Google AdMob) erscheint beim Umwandeln von Text; ab 4 Seiten kann der Nutzer statt einer kurzen Werbung freiwillig ein Belohnungsvideo wählen (Belohnung: 30 Minuten werbefrei). Bisher stand hier: wird vorher um Zustimmung für ein Belohnungsvideo gebeten.
 ```
 
 ---
@@ -149,3 +150,7 @@ Bei jedem Update: in Xcode unter **App → General** die **Build-Nummer** um 1 e
 - Datenschutz und Hilfe in den Einstellungen verlinkt
 - Release-Archiv baut fehlerfrei
 - 4 Screenshots in Originalgröße
+
+
+> Fremde App-Namen (z. B. Goodnotes) gehören laut Apple-Richtlinie 2.3.7 nicht in Keywords oder Untertitel. In der Beschreibung nur als Kompatibilitätshinweis.
+> Impressum: https://huelsenfrucht-gif.github.io/handwrite-studio/impressum.html (Platzhalter ausfüllen!)

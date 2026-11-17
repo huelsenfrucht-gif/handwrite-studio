@@ -9,9 +9,8 @@ import { Capacitor } from '@capacitor/core';
  * The app ID also has to be set in ios/App/App/Info.plist (GADApplicationIdentifier).
  *
  * Placement (no banners):
- * - when text is written in handwriting ("In Handschrift verwandeln", "In die Felder schreiben"):
- *   a full-screen ad for 1–3 pages, a rewarded video from REWARD_FROM_PAGES pages (Google requires
- *   that the user chooses to watch it, so the app asks first), at most once per AD_COOLDOWN,
+ * - when text is written in handwriting: a full-screen ad; for long texts (from REWARD_FROM_PAGES pages)
+ *   the user may instead choose a rewarded video that gives REWARD_AD_FREE_MS without ads,
  * - a full-screen ad before a new handwriting and before saving or loading a backup.
  * Exports themselves are free of ads.
  * Ad length is decided by Google; showing several ads in a row is not allowed.
@@ -21,6 +20,14 @@ export const ADMOB = {
   rewardedId: 'ca-app-pub-3940256099942544/1712485313',
 };
 export const REWARD_FROM_PAGES = 4;
+/** A watched rewarded video gives this long without ads – the reward the user chooses it for. */
+export const REWARD_AD_FREE_MS = 30 * 60 * 1000;
+const store = (k: string, v?: string) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { /* private mode */ } return null; };
+/** Users under 16 (set in the settings): no personalised ads, no tracking prompt (Art. 8 DSGVO). */
+export const isUnder16 = () => store('hs-under16') === '1';
+export const setUnder16 = (on: boolean) => { store('hs-under16', on ? '1' : '0'); };
+export const adFreeUntil = () => +(store('hs-ad-free-until') || 0);
+const grantAdFree = () => { store('hs-ad-free-until', String(Date.now() + REWARD_AD_FREE_MS)); };
 /** At most one ad for writing text within this time, so trying settings out stays free of ads. */
 export const AD_COOLDOWN = 2 * 60 * 1000;
 const TESTING = ADMOB.interstitialId.startsWith('ca-app-pub-3940256099942544');
@@ -37,11 +44,14 @@ export function initAds(): Promise<boolean> {
   return (ready ??= (async () => {
     try {
       const { AdMob, AdmobConsentStatus } = await load();
-      const consent = await AdMob.requestConsentInfo();
+      const { MaxAdContentRating } = await load(), minor = isUnder16();
+      const consent = await AdMob.requestConsentInfo({ tagForUnderAgeOfConsent: minor });
       if (consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED) await AdMob.showConsentForm();
       const tracking = await AdMob.trackingAuthorizationStatus();
-      if (tracking.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
-      await AdMob.initialize({ initializeForTesting: TESTING });
+      // Under 16: no tracking prompt at all; ads stay non-personalised.
+      if (!minor && tracking.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
+      // School app: only ads rated for general audiences with parental guidance.
+      await AdMob.initialize({ initializeForTesting: TESTING, tagForUnderAgeOfConsent: minor, maxAdContentRating: MaxAdContentRating.ParentalGuidance });
       void prepareInterstitial(); void prepareRewarded();
       return true;
     } catch { return false; }
@@ -92,9 +102,9 @@ function prepareRewarded() {
 export const adsAvailable = () => Capacitor.isNativePlatform() || (import.meta.env.DEV && location.search.includes('ads'));
 
 /**
- * Shows a rewarded video the user agreed to watch and resolves when it was closed.
- * Without a video (no connection, no fill) it falls back to a normal full-screen ad,
- * and never blocks the export.
+ * Shows a rewarded video the user chose to watch (alternative: a short full-screen ad).
+ * The reward is REWARD_AD_FREE_MS without any ads; it is granted when Google reports the reward.
+ * Without a video it falls back to a normal full-screen ad and never blocks the user.
  */
 export async function showRewardedAd(): Promise<void> {
   if (!(await initAds())) return;
@@ -105,7 +115,7 @@ export async function showRewardedAd(): Promise<void> {
     rewardedReady = false;
     let finish = () => {};
     const closed = new Promise<void>(resolve => { finish = resolve; });
-    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish())]);
+    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish()), AdMob.addListener(RewardAdPluginEvents.Rewarded, () => grantAdFree())]);
     await AdMob.showRewardVideoAd();
     await Promise.race([closed, wait(120000)]);
     await Promise.all(handles.map(h => h.remove()));
