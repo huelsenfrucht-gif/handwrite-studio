@@ -524,3 +524,40 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 .photo-ai-body{display:grid;gap:8px;margin-top:10px;padding:12px;border:1px solid var(--hs-line);border-radius:12px;background:var(--hs-bg)}
 .photo-ai-body p{margin:0;font-size:13px;color:var(--hs-muted)}
 .photo-ai-body textarea{min-height:110px;border:1px solid var(--hs-line);border-radius:10px;padding:10px;font:inherit;font-size:14px}
+
+/* Linke Spalte im Arbeitsblatt-Modus: drei klare Schritte, alles andere eingeklappt */
+.ws-top{display:flex;align-items:center;gap:12px;padding:14px;background:#fff;border:1px solid var(--hs-line);border-radius:14px}
+.ws-thumb{flex:none;width:46px;height:62px;border-radius:5px;overflow:hidden;background:var(--hs-soft);box-shadow:0 0 0 1px var(--hs-line),0 3px 8px -4px #13254a40}
+.ws-thumb img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ws-meta{flex:1;min-width:0;display:grid;gap:1px}
+.ws-meta strong{font-size:15px;color:var(--hs-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-meta small{font-size:12.5px;color:var(--hs-muted)}
+.ws-change{flex:none;border:0;background:none;color:var(--hs-navy-2);font-size:13px;font-weight:600;cursor:pointer;padding:6px}
+.ws-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:none}
+.ws-step{display:grid;gap:10px;padding:14px;background:#fff;border:1px solid var(--hs-line);border-radius:14px;opacity:.6;transition:opacity .2s,border-color .2s}
+.ws-step.now{opacity:1;border-color:var(--hs-navy-2);box-shadow:0 0 0 3px #24406f14}
+.ws-step.done{opacity:1}
+.ws-step-head{display:flex;gap:10px;align-items:flex-start}
+.ws-step-head strong{display:block;font-size:15px;color:var(--hs-ink)}
+.ws-step-head small{display:block;font-size:12.5px;line-height:1.4;color:var(--hs-muted);margin-top:1px}
+.ws-num{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--hs-soft);color:var(--hs-navy);font-size:13px;font-weight:700}
+.ws-step.now .ws-num{background:var(--hs-navy);color:#fff}
+.ws-step.done .ws-num{background:#2f9e5b;color:#fff}
+.ws-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ws-row .button{justify-content:center;min-height:38px;border-radius:10px;background:#fff;border:1px solid var(--hs-line);color:var(--hs-ink);font-size:13.5px}
+.ws-row .button.active{background:var(--hs-soft);border-color:var(--hs-navy-2)}
+.ws .ws-ai,.ws .generate{width:100%;justify-content:center;min-height:44px;border-radius:12px;background:var(--hs-navy);border-color:var(--hs-navy);color:#fff;font-size:15px}
+.ws-own summary{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--hs-navy-2);cursor:pointer;list-style:none}
+.ws-own summary::-webkit-details-marker{display:none}
+.ws-own[open] summary{margin-bottom:8px}
+.ws-own textarea#source-text{min-height:130px}
+.sp-fold{background:#fff;border:1px solid var(--hs-line);border-radius:14px;overflow:hidden}
+.sp-fold>summary{display:flex;align-items:center;gap:10px;padding:13px 14px;font-size:14px;font-weight:600;color:var(--hs-ink);cursor:pointer;list-style:none}
+.sp-fold>summary::-webkit-details-marker{display:none}
+.sp-fold>summary .chev{margin-left:auto;color:var(--hs-muted);transition:transform .2s}
+.sp-fold[open]>summary .chev{transform:rotate(180deg)}
+.sp-fold[open]>summary{border-bottom:1px solid var(--hs-line)}
+.sp-fold-body{display:grid;gap:10px;padding:12px 14px 14px}
+.sp-fold-body .pen-width{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;color:var(--hs-muted)}
+.sp-fold-body .pen-width select{border:1px solid var(--hs-line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--hs-ink)}
+.sp-fold-body .field-list{max-height:none}
