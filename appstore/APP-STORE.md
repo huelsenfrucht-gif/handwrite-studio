@@ -1,4 +1,4 @@
-# Handwrite Studio – App Store Upload
+# Handwritten – App Store Upload
 
 Alles in diesem Ordner ist fertig vorbereitet. Was nur du machen kannst, steht in **Teil A**.
 
@@ -35,7 +35,7 @@ https://appstoreconnect.apple.com → **Apps → +  → Neue App**
 | Feld | Eintrag |
 |---|---|
 | Plattform | iOS |
-| Name | **Handwrite Studio – Handschrift** (max. 30 Zeichen; falls vergeben: „Handwrite Studio“) |
+| Name | **Handwritten** (max. 30 Zeichen). Falls App Store Connect den Namen als vergeben meldet: **Handwritten – Deine Schrift**. Auf dem Home-Bildschirm steht immer „Handwritten“. |
 | Primäre Sprache | Deutsch |
 | Bundle-ID | `com.handwritestudio.app` (erscheint nach Teil A.1 automatisch, sonst unter developer.apple.com → Identifiers anlegen) |
 | SKU | `handwrite-studio-1` |
@@ -59,7 +59,7 @@ Tippe Text ein – die App schreibt ihn in deiner eigenen Handschrift. Arbeitsbl
 
 **Beschreibung:**
 ```
-Handwrite Studio verwandelt getippten Text in deine echte Handschrift – Buchstabe für Buchstabe aus deinem eigenen Alphabet.
+Handwritten verwandelt getippten Text in deine echte Handschrift – Buchstabe für Buchstabe aus deinem eigenen Alphabet.
 
 SO EINFACH GEHT’S
 1. Schreib a–z und A–Z einmal mit dem Apple Pencil.
@@ -80,12 +80,12 @@ SIEHT AUS WIE VON HAND
 
 EXPORT FÜR DEINE NOTIZ-APP
 Exportiere als PDF für jede Notiz-App und zum Drucken, als SVG – oder als Datei zum Öffnen in Goodnotes, in der die Schrift als bearbeitbare Stiftstriche erhalten bleibt.
-(Goodnotes ist eine Marke ihres Inhabers; Handwrite Studio ist unabhängig und steht in keiner Verbindung dazu.)
+(Goodnotes ist eine Marke ihres Inhabers; Handwritten ist unabhängig und steht in keiner Verbindung dazu.)
 
 DEINE DATEN BLEIBEN BEI DIR
 Keine Anmeldung, kein Konto, keine Cloud. Alles wird nur auf deinem iPad gespeichert.
 
-Handwrite Studio ist kostenlos und wird durch Werbung finanziert. KI-Antworten können Fehler enthalten – prüfe sie immer selbst.
+Handwritten ist kostenlos und wird durch Werbung finanziert. KI-Antworten können Fehler enthalten – prüfe sie immer selbst.
 ```
 
 **Keywords** (100 Z., ohne Leerzeichen nach Kommas):

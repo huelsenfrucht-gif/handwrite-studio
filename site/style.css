@@ -1,4 +1,4 @@
-/* Handwrite Studio – Website. Systemschriften, keine externen Dienste (keine Cookies, kein Tracking). */
+/* Handwritten – Website. Systemschriften, keine externen Dienste (keine Cookies, kein Tracking). */
 :root{
   --navy:#13254a;--navy-2:#24406f;--ink:#14213d;--text:#3a4660;--muted:#5d6a80;
   --bg:#f4f6fa;--line:#dde3ec;--line-2:#c4cddb;--soft:#e8edf5;--mark:#ffd84d;--frame:#0d1426;
@@ -120,3 +120,9 @@ h1,h2{font-family:var(--serif);font-weight:500;color:var(--navy)}
   .toc{max-width:none;flex-direction:row;flex-wrap:wrap}
   .toc .eyebrow{width:100%}
 }
+
+/* Barrierefreiheit: sichtbarer Tastaturfokus, Sprung zum Inhalt, weniger Bewegung */
+.skip{position:absolute;left:16px;top:-60px;z-index:10;padding:10px 16px;border-radius:10px;background:var(--navy);color:#fff;font-weight:600;text-decoration:none}
+.skip:focus{top:12px}
+a:focus-visible,.btn:focus-visible{outline:3px solid var(--navy-2);outline-offset:3px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

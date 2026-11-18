@@ -1,4 +1,4 @@
-import { type Glyph, type Point, type Profile, type RasterInk, type Stroke } from './model';
+import { isPunctuation, type Glyph, type PairSample, type Point, type Profile, type RasterInk, type Stroke } from './model';
 import { composeAccented, demoGlyphs } from './demo';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
 export type Style={slant:number;baselineSpread:number;joining:number;spacing:number;samples:number};
@@ -71,7 +71,8 @@ export function sliceStrokes(strokes:Stroke[],left:number,right:number):Stroke[]
 }
 export type WordResult={glyphs:Glyph[];kind:'original'|'contextual'|'letters';learned:number};
 function writtenGlyphs(profile:Profile,char:string):Glyph[]{
- const exact=profile.glyphs[char]?.filter(g=>g.source==='pen')||[];
+ // Punctuation from before the guide-line placement was stretched to letter size: not used.
+ const exact=profile.glyphs[char]?.filter(g=>g.source==='pen'&&(!isPunctuation(char)||g.lined))||[];
  if(exact.length)return exact;
  // Accented letters reuse the writer's own base letter plus a handwritten mark.
  const accented=char.normalize('NFD')!==char?(profile.glyphs[char.normalize('NFD')[0]]?.filter(g=>g.source==='pen')||[]).map(g=>composeAccented(char,()=>g)).filter((g):g is Glyph=>!!g):[];
@@ -85,9 +86,38 @@ function writtenGlyphs(profile:Profile,char:string):Glyph[]{
 }
 export function composeWord(text:string,profile:Profile,rand:()=>number):WordResult {
  const chars=Array.from(text);let learned=0;
- const glyphs=chars.map((c,i)=>{const targetPosition=chars.length===1?'isolated':i===0?'initial':i===chars.length-1?'final':'medial',personal=writtenGlyphs(profile,c),matching=personal.filter(g=>g.position===targetPosition||(!g.position&&targetPosition==='medial')),choices=matching.length?matching:(personal.length?personal:demoGlyphs[c]);if(personal.length)learned++;return choices?.[Math.floor(rand()*choices.length)]||{source:'demo' as const,advance:55,strokes:[[{x:3,y:5},{x:45,y:5},{x:45,y:80},{x:3,y:80},{x:3,y:5}]]};});
+ const single=(c:string,i:number):Glyph=>{const targetPosition=chars.length===1?'isolated':i===0?'initial':i===chars.length-1?'final':'medial',personal=writtenGlyphs(profile,c),matching=personal.filter(g=>g.position===targetPosition||(!g.position&&targetPosition==='medial')),choices=matching.length?matching:(personal.length?personal:demoGlyphs[c]);if(personal.length)learned++;return choices?.[Math.floor(rand()*choices.length)]||{source:'demo' as const,advance:55,strokes:[[{x:3,y:5},{x:45,y:5},{x:45,y:80},{x:3,y:80},{x:3,y:5}]]};};
+ // Handwritten connections ("ch", "Cl", "sch") replace their single letters: the
+ // pair is cut into per-letter glyphs that stay glued, so the real joining stroke remains.
+ const glyphs:Glyph[]=[];
+ for(const run of pairRuns(text,k=>!!profile.pairs?.[k]?.length)){
+  if(run.len>1){const key=chars.slice(run.start,run.start+run.len).join(''),options=profile.pairs![key],parts=splitPair(options[Math.floor(rand()*options.length)],key);if(parts){glyphs.push(...parts);learned+=run.len;continue;}}
+  for(let i=run.start;i<run.start+run.len;i++)glyphs.push(single(chars[i],i));
+ }
  // Every generated word uses one consistent alphabet. Photographed words,
  // raster snippets and obsolete synthetic words are intentionally never mixed
  // into the result.
  return {glyphs,learned,kind:'letters'};
+}
+
+/** Greedy longest match of known pairs, the same way words are composed. */
+export function pairRuns(word: string, has: (key: string) => boolean) {
+  const chars = Array.from(word), out: { start: number; len: number }[] = [];
+  for (let i = 0; i < chars.length;) {
+    let len = 1;
+    for (const n of [3, 2]) if (i + n <= chars.length && has(chars.slice(i, i + n).join(''))) { len = n; break; }
+    out.push({ start: i, len }); i += len;
+  }
+  return out;
+}
+
+/** Splits a pair into one glyph per letter; all but the last stay glued to the next. */
+export function splitPair(sample: PairSample, key: string): Glyph[] | null {
+  const n = Array.from(key).length, out: Glyph[] = [];
+  for (let i = 0; i < n; i++) {
+    const strokes = sliceStrokes(sample.strokes, sample.cuts[i], sample.cuts[i + 1]).filter(s => s.length);
+    if (!strokes.length) return null;
+    out.push({ source: 'pen', advance: Math.max(4, sample.cuts[i + 1] - sample.cuts[i]), strokes, glue: i < n - 1 });
+  }
+  return out;
 }

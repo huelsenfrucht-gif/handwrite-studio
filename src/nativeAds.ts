@@ -106,21 +106,25 @@ export const adsAvailable = () => Capacitor.isNativePlatform() || (import.meta.e
  * The reward is REWARD_AD_FREE_MS without any ads; it is granted when Google reports the reward.
  * Without a video it falls back to a normal full-screen ad and never blocks the user.
  */
-export async function showRewardedAd(): Promise<void> {
-  if (!(await initAds())) return;
+export async function showRewardedAd(): Promise<boolean> {
+  // Without ads (browser, no consent possible) nothing is withheld.
+  if (!(await initAds())) return true;
   if (!rewardedReady) await Promise.race([prepareRewarded(), wait(4000)]);
-  if (!rewardedReady) return showInterstitialAd();
+  // No video available right now: a short ad instead, the reward is not withheld.
+  if (!rewardedReady) { await showInterstitialAd(); return true; }
+  let rewarded = false;
   try {
     const { AdMob, RewardAdPluginEvents } = await load();
     rewardedReady = false;
     let finish = () => {};
     const closed = new Promise<void>(resolve => { finish = resolve; });
-    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish()), AdMob.addListener(RewardAdPluginEvents.Rewarded, () => grantAdFree())]);
+    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish()), AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { rewarded = true; grantAdFree(); })]);
     await AdMob.showRewardVideoAd();
     await Promise.race([closed, wait(120000)]);
     await Promise.all(handles.map(h => h.remove()));
-  } catch { /* never block the export because of an ad */ }
+  } catch { rewarded = true; /* never block the user because of an ad */ }
   void prepareRewarded();
+  return rewarded;
 }
 
 /** Lets people change their ad consent later, as the GDPR requires. */

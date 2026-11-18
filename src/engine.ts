@@ -2,6 +2,7 @@ import { demoGlyphs } from './demo';
 import { textMargins, textLines, type Drawing, type Note, type Profile, type PlacedGlyph, type Glyph, type RasterInk, type Stroke } from './model';
 import { composeWord, profileStyle } from './contextual';
 import { connect, endpoints } from './joins';
+import { wordGapFactor } from './levels';
 export function random(seed: number) { let a=seed|0; return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;}; }
 export const missingGlyph: Glyph = {source:'demo',advance:58,strokes:[[{x:5,y:12},{x:46,y:12},{x:46,y:79},{x:5,y:79},{x:5,y:12}],[{x:12,y:22},{x:39,y:69}]]};
 type LayoutCore={glyphs:PlacedGlyph[];highlights:Highlight[];pages:number;missing:string[];fallback:string[];originalWords:number;contextualWords:number;rasterWords:number};
@@ -12,10 +13,12 @@ const layoutCache=new WeakMap<Profile[],Map<string,LayoutCore>>();
 // whenever exit and entry lie close together, so words read as one movement.
 function joinStroke(prev:Glyph,cur:Glyph,gap=0):Stroke|undefined{
  if(prev.source!=='pen'||cur.source!=='pen')return;
- const exit=endpoints(prev.strokes,'exit').reduce<ReturnType<typeof endpoints>[number]|undefined>((best,e)=>!best||e.point.x>best.point.x?e:best,undefined);
+ // Only exits in the lower half of the letter body join: a t crossbar, the top of an r or
+ // any stroke end high up is never stretched into an invented line to the next letter.
+ const exit=endpoints(prev.strokes,'exit').filter(e=>e.point.y>=56&&e.point.y<=92).reduce<ReturnType<typeof endpoints>[number]|undefined>((best,e)=>!best||e.point.x>best.point.x?e:best,undefined);
  const entry=endpoints(cur.strokes,'entry').reduce<ReturnType<typeof endpoints>[number]|undefined>((best,e)=>!best||e.point.x<best.point.x?e:best,undefined);
  if(!exit||!entry||exit.point.x<prev.advance*.6||entry.point.x>cur.advance*.4)return;
- if(exit.point.y<28||exit.point.y>92||entry.point.y<28||entry.point.y>92)return;
+ if(entry.point.y<28||entry.point.y>92)return;
  const start={...exit,point:{...exit.point,x:exit.point.x-prev.advance-gap}},distance=Math.hypot(entry.point.x-start.point.x,entry.point.y-start.point.y);
  if(distance<1.5||distance>26+gap)return;
  return connect(start,entry,0);
@@ -76,6 +79,8 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
  const s=note.settings,profile=profiles.find(p=>p.id===s.profileId),rand=random(s.seed),style=profile?profileStyle(profile):null,rows=textLines(s);
  const glyphs:PlacedGlyph[]=[], missing=new Set<string>(), fallback=new Set<string>();
  const margins=textMargins(s),spacing=(s.letterSpacing||0)/100;
+ // Stufe 3: the writer's own word gap shifts the setting; someone who rarely joins letters gets no artificial joins.
+ const gapFactor=wordGapFactor(profile),joins=!profile?.rhythm||profile.rhythm.joining>=.2,wordGap=s.wordSpacing*gapFactor;
  let size=s.size/100,lh=s.lineHeight,paging=true,tracking=false,curLine=0;
  // Headings to mark with the highlighter: one bar per written line of a heading.
  const heads=s.highlightHeadings?headingLines(note.renderedText):new Set<number>(),bars=new Map<string,Highlight>();
@@ -93,7 +98,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
   let numbered=0;
   const tokens=cleanText(text).replace(/^([ \t]*)[*\-•·▪◦](?=[ \t])/gm,'$1•').match(/[\p{L}\p{N}\p{M}]+|\s+|[^\p{L}\p{N}\s]/gu)||[];
   for(const token of tokens) {
-   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;if(tracking)curLine++;line();}else x+=(c==='\t'?s.wordSpacing*4:s.wordSpacing)*size;}
+   if(/^\s+$/.test(token)){for(const c of token){index++;if(c==='\n'){indent=left;lineStart=true;numbered=0;if(tracking)curLine++;line();}else x+=(c==='\t'?wordGap*4:wordGap)*size;}
     // Wrapped lines stay under the text: after a list dot or number ("1." "a)"), and for indented lines.
     if(bullet||numbered===2||lineStart){indent=lineStart?x-lastShift:x;bullet=false;numbered=0;}continue;}
    if(lineStart){bullet=token==='•';numbered=/^(\d{1,3}|\p{L})$/u.test(token)?1:0;lineStart=false;}
@@ -110,7 +115,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
      const char=chars[i],id=String(index++),glyph=sources[i],advance=glyph.advance*scale;
      let wrapped=false;if(x>indent&&x+advance>right){line();wordOffset=0;wrapped=true;}
      const letterY=glyph.source==='pen'?0:(rand()-.5)*3*v;
-     const join=i>0&&!wrapped?joinStroke(sources[i-1],glyph,sources[i-1].advance*spacing):undefined,local=join?[...glyph.strokes,join]:glyph.strokes;
+     const glued=i>0&&!!sources[i-1].glue,join=i>0&&!wrapped&&!glued&&joins?joinStroke(sources[i-1],glyph,sources[i-1].advance*spacing):undefined,local=join?[...glyph.strokes,join]:glyph.strokes;
      const baseline=y+80*size+wordY+letterY;
      const strokes=local.map(stroke=>stroke.map(p=>({x:x+(p.x*cos-(p.y-80)*sin+wordOffset*(cos-1))*scale,y:baseline+((p.y-80)*cos+(p.x+wordOffset)*sin)*scale,p:p.p})));
      const isFallback=s.profileId!=='demo'&&glyph.source==='demo'&&char!=='•';
@@ -119,7 +124,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
      const raster=glyph.raster?{...glyph.raster,x:x+glyph.raster.x*scale,y:y+80*size+(glyph.raster.y-80)*scale+wordY,width:glyph.raster.width*scale,height:glyph.raster.height*scale}:undefined;
      if(tracking&&heads.has(curLine)){const key=`${curLine}:${page}:${Math.round(y)}`,top=y+80*size-66*size,bar=bars.get(key);if(bar){bar.width=Math.max(bar.width,x+advance-bar.x);}else bars.set(key,{page,x,y:top,width:advance,height:78*size});}
      glyphs.push({id,char,page,strokes,x,y,width:raster?.width||advance,height:raster?.height||s.size*1.2,fallback:isFallback,unsupported,raster,hiddenByRaster:glyph.hiddenByRaster});
-     x+=advance*(1+spacing);wordOffset+=glyph.advance*(1+spacing);
+     const gap=glyph.glue?0:spacing;x+=advance*(1+gap);wordOffset+=glyph.advance*(1+gap);
    }
   }
  };

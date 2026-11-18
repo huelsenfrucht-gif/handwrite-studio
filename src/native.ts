@@ -24,7 +24,7 @@ export async function visionText(canvas: HTMLCanvasElement): Promise<VisionLine[
   } catch { return null; }
 }
 
-/** Photos shared from the Photos app via "Teilen → Handwrite Studio". */
+/** Photos shared from the Photos app via "Teilen → Handwritten". */
 export async function takeSharedImages(): Promise<File[]> {
   if (!hasNative()) return [];
   try {

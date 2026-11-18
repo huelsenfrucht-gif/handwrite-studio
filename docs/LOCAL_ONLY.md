@@ -1,6 +1,6 @@
 # Local-only Produktarchitektur
 
-Handwrite Studio bleibt eine statisch ausgelieferte Progressive Web App. Es gibt
+Handwritten bleibt eine statisch ausgelieferte Progressive Web App. Es gibt
 keinen Login, kein Nutzungsabo, kein Anfragekontingent und keinen
 Inferenzserver. OCR, Stilprofil, Erzeugung, Editor, Speicherung und Export laufen
 im Browser des jeweiligen Geräts.

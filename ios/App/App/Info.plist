@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>de</string>
 	<key>CFBundleDisplayName</key>
-	<string>Handwrite Studio</string>
+	<string>Handwritten</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -40,13 +40,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Handwrite Studio nutzt die Kamera, um Texte, Tafelbilder und Arbeitsblätter zu fotografieren und in deine Handschrift zu übernehmen.</string>
+	<string>Handwritten nutzt die Kamera, um Texte, Tafelbilder und Arbeitsblätter zu fotografieren und in deine Handschrift zu übernehmen.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Handwrite Studio speichert exportierte Seiten auf Wunsch in deinen Fotos.</string>
+	<string>Handwritten speichert exportierte Seiten auf Wunsch in deinen Fotos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Handwrite Studio liest Fotos von Texten, Tafelbildern und Arbeitsblättern, die du auswählst.</string>
+	<string>Handwritten liest Fotos von Texten, Tafelbildern und Arbeitsblättern, die du auswählst.</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Damit Handwrite Studio kostenlos bleibt, zeigt die App Werbung. Mit deiner Erlaubnis passt sie besser zu dir. Deine Texte und Handschriften werden dafür nie verwendet.</string>
+	<string>Damit Handwritten kostenlos bleibt, zeigt die App Werbung. Mit deiner Erlaubnis passt sie besser zu dir. Deine Texte und Handschriften werden dafür nie verwendet.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

@@ -1,4 +1,4 @@
-# Handwrite Studio – Rechtliche und technische Prüfung
+# Handwritten – Rechtliche und technische Prüfung
 
 Stand: 17.11.2026 · Nur iPad-App + statische Info-Website (keine Web-App mehr) · Grundlage: Quellcode dieses Repositorys, Abhängigkeiten, Assets, Konfiguration
 
@@ -23,7 +23,7 @@ Bewertung je Punkt: **✅ Umgesetzt und geprüft** · **🟡 Umgesetzt, weitere 
 | 9 | KI-Ausfüllen | App ruft **keine** KI auf; erzeugt nur einen Prompt zum Kopieren | Hinweis im Dialog: Antworten können falsch sein, Prüfschritt, Lern- statt Täuschungszweck; Datenschutz erklärt, dass Nutzer selbst entscheidet | ✅ |
 | 10 | UI-Nähe zu bekannter Notiz-App | Bibliothek mit Notizbuch-Regal, Titel-Chevron, Desktop-Ordnersymbol | Bibliothek neu: eigene **Karten** (Vorschau oben, Name/Datum, „⋯“-Menü), eigene Ordner-Darstellung (gestapelte Blätter) | 🟡 |
 | 11 | Goodnotes-Export | Eigene Protobuf/ZIP-Erzeugung + eingebettete leere Container (MIT, „Benspiel/Inkly“) | Bericht unten; Funktion erhalten | 🔴 Herkunft prüfen |
-| 12 | Marke „Handwrite Studio“ | Keine Recherche möglich ohne Registerzugang | Offen | 🔴 |
+| 12 | Marke „Handwritten“ | Keine Recherche möglich ohne Registerzugang | Offen | 🔴 |
 
 ---
 
@@ -101,7 +101,7 @@ Netzwerkzugriffe im Web-Code: nur eigene Modelldateien (`/models/…`) und – *
 
 ## 8. Offene Punkte für die Anwältin / den Anwalt
 
-1. Markenrecherche „Handwrite Studio“ (DPMA, EUIPO/TMview; Klassen 9, 41, 42).
+1. Markenrecherche „Handwritten“ (DPMA, EUIPO/TMview; Klassen 9, 41, 42).
 2. Zulässigkeit der Formatkompatibilität mit Goodnotes inkl. Herkunft der eingebetteten Container.
 3. Rechtsgrundlage für nicht-personalisierte Werbung ohne Einwilligung (§ 25 TDDDG) und Ausreichen der Selbstauskunft „unter 16“.
 4. Ob Nutzungsbedingungen nötig sind (z. B. Haftung für importierte Inhalte, keine Nutzung zur Täuschung).

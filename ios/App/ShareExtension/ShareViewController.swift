@@ -1,7 +1,7 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// "Teilen mit Handwrite Studio": takes photos from the share sheet, hands them
+/// "Teilen mit Handwritten": takes photos from the share sheet, hands them
 /// to the app through a team-private pasteboard and opens the app, which then
 /// shows them in "Foto in deine Handschrift".
 class ShareViewController: UIViewController {
@@ -11,7 +11,7 @@ class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        status.text = "Foto wird an Handwrite Studio übergeben …"
+        status.text = "Foto wird an Handwritten übergeben …"
         status.numberOfLines = 0
         status.textAlignment = .center
         status.font = .preferredFont(forTextStyle: .headline)
@@ -42,9 +42,9 @@ class ShareViewController: UIViewController {
         UIPasteboard.general.items = images.enumerated().map { index, data in
             index == 0 ? [UTType.jpeg.identifier: data, ShareViewController.marker: "\(images.count)"] : [UTType.jpeg.identifier: data]
         }
-        status.text = images.count == 1 ? "Foto übergeben ✓\nHandwrite Studio öffnet sich." : "\(images.count) Fotos übergeben ✓\nHandwrite Studio öffnet sich."
+        status.text = images.count == 1 ? "Foto übergeben ✓\nHandwritten öffnet sich." : "\(images.count) Fotos übergeben ✓\nHandwritten öffnet sich."
         if !openApp(URL(string: "handwritestudio://share")!) {
-            status.text = "Foto übergeben ✓\nÖffne jetzt Handwrite Studio – es wartet dort auf dich."
+            status.text = "Foto übergeben ✓\nÖffne jetzt Handwritten – es wartet dort auf dich."
         }
         try? await Task.sleep(nanoseconds: 900_000_000)
         finish(nil)

@@ -1,4 +1,4 @@
-/* ───────── Handwrite Studio: Nachtblau-Design für App und Website ─────────
+/* ───────── Handwritten: Nachtblau-Design für App und Website ─────────
    Dunkle Navigationsleiste, helle Arbeitsfläche, Serifen-Überschriften,
    nachtblaue Hauptknöpfe, weiße Karten mit feinem Rand. Wird zuletzt geladen. */
 :root{
@@ -684,3 +684,89 @@ html:has(.view-studio),body:has(.view-studio){height:100%;overflow:hidden;oversc
 .view-studio .two-controls .number-control small{display:none}
 .view-studio .two-controls .number-control output{overflow:visible}
 .view-studio .special-body .pen-width select{min-width:96px;flex:none}
+/* Stiftstärke als Plus/Minus wie Schriftgröße (statt zusammengedrücktem Auswahlmenü). */
+.view-studio .pen-step{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.view-studio .pen-step>span:first-child{font-size:13px;font-weight:600;color:var(--hs-muted)}
+.view-studio .pen-step .number-control{flex:0 0 132px;margin:0}
+.view-studio .pen-step .number-control output{white-space:nowrap}
+
+/* ── Handschrift-Stufen ─────────────────────────────────────────────────── */
+.lv-sheet{width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 48px);display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:20px}
+.lv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 24px 14px;border-bottom:1px solid var(--hs-line)}
+.lv-eyebrow{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hs-muted)}
+.lv-head h2{margin:2px 0 0;font-family:var(--hs-serif);font-size:26px;color:var(--hs-ink)}
+.lv-scroll{overflow:auto;padding:18px 24px 8px;-webkit-overflow-scrolling:touch}
+.lv-preview{margin:0 0 18px;padding:14px 16px 10px;border:1px solid var(--hs-line);border-radius:14px;background:#fff}
+.lv-preview svg{display:block;width:100%;height:64px}
+.lv-preview figcaption{margin-top:6px;font-size:12.5px;color:var(--hs-muted)}
+.lv-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.lv-item{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:14px;align-items:start;padding:16px;border:1px solid var(--hs-line);border-radius:14px;background:#fff}
+.lv-item.done{background:var(--hs-bg)}
+.lv-item.muted .lv-body{opacity:.6}
+.lv-num{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--hs-soft);color:var(--hs-navy);font-weight:700;font-size:15px}
+.lv-item.done .lv-num{background:var(--hs-navy);color:#fff}
+.lv-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.lv-title strong{font-size:15.5px;color:var(--hs-ink)}
+.lv-title span{font-size:12.5px;color:var(--hs-muted)}
+.lv-body p{margin:4px 0 0;font-size:13.5px;line-height:1.5;color:var(--hs-muted)}
+.lv-body .lv-note{color:var(--hs-navy-2)}
+.lv-progress{display:flex;align-items:center;gap:10px;margin-top:10px}
+.lv-progress progress{flex:1;height:6px;-webkit-appearance:none;appearance:none;border:0;border-radius:6px;background:#e3e8f0;overflow:hidden}
+.lv-progress progress::-webkit-progress-bar{background:#e3e8f0;border-radius:6px}
+.lv-progress progress::-webkit-progress-value{background:var(--hs-navy);border-radius:6px}
+.lv-progress span{font-size:12px;color:var(--hs-muted);font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+.lv-action{align-self:center}
+.lv-action .button{min-height:44px;white-space:nowrap;touch-action:manipulation}
+.lv-hint{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--hs-muted);white-space:nowrap}
+.lv-fine{margin:14px 2px 8px;font-size:12.5px;line-height:1.5;color:var(--hs-muted)}
+.lv-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 24px 18px;border-top:1px solid var(--hs-line);background:#fff}
+.lv-foot .button{min-height:44px}
+@media(max-width:620px){.lv-item{grid-template-columns:36px minmax(0,1fr)}.lv-action{grid-column:2}}
+
+/* Paare schreiben */
+.lv-pair{padding:18px 26px 22px;display:flex;flex-direction:column;gap:14px}
+.lv-pair-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lv-pad{width:100%;height:auto;aspect-ratio:900/260;border-radius:14px;border:1px solid var(--hs-line)}
+.lv-split{display:flex;align-items:center;gap:16px;min-height:76px;padding:10px 14px;border:1px dashed var(--hs-line-strong,#c4cddb);border-radius:12px;background:#fff}
+.lv-split-view{height:64px;width:auto;max-width:55%;flex:none}
+.lv-split-ctl{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--hs-muted)}
+.lv-nudge{display:inline-flex;gap:6px}
+.lv-nudge button{display:grid;place-items:center;width:44px;height:40px;border:1px solid var(--hs-line);border-radius:10px;background:#fff;color:var(--hs-navy-2);touch-action:manipulation}
+.lv-split-empty{margin:0;font-size:13px;color:var(--hs-muted)}
+.lv-train{max-height:calc(100vh - 32px);overflow:auto;-webkit-overflow-scrolling:touch}
+.lv-train .modal-header{padding-top:16px;padding-bottom:12px}
+.lv-pair{gap:10px;padding-top:12px}
+.lv-pair .letter-prompt strong{font-size:44px;line-height:1}
+.lv-pad{max-height:min(240px,32vh);aspect-ratio:auto}
+.lv-train .training-save{flex-wrap:wrap;gap:10px}
+
+/* Stufen-Übersicht sortiert: Als Nächstes · Fertig · Danach */
+.lv-scroll{display:flex;flex-direction:column;gap:18px}
+.lv-scroll .lv-preview{margin:0}
+.lv-preview figcaption{display:flex;justify-content:space-between;gap:12px}
+.lv-group{display:flex;flex-direction:column;gap:8px}
+.lv-group-title{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hs-muted)}
+.lv-item.lv-next{border:1.5px solid var(--hs-navy);align-items:center}
+.lv-group .lv-fine{margin:0 2px}
+.lv-rows{list-style:none;margin:0;padding:0;border:1px solid var(--hs-line);border-radius:14px;background:#fff}
+.lv-rows.done{background:var(--hs-bg)}
+.lv-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 12px 0 16px}
+.lv-row+.lv-row{border-top:1px solid var(--hs-line)}
+.lv-row strong{font-size:15px;font-weight:600;color:var(--hs-ink)}
+.lv-row-meta{flex:1;min-width:0;font-size:12.5px;color:var(--hs-muted)}
+.lv-row .text-button{min-height:44px;padding:0 10px;font-weight:600;color:var(--hs-navy-2)}
+.lv-dot{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--hs-soft);color:var(--hs-muted);font-size:13px;font-weight:700}
+.lv-dot.done{background:var(--hs-navy);color:#fff}
+/* Stufe 3: Satzzeilen in natürlicher Schreibgröße statt riesiger Fläche */
+.calibration-pad.lv-line-pad{aspect-ratio:1000/124;min-height:0;height:auto}
+
+/* Feinschliff: letzte Reste der alten grünen Farben, einheitliche Fortschrittsbalken */
+.profile-card p{color:var(--hs-muted)}
+.profile-card input{color:var(--hs-ink)}
+progress{-webkit-appearance:none;appearance:none;border:0;height:6px;border-radius:6px;background:#e3e8f0;overflow:hidden;accent-color:var(--hs-navy)}
+progress::-webkit-progress-bar{background:#e3e8f0;border-radius:6px}
+progress::-webkit-progress-value{background:var(--hs-navy);border-radius:6px}
+progress::-moz-progress-bar{background:var(--hs-navy);border-radius:6px}
+.guided-progress progress{height:8px}
+.profile-card progress{accent-color:var(--hs-navy)}
+.guided-complete p{color:var(--hs-muted)}

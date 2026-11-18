@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Handwrite Studio itself does not track. Ads (Google Mobile Ads) ship their own privacy manifest. -->
+	<!-- Handwritten itself does not track. Ads (Google Mobile Ads) ship their own privacy manifest. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>

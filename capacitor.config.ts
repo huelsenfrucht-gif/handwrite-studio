@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // (Signing & Capabilities) to one registered with your Apple developer account.
 const config: CapacitorConfig = {
   appId: 'com.handwritestudio.app',
-  appName: 'Handwrite Studio',
+  appName: 'Handwritten',
   webDir: 'dist',
   ios: { contentInset: 'never', backgroundColor: '#ffffff' },
 };

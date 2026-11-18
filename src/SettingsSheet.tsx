@@ -53,6 +53,7 @@ export function SettingsSheet(props: {
           <Row icon={<CircleHelp size={18} />} label="So funktioniert’s" onClick={props.onHelp} chevron />
           {!native && <Row icon={<ShieldCheck size={18} />} label="Datenschutzerklärung" onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />}
           <Row icon={<Mail size={18} />} label="Hilfe & Kontakt" onClick={() => window.open(`${SITE}support.html`, '_blank')} chevron />
+          <Row icon={<FileText size={18} />} label="Nutzungsbedingungen" onClick={() => window.open(`${SITE}nutzungsbedingungen.html`, '_blank')} chevron />
           <Row icon={<Info size={18} />} label="Impressum" onClick={() => window.open(`${SITE}impressum.html`, '_blank')} chevron />
           <Row icon={<FileText size={18} />} label="Lizenzen & Quellen" onClick={() => window.open(`${SITE}lizenzen.html`, '_blank')} chevron />
           <details className="st-row st-details"><summary><span className="st-icon"><Info size={18} /></span><span className="st-label">Über die Schriftanalyse</span><ChevronRight size={18} className="st-chevron" /></summary>
@@ -60,7 +61,7 @@ export function SettingsSheet(props: {
           </details>
         </Group>
 
-        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Deine Dokumente und Handschriften bleiben auf deinem Gerät<br />Handwrite Studio 1.0</p>
+        <p className="st-about">{saved ? 'Alles gespeichert' : 'Nicht gespeichert'} · Deine Dokumente und Handschriften bleiben auf deinem Gerät<br />Handwritten 1.0</p>
       </div>
     </section>
   </div>;

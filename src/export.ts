@@ -20,7 +20,7 @@ async function shareNative(blob:Blob,name:string){
  try{await Share.share({title:name,files:[uri]});}catch(e){if(!/cancel/i.test(String((e as Error)?.message||e)))throw e;}
 }
 export function safeName(name:string){return (name.replace(/[^\p{L}\p{N}\-_ ]/gu,'').trim()||'Dokument').slice(0,80);}
-export function exportBackup(library:Library){return download(JSON.stringify(library),`Handwrite-Studio-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
+export function exportBackup(library:Library){return download(JSON.stringify(library),`Handwritten-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
 export async function createPDF(note:Note,profiles:Profile[],template?:Template){const jsPDF=await loadJsPDF(),{glyphs,pages,highlights}=layout(note,profiles);const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});const ratio=595.28/PAGE.width;
  for(let page=0;page<pages;page++){
   if(page)pdf.addPage();pdf.setFillColor('#ffffff');pdf.rect(0,0,595.28,841.89,'F');pdf.setLineWidth(GOODNOTES.width*ratio);pdf.setDrawColor(GOODNOTES.color);
@@ -34,7 +34,7 @@ export async function createPDF(note:Note,profiles:Profile[],template?:Template)
   for(const a of note.annotations.filter(a=>a.page===page))draw(a.points,a.color,a.width);
   for(const d of (note.drawings||[]).filter(d=>d.page===page))for(const ink of resolvedDrawingInk(d))draw(ink.points,ink.color,d.penWidth*d.scale);
  }
- pdf.setProperties({title:note.title,creator:'Handwrite Studio',subject:'Vektorhandschrift – PDF-Seiteninhalt, keine nativen Goodnotes-Stiftstriche'});return pdf;
+ pdf.setProperties({title:note.title,creator:'Handwritten',subject:'Vektorhandschrift – PDF-Seiteninhalt, keine nativen Goodnotes-Stiftstriche'});return pdf;
 }
 export async function exportPDF(note:Note,profiles:Profile[],template?:Template){const pdf=await createPDF(note,profiles,template);await download(pdf.output('blob'),`${safeName(note.title)}.pdf`,'application/pdf');}
 export function makeSVG(note:Note,profiles:Profile[],page:number,template?:Template){const {glyphs,highlights}=layout(note,profiles);const paths:string[]=[];

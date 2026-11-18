@@ -1,6 +1,6 @@
-# Handwrite Studio
+# Handwritten
 
-Handwrite Studio ist eine lokale Progressive Web App: Sie erkennt Wörter aus
+Handwritten ist eine lokale Progressive Web App: Sie erkennt Wörter aus
 fotografierten Notizseiten und erstellt bearbeitbare Dokumente aus persönlicher
 Handschrift. Die Website benötigt kein Konto.
 
@@ -99,6 +99,6 @@ In der App werden Exporte über das iOS-Teilen-Menü geöffnet (z. B. „In Good
 
 ### Funktionen nur in der iOS-App
 - **Apple-Texterkennung (Vision)** für Fotos von Text und Tafelbildern (`ios/App/App/HandwriteNativePlugin.swift`).
-- **Teilen mit Handwrite Studio**: Share-Extension (`ios/App/ShareExtension`) für Fotos aus der Fotos-App.
+- **Teilen mit Handwritten**: Share-Extension (`ios/App/ShareExtension`) für Fotos aus der Fotos-App.
 - **iCloud-Abgleich** über einen selbst gewählten Ordner in iCloud Drive – ohne iCloud-Berechtigung, funktioniert daher auch mit kostenlosem Apple-Konto.
 - **Werbung (AdMob)** vor jedem Export und vor dem Anlegen einer Handschrift. Eigene IDs in `src/nativeAds.ts` und `ios/App/App/Info.plist` eintragen.

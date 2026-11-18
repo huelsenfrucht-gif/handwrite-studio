@@ -151,7 +151,7 @@ export function LibraryShell(props: {
 
   return <div className={`gn-shell ${collapsed ? 'collapsed' : ''}`}>
     <aside className="gn-sidebar" aria-label="Bibliothek">
-      <div className="gn-brand"><PenLine size={28} strokeWidth={1.6} /><span>Handwrite<br />Studio</span>
+      <div className="gn-brand"><PenLine size={28} strokeWidth={1.6} /><span>Handwritten</span>
         <button className="gn-collapse" aria-label="Seitenleiste ausblenden" onClick={() => setCollapsed(true)}><SidebarIcon /></button></div>
       <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
         <button data-drop="root" className={`${view === 'documents' && !searching ? 'active' : ''} ${drag?.over === 'root' ? 'drop-over' : ''}`} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={21} strokeWidth={1.6} />Dokumente</button>

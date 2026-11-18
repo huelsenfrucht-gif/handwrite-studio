@@ -24,6 +24,9 @@ export function validateLibrary(value:unknown):Library {
    }
   }
   for(const [c,gs] of Object.entries(p.glyphs)){if(Array.from(c).length!==1||!Array.isArray(gs)||!gs.length||gs.length>30)return fail();for(const g of gs)if(!g||!['pen','photo','demo'].includes(g.source)||!num(g.advance,1,200)||!Array.isArray(g.strokes)||g.strokes.length>10000||!g.strokes.length||!g.strokes.every(stroke)||(g.position!==undefined&&!['initial','medial','final','isolated'].includes(g.position))||(g.raster!==undefined&&(!str(g.raster.data,500000)||!/^data:image\/png;base64,/.test(g.raster.data)||!num(g.raster.x,-100,200)||!num(g.raster.y,-100,200)||!num(g.raster.width,1,400)||!num(g.raster.height,1,200))))return fail();}
+  if(p.pairs!==undefined){if(!p.pairs||typeof p.pairs!=='object'||Array.isArray(p.pairs)||Object.keys(p.pairs).length>200)return fail();for(const [k,ps] of Object.entries(p.pairs)){const n=Array.from(k).length;if(n<2||n>3||!Array.isArray(ps)||ps.length>12)return fail();for(const x of ps)if(!x||!num(x.width,1,600)||!Array.isArray(x.cuts)||x.cuts.length!==n+1||!x.cuts.every(c=>num(c,0,600))||!Array.isArray(x.strokes)||!x.strokes.length||x.strokes.length>2000||!x.strokes.every(stroke))return fail();}}
+  if(p.rhythm!==undefined&&(!p.rhythm||!num(p.rhythm.wordGap,0,300)||!num(p.rhythm.joining,0,1)||!num(p.rhythm.samples,0,1000)))return fail();
+  if(p.unlocked!==undefined&&typeof p.unlocked!=='boolean')return fail();
  }
  for(const n of v.notes){if(!n||!str(n.id,100)||!str(n.title,200)||!str(n.text,100000)||!str(n.renderedText,100000)||!str(n.updated,100))return fail();const s=n.settings;
   if(s&&s.wordSpacing===undefined)s.wordSpacing=35;

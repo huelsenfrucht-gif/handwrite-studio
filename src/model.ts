@@ -2,8 +2,22 @@ import type { WordSample } from './contextual';
 export type Point = { x: number; y: number; p?: number };
 export type Stroke = Point[];
 export type RasterInk = { data: string; x: number; y: number; width: number; height: number };
-export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean; position?:'initial'|'medial'|'final'|'isolated' };
-export type Profile = { id: string; name: string; created: string; updated?: string; glyphs: Record<string, Glyph[]>; words?: WordSample[]; styleImages?: string[] };
+export type Glyph = { strokes: Stroke[]; advance: number; source: 'pen' | 'photo' | 'demo'; raster?: RasterInk; hiddenByRaster?: boolean; position?:'initial'|'medial'|'final'|'isolated';
+  /** Part of a handwritten letter pair: already connected to the next letter, no extra spacing or join. */
+  glue?: boolean;
+  /** Punctuation placed on the guide lines (newer, correct height). */
+  lined?: boolean };
+/** Two or three letters written together ("ch", "Cl", "sch"), with the cut positions between them. */
+export type PairSample = { strokes: Stroke[]; cuts: number[]; width: number };
+/** What the writing-rhythm sentences taught: word gap (glyph units) and how often letters are joined. */
+export type Rhythm = { wordGap: number; joining: number; samples: number };
+export type Profile = { id: string; name: string; created: string; updated?: string; glyphs: Record<string, Glyph[]>; words?: WordSample[]; styleImages?: string[];
+  /** Stufe 4–5: handwritten letter connections. */
+  pairs?: Record<string, PairSample[]>;
+  /** Stufe 3: writing rhythm from short sentences. */
+  rhythm?: Rhythm;
+  /** Stufe 4–5 unlocked (once, by a voluntary video). */
+  unlocked?: boolean };
 export type Paper = 'lined' | 'grid' | 'blank' | 'custom';
 /** A user's own paper (image or PDF pages, e.g. a worksheet) as A4 JPEG data URLs. */
 export type Template = { id: string; name: string; pages: string[]; created: string };
@@ -121,6 +135,21 @@ export function simplify(points: Stroke, tolerance = .12): Stroke {
 const pathCache = new WeakMap<Stroke, string>();
 export function pathData(points: Stroke) { const hit = pathCache.get(points); if (hit !== undefined) return hit; let d = ''; for (let i = 0; i < points.length; i++) d += `${i ? ' L' : 'M'}${points[i].x.toFixed(1)},${points[i].y.toFixed(1)}`; if (points.length === 1) d += ' l0.01,0'; pathCache.set(points, d); return d; }
 // Normalise to a baseline of 80 and an x-height of 42; preserve ascenders/descenders.
+/**
+ * Punctuation keeps the height at which it was written relative to the guide lines of the
+ * writing pad (baseline and x-height line), so „.“ sits on the line, „,“ hangs below it,
+ * „-“ floats in the middle and „““ stays at the top – instead of being stretched to letter size.
+ */
+export function normaliseOnLines(strokes: Stroke[], source: Glyph['source'], baseline: number, xLine: number): Glyph {
+  const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe zuerst das Zeichen.');
+  // Pads use three equal zones; Oberlänge + x-height (2 zones) map onto the 76 units from ascender to baseline.
+  const scale = 76 / Math.max(20, 2 * (baseline - xLine)), minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
+  return { source, lined: true, advance: Math.max(10, Math.min(145, (maxX - minX) * scale + 11)), strokes: strokes.map(s => simplify(s.map(p => ({ x: (p.x - minX) * scale + 3, y: Math.max(-20, Math.min(115, 80 + (p.y - baseline) * scale)), p: p.p })))) };
+}
+/** Satzzeichen: everything that is neither a letter nor a digit. */
+export const isPunctuation = (char: string) => !/[\p{L}\p{N}]/u.test(char);
+/** Written by hand and usable; punctuation only in the newer, line-placed form. */
+export const hasOwnGlyph = (p: Profile, char: string) => !!p.glyphs[char]?.some(g => g.source === 'pen' && (!isPunctuation(char) || g.lined));
 export function normalise(strokes: Stroke[], char: string, source: Glyph['source']): Glyph {
   const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe oder markiere zuerst einen Buchstaben.');
   const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));

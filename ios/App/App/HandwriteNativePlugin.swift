@@ -6,7 +6,7 @@ import Capacitor
 
 /// Native helpers for the web app:
 /// - Apple Vision text recognition (printed text, board photos, handwriting)
-/// - photos handed over by the share extension ("Teilen mit Handwrite Studio")
+/// - photos handed over by the share extension ("Teilen mit Handwritten")
 @objc(HandwriteNativePlugin)
 public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "HandwriteNativePlugin"
