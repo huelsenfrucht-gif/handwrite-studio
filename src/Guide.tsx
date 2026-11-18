@@ -26,7 +26,7 @@ export function GuideText({ text, top, zone, x = 0, cx, maxWidth = Infinity }: {
     const g = demoGlyphs[c]?.[0];
     if (!g) { pos += 28; continue; }
     placed.push({ at: pos, strokes: g.strokes });
-    pos += g.advance;
+    pos += Math.max(14, g.advance - 10); // letters a bit closer together, like connected writing
   }
   // Natural width is a bit wider than the x-height; long sentences get narrowed only as far as needed.
   const sx = Math.min(zone / 40, maxWidth / Math.max(1, pos)), start = cx === undefined ? x : cx - pos * sx / 2;
