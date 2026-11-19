@@ -2,6 +2,8 @@ import Foundation
 import AVFoundation
 import Speech
 import Capacitor
+import UIKit
+import WhisperKit
 
 /// "Transkribieren": records from the microphone and turns speech into text
 /// entirely on the device. Keeps running while the app is in the background or the
@@ -26,6 +28,8 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "saved", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "transcribeAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "accurateStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "transcribeAccurate", returnType: CAPPluginReturnPromise),
     ]
 
     private var session: LectureSession { LectureSession.shared }
@@ -79,6 +83,22 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         Task {
             do { call.resolve(try await LectureSession.transcribeSaved(id: id)) }
             catch { call.reject(error.localizedDescription) }
+        }
+    }
+
+    @objc func accurateStatus(_ call: CAPPluginCall) { call.resolve(AccurateRecognizer.shared.status()) }
+
+    /// Recognises a saved recording again with a large Whisper model (downloaded once).
+    @objc func transcribeAccurate(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else { call.reject("Keine Aufnahme angegeben."); return }
+        guard id != session.id else { call.reject("Diese Aufnahme läuft noch."); return }
+        Task {
+            do {
+                let result = try await AccurateRecognizer.shared.transcribe(id: id) { [weak self] phase, fraction in
+                    self?.notifyListeners("accurate", data: ["phase": phase, "progress": fraction])
+                }
+                call.resolve(result)
+            } catch { call.reject(error.localizedDescription) }
         }
     }
 
@@ -584,4 +604,89 @@ final class PassageBox {
 /// Diagnostics for the console (visible with `devicectl … --console` or in Xcode).
 func log(_ message: String) {
     print("[Transkribieren] \(message)"); fflush(stdout)
+}
+
+// MARK: - Genau erkennen (Whisper)
+
+/// A second, slower and more accurate pass over the finished recording with OpenAI's
+/// Whisper (large-v3 turbo, via WhisperKit on the Neural Engine). The model is downloaded
+/// once (about 0.6 GB) and then works offline; no audio ever leaves the iPad.
+final class AccurateRecognizer {
+    static let shared = AccurateRecognizer()
+    private var kit: WhisperKit?
+    private var busy = false
+    private let preferred = "openai_whisper-large-v3-v20240930_turbo_632MB"
+
+    private var base: URL {
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Whisper", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        var u = url; var values = URLResourceValues(); values.isExcludedFromBackup = true; try? u.setResourceValues(values)
+        return url
+    }
+    /// The best model this iPad can run comfortably.
+    private var variant: String {
+        let support = WhisperKit.recommendedModels()
+        return support.supported.contains(preferred) ? preferred : support.default
+    }
+    private var marker: URL { base.appendingPathComponent("\(variant).ready") }
+
+    func status() -> [String: Any] {
+        ["downloaded": FileManager.default.fileExists(atPath: marker.path), "model": variant, "sizeMB": variant.contains("632MB") ? 632 : 500, "busy": busy]
+    }
+
+    func transcribe(id: String, report: @escaping (String, Double) -> Void) async throws -> [String: Any] {
+        guard !busy else { throw LectureError.unavailable("Die genaue Erkennung läuft bereits.") }
+        busy = true; defer { busy = false }
+        guard var data = LectureStore.load(id) else { throw LectureError.unavailable("Die Aufnahme wurde nicht gefunden.") }
+        let audio = LectureStore.audio(id)
+        guard FileManager.default.fileExists(atPath: audio.path) else { throw LectureError.unavailable("Zu diesem Transkript gibt es keine Tonaufnahme mehr.") }
+        // A few extra minutes if the app is sent to the background meanwhile.
+        let bg = await UIApplication.shared.beginBackgroundTask(withName: "Genau erkennen")
+        defer { Task { @MainActor in UIApplication.shared.endBackgroundTask(bg) } }
+
+        let kit = try await prepare(report: report)
+        report("transcribe", 0)
+        let language = String((data["locale"] as? String ?? "de-DE").prefix(2))
+        var options = DecodingOptions(task: .transcribe, language: language, temperatureFallbackCount: 3, skipSpecialTokens: true, chunkingStrategy: .vad)
+        // Subject words as a short prompt make names and technical terms more likely.
+        let terms = (data["terms"] as? [String] ?? []).prefix(40).joined(separator: ", ")
+        if !terms.isEmpty, let tokenizer = kit.tokenizer {
+            options.promptTokens = Array(tokenizer.encode(text: " " + terms).filter { $0 < tokenizer.specialTokens.specialTokenBegin }.prefix(120))
+        }
+        let poll = Task { while !Task.isCancelled { report("transcribe", kit.progress.fractionCompleted); try? await Task.sleep(nanoseconds: 500_000_000) } }
+        defer { poll.cancel() }
+        log("Genau erkennen: \(variant), Sprache \(language)")
+        let results = try await kit.transcribe(audioPath: audio.path, decodeOptions: options)
+        let passages = results.flatMap { $0.segments }.compactMap { seg -> [String: Any]? in
+            let text = seg.text.replacingOccurrences(of: "<\\|[^|]*\\|>", with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : ["start": Double(seg.start), "end": Double(seg.end), "text": text]
+        }
+        guard !passages.isEmpty else { throw LectureError.unavailable("In der Tonaufnahme wurde keine Sprache gefunden.") }
+        data["passages"] = passages
+        data["accurate"] = true
+        data["missedText"] = false
+        data["state"] = "stopped"
+        LectureStore.save(data, id: id)
+        report("done", 1)
+        return data
+    }
+
+    private func prepare(report: @escaping (String, Double) -> Void) async throws -> WhisperKit {
+        if let kit { return kit }
+        let name = variant
+        let folder: URL
+        do {
+            report("download", 0)
+            folder = try await WhisperKit.download(variant: name, downloadBase: base) { progress in report("download", progress.fractionCompleted) }
+        } catch {
+            throw LectureError.unavailable("Das Sprachmodell konnte nicht geladen werden. Für den einmaligen Download (ca. 0,6 GB) braucht das iPad Internet.")
+        }
+        FileManager.default.createFile(atPath: marker.path, contents: Data())
+        // Compiling the model for this iPad takes a while the first time only.
+        report("load", 0)
+        let config = WhisperKitConfig(model: name, downloadBase: base, modelFolder: folder.path, verbose: false, logLevel: .error, prewarm: true, load: true, download: false)
+        let kit = try await WhisperKit(config)
+        self.kit = kit
+        return kit
+    }
 }
