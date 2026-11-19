@@ -121,7 +121,6 @@ export function LibraryShell(props: {
   };
   const filterLabel = { all: 'Alle', notes: 'Dokumente', folders: 'Ordner' }[filter];
   const home = view === 'documents' && !folderId && !query;
-  const recent = useMemo(() => [...library.notes].sort((a, b) => b.updated.localeCompare(a.updated))[0], [library.notes]);
   const title = searching && query ? 'Suche' : view === 'favorites' ? 'Favoriten' : view === 'profiles' ? 'Meine Handschriften' : current?.name || 'Dokumente';
 
   const card = (item: Item) => {
@@ -182,7 +181,6 @@ export function LibraryShell(props: {
       {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button data-drop="root" className={drag?.over === 'root' ? 'drop-over' : ''} onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button data-drop={f.id} className={drag?.over === f.id ? 'drop-over' : ''} onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
       {live && <LiveBanner live={live} onOpen={props.lecture} />}
       {home ? <div className="gn-head"><h1>Dokumente</h1>
-        {recent && <button className="gn-continue" onClick={() => props.openNote(recent.id)}><small>Weiterschreiben</small><strong>{recent.title || 'Unbenannt'}</strong><ChevronRight size={16} /></button>}
       </div> : <h1>{title}</h1>}
       {home && <div className="gn-quick">
         {!live && <button onClick={() => props.lecture()}><Mic size={18} strokeWidth={1.8} /><span>Transkribieren</span></button>}
