@@ -11,7 +11,7 @@ import { Capacitor } from '@capacitor/core';
  * Placement (no banners):
  * - when text is written in handwriting: a full-screen ad; for long texts (from REWARD_FROM_PAGES pages)
  *   the user may instead choose a rewarded video that gives REWARD_AD_FREE_MS without ads,
- * - a full-screen ad before a new handwriting and before saving or loading a backup.
+ * - a full-screen ad before a new handwriting, before a transcription starts and before saving or loading a backup.
  * Exports themselves are free of ads.
  * Ad length is decided by Google; showing several ads in a row is not allowed.
  */

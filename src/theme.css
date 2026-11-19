@@ -863,7 +863,7 @@ progress::-moz-progress-bar{background:var(--hs-navy);border-radius:6px}
 .tr-fine{margin:-6px 0 0;font-size:12.5px;line-height:1.45;color:var(--hs-muted);text-align:center}
 .tr-saved h3{margin:6px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--hs-muted)}
 .tr-saved-row{display:flex;align-items:center;gap:8px;border-top:1px solid var(--hs-line)}
-.tr-saved-row>button:first-child{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 0;border:0;background:none;text-align:left;color:var(--hs-ink)}
+.tr-saved-row>button:not(.tr-round){flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 0;border:0;background:none;text-align:left;color:var(--hs-ink)}
 .tr-saved-row strong{font-size:14.5px;font-weight:600}
 .tr-saved-row small{font-size:12.5px;color:var(--hs-muted)}
 .tr-rec-dot{flex:none;display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--hs-rec)}
@@ -971,3 +971,43 @@ progress::-moz-progress-bar{background:var(--hs-navy);border-radius:6px}
 .tr-pill .tr-rec-dot{animation:tr-blink 1.4s ease-in-out infinite}
 .tr-pill.paused .tr-rec-dot{animation:none;background:#b9b6ae}.tr-pill.paused b{color:var(--hs-muted)}
 @media (prefers-reduced-motion:reduce){.tr-rec-dot,.tr-caret,.gn-live-dot{animation:none!important}.tr-wave i,.tr-banner-wave i{transition:none}}
+
+/* Transkribieren: Startfenster breit wie „Handschrift“, zwei Spalten */
+.tr-sheet{width:min(880px,calc(100vw - 32px));border-radius:20px;background:#fff}
+.tr-sheet .tr-body{padding:20px 24px 22px}
+.tr-cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;align-items:start}
+.tr-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.tr-col .lv-group-title{margin:0}
+.tr-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tr-facts li{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--hs-line);font-size:14.5px;line-height:1.45;color:#4a4943}
+.tr-facts li:last-child{border-bottom:1px solid var(--hs-line)}
+.tr-facts svg{flex:none;margin-top:1px;color:var(--hs-ink)}
+.tr-saved{display:flex;flex-direction:column;border-bottom:1px solid var(--hs-line)}
+.tr-saved-row{gap:12px}
+.tr-saved-icon{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--hs-bg);color:var(--hs-ink)}
+.tr-foot{align-items:center;gap:12px}
+.tr-foot .tr-consent{flex:1;min-width:0;display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.tr-foot .tr-consent input{flex:none;width:24px;height:24px;margin:0;accent-color:var(--hs-ink)}
+.tr-foot .tr-consent span{display:flex;flex-direction:column;gap:2px}
+.tr-foot .tr-consent strong{font-size:14.5px;color:var(--hs-ink)}
+.tr-foot .tr-consent small{font-size:12.5px;line-height:1.4;color:var(--hs-muted)}
+.tr-foot .tr-start{min-height:48px;padding:0 24px}
+.tr-sheet>.tr-error{margin:0 24px 12px}
+@media (max-width:760px){.tr-cols{grid-template-columns:1fr;gap:22px}.tr-foot{flex-wrap:wrap}.tr-foot .tr-consent{flex-basis:100%}}
+
+/* Fertig: „Weiter“ mit Auswahl, „Neu erkennen“ als ordentlicher Knopf */
+.tr-next{position:relative}
+.tr-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:5;width:340px;padding:6px;border-radius:16px;background:#fff;box-shadow:0 0 0 1px var(--hs-line),0 18px 40px -16px #1c1d2166;display:flex;flex-direction:column}
+.tr-menu button{display:flex;align-items:flex-start;gap:14px;padding:12px;border:0;border-radius:11px;background:none;text-align:left;color:var(--hs-ink)}
+.tr-menu button:hover:not(:disabled){background:var(--hs-bg)}
+.tr-menu button:disabled{opacity:.4}
+.tr-menu svg{flex:none;margin-top:1px}
+.tr-menu span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tr-menu strong{font-size:15px;font-weight:600}
+.tr-menu small{font-size:12.5px;line-height:1.4;color:var(--hs-muted)}
+.tr-redo{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;border:1px solid var(--hs-line);border-radius:14px;background:#fff;text-align:left;color:var(--hs-ink)}
+.tr-redo svg{flex:none;margin-top:2px}
+.tr-redo span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tr-redo strong{font-size:15px;font-weight:600}
+.tr-redo small{font-size:12.5px;line-height:1.4;color:var(--hs-muted);white-space:normal}
+.tr-redo:disabled{opacity:.45}

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, ChevronDown, ChevronLeft, Lock, Mic, Pause, PenLine, Play, RotateCw, Star, Trash2 } from 'lucide-react';
+import { AlertTriangle, AudioLines, ChevronDown, ChevronLeft, ChevronRight, Download, Lock, Mic, Pause, PenLine, Play, RotateCw, Save, Star, Trash2, X } from 'lucide-react';
+import { download, safeName } from './export';
+import { adFreeUntil, adsAvailable, showInterstitialAd } from './nativeAds';
 import { clock, LANGUAGES, LectureRecorder, lectureSupported, lectureText, lectureTitle, paragraphs, ROOMS, timeOfDay, type Availability, type Lecture, type Room } from './lecture';
 import { SUBJECTS, subjectTerms } from './subjects';
 
-type Props = { onClose: () => void; onDocument: (title: string, text: string) => void };
+type Props = { onClose: () => void; onDocument: (title: string, text: string) => void; notify?: (s: string) => void };
 const running = (l: Lecture | null | undefined) => !!l && (l.state === 'recording' || l.state === 'paused');
 const stored = (key: string, fallback: string) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
 const remember = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } };
@@ -53,7 +55,7 @@ function lastWords(l: Lecture) {
  * „Transkribieren“: start, leave the app if you like, and get the spoken text as a
  * document afterwards. Speech recognition runs on the iPad; nothing is uploaded.
  */
-export function LectureSheet({ onClose, onDocument }: Props) {
+export function LectureSheet({ onClose, onDocument, notify }: Props) {
   const [live, setLive] = useLiveLecture();
   const [review, setReview] = useState<Lecture | null>(null);
   const [saved, setSaved] = useState<Lecture[]>([]);
@@ -80,6 +82,8 @@ export function LectureSheet({ onClose, onDocument }: Props) {
     }
     // The microphone normally starts at once; say so clearly if the system keeps it blocked.
     const slow = setTimeout(() => setError('Das Mikrofon startet gerade nicht. Schließe andere Apps, die das Mikrofon nutzen (z. B. Anrufe oder Sprachmemos), und versuche es erneut.'), 12000);
+    // A short ad before the recording starts (the app is free); never blocks the start.
+    if (adsAvailable() && Date.now() >= adFreeUntil()) { setBusy('Kurze Werbung …'); await showInterstitialAd(); setBusy('Wird gestartet …'); }
     const terms = [...new Set([...subjectTerms(subject), ...(subject === 'general' ? [] : subjectTerms('general'))])].slice(0, 90);
     try { setLive(await LectureRecorder.start({ locale, room, subject, terms })); setError(''); } finally { clearTimeout(slow); }
   });
@@ -89,54 +93,67 @@ export function LectureSheet({ onClose, onDocument }: Props) {
     if (l.id) await LectureRecorder.remove({ id: l.id }).catch(() => undefined);
   });
   const discard = (l: Lecture) => { if (!l.id || !confirm('Dieses Transkript und die Tonaufnahme endgültig löschen?')) return; void run('', async () => { await LectureRecorder.remove({ id: l.id! }); setReview(r => r?.id === l.id ? null : r); await refreshSaved(); }); };
+  const exportText = (l: Lecture, opts: { times: boolean; marks: boolean }) => run('Wird exportiert …', async () => { await download(lectureText(l, opts), `${safeName(lectureTitle(l))}.txt`, 'text/plain'); });
+  // Everything is already stored on the iPad; leaving keeps the transcript for later.
+  const keep = () => { onClose(); notify?.('Transkript gespeichert. Du findest es unter „Transkribieren“.'); };
   const fromAudio = (l: Lecture) => run('Wird neu erkannt …', async () => { if (l.id) setReview(await LectureRecorder.transcribeAudio({ id: l.id })); });
 
   const err = error && <p className="tr-error" role="alert"><AlertTriangle size={16} />{error}</p>;
   if (native && live) return <Live live={live} busy={busy} error={err} onBack={onClose}
     onPause={() => run('', async () => setLive(await LectureRecorder.pause()))} onResume={() => run('', async () => setLive(await LectureRecorder.resume()))}
     onMark={() => run('', async () => { await LectureRecorder.mark(); setLive(await LectureRecorder.current()); })} onStop={stop} />;
-  if (native && review) return <Review lecture={review} busy={busy} error={err} onBack={() => { setReview(null); void refreshSaved(); }} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} />;
+  if (native && review) return <Review lecture={review} busy={busy} error={err} onBack={keep} onSave={keep} onExport={o => exportText(review, o)} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} />;
 
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <section className="modal tr-sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
-      <header className="tr-sheet-top"><button className="tr-link" onClick={onClose}>Abbrechen</button></header>
-      {!native ? <div className="tr-body"><h2 id="tr-title" className="tr-sheet-title">Transkribieren</h2><p className="tr-sub">Transkribieren ist in der iPad-App verfügbar.</p></div>
-        : <Intro avail={avail} locale={locale} setLocale={setLocale} room={room} setRoom={setRoom} subject={subject} setSubject={setSubject} consent={consent} setConsent={setConsent} busy={busy} onStart={start} saved={saved} onOpen={setReview} onDelete={discard} />}
-      {err}
+    <section className="modal lv-sheet tr-sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
+      <header className="lv-head"><div><span className="lv-eyebrow">Transkribieren</span><h2 id="tr-title">Neues Transkript</h2></div><button className="icon-button" aria-label="Schließen" onClick={onClose}><X size={20} /></button></header>
+      {!native ? <div className="tr-body"><p className="tr-sub">Transkribieren ist in der iPad-App verfügbar.</p></div>
+        : <Intro avail={avail} locale={locale} setLocale={setLocale} room={room} setRoom={setRoom} subject={subject} setSubject={setSubject} consent={consent} setConsent={setConsent} busy={busy} onStart={start} onCancel={onClose} saved={saved} onOpen={setReview} onDelete={discard} error={err} />}
+      {!native && err}
     </section>
   </div>;
 }
 
-function Intro(p: { avail: Availability | null; locale: string; setLocale: (l: string) => void; room: Room; setRoom: (r: Room) => void; subject: string; setSubject: (s: string) => void; consent: boolean; setConsent: (v: boolean) => void; busy: string; onStart: () => void; saved: Lecture[]; onOpen: (l: Lecture) => void; onDelete: (l: Lecture) => void }) {
+function Intro(p: { avail: Availability | null; locale: string; setLocale: (l: string) => void; room: Room; setRoom: (r: Room) => void; subject: string; setSubject: (s: string) => void; consent: boolean; setConsent: (v: boolean) => void; busy: string; onStart: () => void; onCancel: () => void; saved: Lecture[]; onOpen: (l: Lecture) => void; onDelete: (l: Lecture) => void; error: ReactNode }) {
   const unavailable = p.avail && !p.avail.available;
-  return <div className="tr-body">
-    <div className="tr-intro">
-      <span className="tr-intro-icon"><Mic size={26} /></span>
-      <h2 id="tr-title" className="tr-sheet-title">Neues Transkript</h2>
-      <p className="tr-sub">Gesprochenes wird direkt auf diesem iPad zu Text, ohne Internet. Die Aufnahme läuft weiter, wenn du die App verlässt.</p>
-    </div>
-
-    <div className="tr-rows">
-      <label className="tr-row"><span>Sprache</span><span className="tr-select"><select value={p.locale} onChange={e => p.setLocale(e.target.value)}>{LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}</select><ChevronDown size={16} /></span></label>
-      <label className="tr-row"><span>Fach<small>Fachbegriffe werden dann zuverlässiger erkannt</small></span><span className="tr-select"><select value={p.subject} onChange={e => p.setSubject(e.target.value)}>{SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select><ChevronDown size={16} /></span></label>
-      <div className="tr-row column"><span>Raum</span>
-        <div className="tr-segment" role="radiogroup" aria-label="Raum">{ROOMS.map(r => <button key={r.id} role="radio" aria-checked={p.room === r.id} className={p.room === r.id ? 'on' : ''} onClick={() => p.setRoom(r.id)}>{r.label}</button>)}</div>
-        <small>{ROOMS.find(r => r.id === p.room)?.hint} Am besten liegt das iPad mit dem Bildschirm Richtung Lehrkraft.</small>
+  return <>
+    <div className="tr-body">
+      <div className="tr-cols">
+        <section className="tr-col">
+          <h3 className="lv-group-title">Aufnahme</h3>
+          <div className="tr-rows">
+            <label className="tr-row"><span>Sprache</span><span className="tr-select"><select value={p.locale} onChange={e => p.setLocale(e.target.value)}>{LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}</select><ChevronDown size={16} /></span></label>
+            <label className="tr-row"><span>Fach<small>Fachbegriffe werden dann zuverlässiger erkannt</small></span><span className="tr-select"><select value={p.subject} onChange={e => p.setSubject(e.target.value)}>{SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select><ChevronDown size={16} /></span></label>
+            <div className="tr-row column"><span>Raum</span>
+              <div className="tr-segment" role="radiogroup" aria-label="Raum">{ROOMS.map(r => <button key={r.id} role="radio" aria-checked={p.room === r.id} className={p.room === r.id ? 'on' : ''} onClick={() => p.setRoom(r.id)}>{r.label}</button>)}</div>
+              <small>{ROOMS.find(r => r.id === p.room)?.hint} Am besten liegt das iPad mit dem Bildschirm Richtung Lehrkraft.</small>
+            </div>
+          </div>
+          {unavailable && <p className="tr-sub">{p.avail!.reason || 'Die Spracherkennung ist auf diesem iPad nicht verfügbar.'}</p>}
+        </section>
+        <section className="tr-col">
+          <h3 className="lv-group-title">Gespeicherte Transkripte</h3>
+          {p.saved.length ? <div className="tr-saved">{p.saved.map(l => <div key={l.id} className="tr-saved-row">
+            <span className="tr-saved-icon"><AudioLines size={16} /></span>
+            <button onClick={() => p.onOpen(l)}><strong>{lectureTitle(l)}</strong><small>{clock(l.duration)} · {l.passages.length ? `${paragraphs(l).length} Absätze` : 'nur Ton'}</small></button>
+            <button className="tr-round small" aria-label="Transkript löschen" onClick={() => p.onDelete(l)}><Trash2 size={16} /></button>
+          </div>)}</div>
+            : <ul className="tr-facts">
+              <li><Lock size={17} />Läuft weiter, auch wenn du die App verlässt oder das iPad sperrst.</li>
+              <li><Mic size={17} />Wird direkt auf diesem iPad erkannt, ohne Internet.</li>
+              <li><Save size={17} />Wird automatisch gespeichert, bis du es übernimmst oder löschst.</li>
+            </ul>}
+        </section>
       </div>
-      <label className="tr-row consent"><input type="checkbox" checked={p.consent} onChange={e => p.setConsent(e.target.checked)} />
-        <span>Alle Anwesenden sind einverstanden<small>Gespräche dürfen nicht heimlich aufgenommen werden (§ 201 StGB). Kläre es vorher mit der Lehrkraft.</small></span></label>
     </div>
-
-    {unavailable && <p className="tr-sub">{p.avail!.reason || 'Die Spracherkennung ist auf diesem iPad nicht verfügbar.'}</p>}
-    <button className="tr-start" disabled={!p.consent || !!p.busy || !!unavailable} onClick={p.onStart}><span className="tr-rec-dot" aria-hidden="true" />{p.busy || 'Aufnahme starten'}</button>
-    {p.avail?.engine === 'analyzer' && <p className="tr-fine">Beim ersten Mal lädt das iPad einmalig ein Sprachpaket.</p>}
-
-    {p.saved.length > 0 && <section className="tr-saved"><h3>Noch nicht übernommen</h3>
-      {p.saved.map(l => <div key={l.id} className="tr-saved-row">
-        <button onClick={() => p.onOpen(l)}><strong>{lectureTitle(l)}</strong><small>{clock(l.duration)} · {l.passages.length ? `${paragraphs(l).length} Absätze` : 'nur Ton'}</small></button>
-        <button className="tr-round small" aria-label="Transkript löschen" onClick={() => p.onDelete(l)}><Trash2 size={16} /></button>
-      </div>)}</section>}
-  </div>;
+    {p.error}
+    <footer className="lv-foot tr-foot">
+      <label className="tr-consent"><input type="checkbox" checked={p.consent} onChange={e => p.setConsent(e.target.checked)} />
+        <span><strong>Alle Anwesenden sind einverstanden</strong><small>Gespräche dürfen nicht heimlich aufgenommen werden (§ 201 StGB).</small></span></label>
+      <button className="button" onClick={p.onCancel}>Abbrechen</button>
+      <button className="tr-start" disabled={!p.consent || !!p.busy || !!unavailable} onClick={p.onStart}><span className="tr-rec-dot" aria-hidden="true" />{p.busy || 'Aufnahme starten'}</button>
+    </footer>
+  </>;
 }
 
 const LIVE_BARS = 64;
@@ -190,22 +207,30 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
   </div>;
 }
 
-function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: () => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void }) {
+function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: () => void; onSave: () => void; onExport: (o: { times: boolean; marks: boolean }) => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void }) {
   const l = p.lecture, items = paragraphs(l), empty = !items.length, canAudio = l.hasAudio !== false;
-  const [times, setTimes] = useState(false), [marks, setMarks] = useState(true);
+  const [times, setTimes] = useState(false), [marks, setMarks] = useState(true), [next, setNext] = useState(false);
+  useEffect(() => { if (!next) return; const close = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest('.tr-next')) setNext(false); }; document.addEventListener('pointerdown', close); return () => document.removeEventListener('pointerdown', close); }, [next]);
   const end = l.startedAt ? timeOfDay(l.startedAt, l.duration) : '';
   return <div className="tr-screen review" role="dialog" aria-modal="true" aria-label="Transkript fertig">
     <header className="tr-top">
       <button className="tr-round ghost" onClick={p.onBack} aria-label="Zurück"><ChevronLeft size={24} /></button>
       <span className="tr-gap" />
       <button className="tr-pillbtn" onClick={p.onDiscard} disabled={!!p.busy}>Verwerfen</button>
-      <button className="tr-pillbtn primary" onClick={() => p.onUse({ times, marks })} disabled={!!p.busy || empty}><PenLine size={17} />{p.busy || 'In Handschrift übernehmen'}</button>
+      <div className="tr-next">
+        <button className="tr-pillbtn primary" onClick={() => setNext(!next)} disabled={!!p.busy} aria-haspopup="menu" aria-expanded={next}>{p.busy || 'Weiter'}<ChevronRight size={17} /></button>
+        {next && <div className="tr-menu" role="menu">
+          <button role="menuitem" disabled={empty} onClick={() => { setNext(false); p.onUse({ times, marks }); }}><PenLine size={19} /><span><strong>In Handschrift übernehmen</strong><small>Als Dokument öffnen und in deiner Schrift schreiben</small></span></button>
+          <button role="menuitem" disabled={empty} onClick={() => { setNext(false); p.onExport({ times, marks }); }}><Download size={19} /><span><strong>Als Text exportieren</strong><small>Textdatei teilen oder in „Dateien“ sichern</small></span></button>
+          <button role="menuitem" onClick={() => { setNext(false); p.onSave(); }}><Save size={19} /><span><strong>Speichern</strong><small>Für später behalten, mit Tonaufnahme</small></span></button>
+        </div>}
+      </div>
     </header>
     <div className="tr-review">
       <main className="tr-text">
         <div className="tr-doc">
           <div className="tr-doc-head"><h1>Transkript · {shortDate(l)}</h1><span>{timeOfDay(l.startedAt, 0)}{end ? `–${end}` : ''} · {clock(l.duration)} · {empty ? 'noch kein Text' : `${items.length} Absätze`}{l.markers.length ? ` · ${l.markers.length} markiert` : ''}</span></div>
-          {(empty || l.missedText) && canAudio && <p className="tr-hidden">{empty ? 'Während der Aufnahme konnte noch kein Text erkannt werden.' : 'Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.'} Tippe rechts auf „Aus der Tonaufnahme neu erkennen“.</p>}
+          {(empty || l.missedText) && canAudio && <p className="tr-hidden">{empty ? 'Während der Aufnahme konnte noch kein Text erkannt werden.' : 'Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.'} Tippe rechts auf „Neu erkennen“.</p>}
           {items.map((it, i) => <div key={i} className={`tr-para ${it.marked ? 'marked' : ''}`}><time>{timeOfDay(l.startedAt, it.start)}</time><p>{it.text}</p></div>)}
         </div>
       </main>
@@ -216,8 +241,8 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
           <label className="tr-row"><span>„Wichtig:“ vor markierten</span><input type="checkbox" checked={marks} onChange={e => setMarks(e.target.checked)} /></label>
         </div>
         {items.some(i => i.marked) && <><h3>Markiert</h3><ul className="tr-marks">{items.filter(i => i.marked).map((it, i) => <li key={i}><time>{timeOfDay(l.startedAt, it.start)}</time>{it.text.split(/(?<=[.!?])\s/)[0].slice(0, 70)}</li>)}</ul></>}
-        {canAudio && <button className="tr-pillbtn wide" onClick={p.onAudio} disabled={!!p.busy}><RotateCw size={16} />Aus der Tonaufnahme neu erkennen</button>}
-        <p className="tr-fine">Nach dem Übernehmen wird die Tonaufnahme von diesem iPad gelöscht. Der Text bleibt als Dokument.</p>
+        {canAudio && <button className="tr-redo" onClick={p.onAudio} disabled={!!p.busy}><RotateCw size={17} /><span><strong>Neu erkennen</strong><small>Den ganzen Text noch einmal aus der Tonaufnahme erkennen</small></span></button>}
+        <p className="tr-fine">Wird automatisch gespeichert, auch wenn du zurückgehst. Beim Übernehmen in Handschrift wird die Tonaufnahme gelöscht, der Text bleibt als Dokument.</p>
         {p.error}
       </aside>
     </div>
