@@ -50,7 +50,7 @@ export function LibraryShell(props: {
   }, [folders, library.notes, query, view, folderId, filter, sort]);
 
   const now = () => new Date().toISOString();
-  const createFolder = () => { const f: Folder = { id: uid(), name: 'Neuer Ordner', color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length], parentId: view === 'documents' ? folderId : undefined, created: now(), updated: now() }; update(l => ({ ...l, folders: [...(l.folders || []), f] })); setRenaming(f.id); setMenu(null); };
+  const createFolder = (parentId?: string) => { const f: Folder = { id: uid(), name: 'Neuer Ordner', color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length], parentId, created: now(), updated: now() }; update(l => ({ ...l, folders: [...(l.folders || []), f] })); setRenaming(f.id); setMenu(null); };
   const editFolder = (id: string, fn: (f: Folder) => Folder) => update(l => ({ ...l, folders: (l.folders || []).map(f => f.id === id ? { ...fn(f), updated: now() } : f) }));
   const editNote = (id: string, fn: (n: Note) => Note) => update(l => ({ ...l, notes: l.notes.map(n => n.id === id ? fn(n) : n) }));
   const rename = (item: Item, name: string) => { const value = name.trim().slice(0, 100); setRenaming(null); if (!value) return; if (item.kind === 'folder') editFolder(item.folder.id, f => ({ ...f, name: value })); else editNote(item.note.id, n => ({ ...n, title: value, updated: now() })); };
@@ -137,7 +137,7 @@ export function LibraryShell(props: {
       </div>
       <div className="gn-caption">
         {renaming === id ? <input className="gn-rename" autoFocus defaultValue={item.name} maxLength={100} aria-label="Neuer Name" onFocus={e => e.currentTarget.select()} onBlur={e => rename(item, e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null); }} />
-          : <div className="hs-card-info"><div className="hs-card-text"><strong>{item.name}</strong><small>{item.kind === 'folder' ? `${library.notes.filter(n => n.folderId === item.folder.id).length + folders.filter(f => f.parentId === item.folder.id).length} Elemente · ` : ''}{stamp(item.updated)}</small></div><button className="hs-more gn-menu-trigger" onClick={() => setMenu(menu === id ? null : id)} aria-haspopup="menu" aria-expanded={menu === id} aria-label={`${item.name}: Aktionen`}><MoreHorizontal size={18} /></button></div>}
+          : <div className="hs-card-info"><div className="hs-card-text"><strong>{item.name}</strong><small>{item.kind === 'folder' ? `${((c: number) => c === 1 ? '1 Element' : `${c} Elemente`)(library.notes.filter(n => n.folderId === item.folder.id).length + folders.filter(f => f.parentId === item.folder.id).length)} · ` : ''}{stamp(item.updated)}</small></div><button className="hs-more gn-menu-trigger" onClick={() => setMenu(menu === id ? null : id)} aria-haspopup="menu" aria-expanded={menu === id} aria-label={`${item.name}: Aktionen`}><MoreHorizontal size={18} /></button></div>}
         {menu === id && <Menu>
           <button role="menuitem" onClick={() => { setMenu(null); setRenaming(id); }}><Pencil size={16} />Umbenennen</button>
           <button role="menuitem" onClick={() => { setMenu(null); toggleFavorite(item); }}><Star size={16} />{fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten'}</button>
@@ -163,7 +163,7 @@ export function LibraryShell(props: {
       <div className="gn-side-label">Ordner</div>
       <nav className="gn-folder-nav" onClick={() => { if (narrow()) setCollapsed(true); }}>
         {folders.filter(f => !f.parentId).sort((a, b) => a.name.localeCompare(b.name, 'de')).map(f => <button key={f.id} data-drop={f.id} className={`${view === 'documents' && path[0]?.id === f.id ? 'active' : ''} ${drag?.over === f.id ? 'drop-over' : ''}`} onClick={() => openFolder(f.id)}><i style={{ background: f.color }} />{f.name}<span className="gn-count">{library.notes.filter(n => n.folderId === f.id).length || ''}</span></button>)}
-        <button className="gn-add-folder" onClick={e => { e.stopPropagation(); createFolder(); }}><FolderPlus size={18} strokeWidth={1.7} />Neuer Ordner</button>
+        <button className="gn-add-folder" onClick={e => { e.stopPropagation(); if (folderId) openFolder(undefined); createFolder(); }}><FolderPlus size={18} strokeWidth={1.7} />Neuer Ordner</button>
       </nav>
       <nav className="gn-side-foot" onClick={() => { if (narrow()) setCollapsed(true); }}>
         <button onClick={props.openSettings}><Settings size={19} strokeWidth={1.7} />Einstellungen</button>
@@ -199,7 +199,7 @@ export function LibraryShell(props: {
             <button className="gn-new-button" onClick={stopSelecting}>Fertig</button>
           </div> : <div className="gn-actions">
             {view === 'documents' && <div className="gn-new"><button className="gn-new-button gn-menu-trigger" onClick={() => setMenu(menu === 'new' ? null : 'new')} aria-haspopup="menu"><span>+</span>Neu</button>
-              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafel) <span className="exp-badge">Experimentell</span></button></Menu>}</div>}
+              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={() => createFolder(view === 'documents' ? folderId : undefined)}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafel) <span className="exp-badge">Experimentell</span></button></Menu>}</div>}
             <button className="gn-icon" aria-label={layoutMode === 'grid' ? 'Als Liste anzeigen' : 'Als Raster anzeigen'} title={layoutMode === 'grid' ? 'Liste' : 'Raster'} onClick={() => { const next = layoutMode === 'grid' ? 'list' : 'grid'; setLayoutMode(next); remember('hs-layout', next); }}>{layoutMode === 'grid' ? <LayoutGrid size={24} strokeWidth={1.6} /> : <List size={24} strokeWidth={1.6} />}</button>
             <span className="gn-divider" />
             <button className="gn-icon" title="Auswählen" aria-label="Auswählen" disabled={!items.length} onClick={() => { setMenu(null); setSelecting(true); }}><CheckCheck size={24} strokeWidth={1.6} /></button>

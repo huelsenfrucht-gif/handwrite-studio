@@ -6,7 +6,7 @@ export type Passage = { start: number; end: number; text: string };
 export type LectureState = 'idle' | 'recording' | 'paused' | 'stopped';
 export type Lecture = {
   state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string; room?: Room; subject?: string;
-  duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean;
+  duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean; audioMB?: number;
   /** Speech recognition: being prepared (first time: language download), ready, or not possible. */
   prep?: 'idle' | 'loading' | 'ready' | 'unavailable'; progress?: number; level?: number; missedText?: boolean;
   /** Recognised again with the large Whisper model („Genau erkennen“). */
@@ -15,9 +15,9 @@ export type Lecture = {
 /** How far away the speaker is; decides how much the quiet, distant voice is lifted. */
 export type Room = 'near' | 'classroom' | 'hall';
 export const ROOMS: { id: Room; label: string; hint: string }[] = [
-  { id: 'near', label: 'Ruhig, nah', hint: 'Für Gespräche am Tisch. Der Ton bleibt unverändert.' },
-  { id: 'classroom', label: 'Klassenzimmer', hint: 'Hebt die Stimme der Lehrkraft an und dämpft Brummen und Rauschen.' },
-  { id: 'hall', label: 'Hörsaal', hint: 'Für große Räume: hebt weit entfernte Stimmen stärker an.' },
+  { id: 'near', label: 'Am Tisch', hint: 'Für Gespräche direkt am iPad. Der Ton bleibt unverändert.' },
+  { id: 'classroom', label: 'Klassenzimmer', hint: 'Hört über die Rückseite nach vorne zur Tafel, hebt die Stimme der Lehrkraft an und dämpft Geräusche direkt am iPad.' },
+  { id: 'hall', label: 'Hörsaal', hint: 'Für große Räume: hört enger nach vorne und hebt weit entfernte Stimmen stärker an.' },
 ];
 
 export type Availability = { available: boolean; engine: 'analyzer' | 'classic' | 'none'; reason: string; microphone: boolean; speech: boolean };
@@ -33,7 +33,7 @@ type Plugin = {
   current(): Promise<Lecture>;
   saved(): Promise<{ lessons: Lecture[] }>;
   transcribeAudio(o: { id: string }): Promise<Lecture>;
-  remove(o: { id: string }): Promise<void>;
+  remove(o: { id: string; audioOnly?: boolean }): Promise<void>;
   accurateStatus(): Promise<{ downloaded: boolean; model: string; sizeMB: number; busy: boolean }>;
   transcribeAccurate(o: { id: string }): Promise<Lecture>;
   addListener(event: 'change', fn: (l: Lecture) => void): Promise<PluginListenerHandle>;

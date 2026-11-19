@@ -187,8 +187,8 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    const row=field.height/field.rows;lh=row;
    for(let f=Math.min(s.size,row/1.15);!done&&f>=Math.min(s.size,row/1.15)*.6;f*=.92){
     size=f/100;
-    const {from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,field.y+row-Math.max(2,row*.14)-80*size,field.page),b=inkBox(from);
-    if(b&&lines<=field.rows&&b.x1>=box.x1&&b.x2<=box.x2&&b.y1>=box.y1&&b.y2<=box.y2)done=true;else glyphs.length=from;
+    const {from,lines}=boxed(field.text,field.x+pad,field.x+field.width-pad,field.y+row-Math.max(1.2,row*.05)-80*size,field.page),b=inkBox(from);
+    if(b&&lines<=field.rows&&b.x1>=box.x1&&b.x2<=box.x2&&b.y1>=box.y1&&b.y2<=box.y2+row*.45)done=true;else glyphs.length=from;
    }
   }
   let f=Math.min(s.size,field.height/1.15),from=glyphs.length;
@@ -199,14 +199,17 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    const bw=b.x2-b.x1,bh=b.y2-b.y1;
    if((bw<=box.x2-box.x1&&bh<=box.y2-box.y1)||f<2.5){
     // One line sits in the middle of the box, several lines start at the top.
-    const dy=(lines>1?box.y1:box.y1+(box.y2-box.y1-bh)/2)-b.y1,dx=b.x1<box.x1?box.x1-b.x1:b.x2>box.x2?box.x2-b.x2:0;
+    // On an answer line the writing stands on the printed line (descenders may cross it); boxes and cells stay centred.
+    const onLine=field.kind!=='cell'&&lines===1,lineY=field.y+field.height-Math.max(1.2,field.height*.06);
+    const dy=onLine?Math.max(box.y1-b.y1,lineY-(field.y+80*size)):(lines>1?box.y1:box.y1+(box.y2-box.y1-bh)/2)-b.y1,dx=b.x1<box.x1?box.x1-b.x1:b.x2>box.x2?box.x2-b.x2:0;
     moveInk(from,p=>({x:p.x+dx,y:p.y+dy}));done=true;break;
    }
    glyphs.length=from;f*=.9;
   }
   // Last resort (very long text, tiny box): scale everything into the box.
   const b=inkBox(from);
-  if(b&&(b.x1<box.x1-.01||b.x2>box.x2+.01||b.y1<box.y1-.01||b.y2>box.y2+.01)){const k=Math.min(1,(box.x2-box.x1)/Math.max(1,b.x2-b.x1),(box.y2-box.y1)/Math.max(1,b.y2-b.y1));moveInk(from,p=>({x:box.x1+(p.x-b.x1)*k,y:box.y1+(p.y-b.y1)*k}));}
+  const below=field.kind!=='cell'?(field.rows?field.height/field.rows:field.height)*.45:0;
+  if(b&&(b.x1<box.x1-.01||b.x2>box.x2+.01||b.y1<box.y1-.01||b.y2>box.y2+below+.01)){const k=Math.min(1,(box.x2-box.x1)/Math.max(1,b.x2-b.x1),(box.y2-box.y1)/Math.max(1,b.y2-b.y1));moveInk(from,p=>({x:box.x1+(p.x-b.x1)*k,y:box.y1+(p.y-b.y1)*k}));}
   size=keepSize;lh=keepLh;index=base;
  });
  const highlights=[...bars.values()].map(b=>({...b,x:b.x-3,width:b.width+6}));

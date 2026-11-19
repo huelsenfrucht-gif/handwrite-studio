@@ -76,7 +76,7 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func current(_ call: CAPPluginCall) { call.resolve(session.snapshot()) }
 
-    @objc func saved(_ call: CAPPluginCall) { call.resolve(["lessons": LectureStore.all().filter { $0["id"] as? String != session.id }]) }
+    @objc func saved(_ call: CAPPluginCall) { call.resolve(["lessons": LectureStore.all(except: session.id).filter { $0["id"] as? String != session.id }]) }
 
     @objc func transcribeAudio(_ call: CAPPluginCall) {
         guard let id = call.getString("id") else { call.reject("Keine Aufnahme angegeben."); return }
@@ -104,6 +104,10 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func remove(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), id != session.id else { call.reject("Diese Aufnahme läuft noch."); return }
+        if call.getBool("audioOnly") == true {
+            guard AccurateRecognizer.shared.activeId != id else { call.reject("Die genaue Erkennung braucht die Tonaufnahme gerade noch."); return }
+            try? FileManager.default.removeItem(at: LectureStore.audio(id)); call.resolve(); return
+        }
         LectureStore.remove(id: id); call.resolve()
     }
 }
@@ -129,10 +133,18 @@ enum LectureStore {
         guard let bytes = try? Data(contentsOf: json(id)) else { return nil }
         return try? JSONSerialization.jsonObject(with: bytes) as? [String: Any]
     }
-    static func all() -> [[String: Any]] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+    /// Recordings take a lot of space (about 30 MB per lesson). The text stays, the sound goes after a week.
+    static let keepAudioDays: Double = 7
+    static func all(except running: String? = nil) -> [[String: Any]] {
+        let fm = FileManager.default
+        let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         return files.filter { $0.pathExtension == "json" }.compactMap { load($0.deletingPathExtension().lastPathComponent) }
-            .map { var d = $0; d["hasAudio"] = FileManager.default.fileExists(atPath: audio(d["id"] as? String ?? "").path); return d }
+            .map { var d = $0; let id = d["id"] as? String ?? "", url = audio(id)
+                if id != running, id != AccurateRecognizer.shared.activeId, let a = try? fm.attributesOfItem(atPath: url.path), let date = a[.modificationDate] as? Date,
+                   Date().timeIntervalSince(date) > keepAudioDays * 86400 { try? fm.removeItem(at: url) }
+                let size = (try? fm.attributesOfItem(atPath: url.path))?[.size] as? NSNumber
+                d["hasAudio"] = size != nil; d["audioMB"] = (size?.doubleValue ?? 0) / 1_000_000
+                return d }
             .sorted { ($0["startedAt"] as? Double ?? 0) > ($1["startedAt"] as? Double ?? 0) }
     }
     static func remove(id: String) {
@@ -419,23 +431,36 @@ final class LectureSession {
         log("Audio-Sitzung: Kategorie setzen")
         // playAndRecord + mixWithOthers: works next to other audio in the app (e.g. an ad video)
         // instead of having to tear it down first, which can block the audio system.
-        try s.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+        // Far away speakers: "measurement" switches off the system's voice processing, which is tuned
+        // for someone talking right into the iPad and tends to swallow a distant voice. VoiceLift evens the level instead.
+        let far = queue.sync(execute: { room }) != "near"
+        try s.setCategory(.playAndRecord, mode: far ? .measurement : .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
         log("Audio-Sitzung: aktivieren")
         try s.setActive(true, options: [])
         log("Audio-Sitzung: aktiv")
-        if queue.sync(execute: { room }) != "near" { preferRoomMicrophone(s) }
+        if far { preferRoomMicrophone(s, hall: queue.sync(execute: { room }) == "hall") }
     }
 
-    /// Far away speakers: use the built-in microphone with an all-round pickup where the
-    /// iPad offers one (only when no headset or external microphone is in use).
-    private func preferRoomMicrophone(_ s: AVAudioSession) {
+    /// Far away speakers. The iPad lies in front of the student with the screen towards them, so its back
+    /// faces the board and the teacher. Listen through the rear microphone with a pickup that favours the
+    /// front of the room and damps what happens right in front of the screen (pencil taps, the student's
+    /// own movements): sub-cardioid in a classroom, cardioid in a hall (less echo). All-round as fallback.
+    /// Only with the built-in microphone (not when a headset or external microphone is in use).
+    private func preferRoomMicrophone(_ s: AVAudioSession, hall: Bool) {
         guard s.currentRoute.inputs.first?.portType == .builtInMic, let mic = s.availableInputs?.first(where: { $0.portType == .builtInMic }) else { return }
-        guard let source = mic.dataSources?.first(where: { $0.supportedPolarPatterns?.contains(.omnidirectional) == true }) else { log("Mikrofon: keine Rundum-Richtung verfügbar"); return }
+        let sources = mic.dataSources ?? []
+        log("Mikrofon: verfügbar \(sources.map { "\($0.dataSourceName) [\($0.orientation?.rawValue ?? "-")] \(($0.supportedPolarPatterns ?? []).map { $0.rawValue })" })")
+        let wanted: [AVAudioSession.PolarPattern] = hall ? [.cardioid, .subcardioid, .omnidirectional] : [.subcardioid, .cardioid, .omnidirectional]
+        let back = sources.first { $0.orientation == .back }
+        var choice: (AVAudioSessionDataSourceDescription, AVAudioSession.PolarPattern)?
+        if let back, let pattern = wanted.first(where: { back.supportedPolarPatterns?.contains($0) == true }) { choice = (back, pattern) }
+        else if let any = sources.first(where: { $0.supportedPolarPatterns?.contains(.omnidirectional) == true }) { choice = (any, .omnidirectional) }
+        guard let (source, pattern) = choice else { log("Mikrofon: keine passende Richtung verfügbar"); return }
         do {
-            try source.setPreferredPolarPattern(.omnidirectional)
+            try source.setPreferredPolarPattern(pattern)
             try mic.setPreferredDataSource(source)
             try s.setPreferredInput(mic)
-            log("Mikrofon: Rundum-Richtung (\(source.dataSourceName))")
+            log("Mikrofon: \(source.dataSourceName), \(pattern.rawValue)")
         } catch { log("Mikrofon: \(error.localizedDescription)") }
     }
 
@@ -526,7 +551,7 @@ final class LectureSession {
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         queue.sync { state = "stopped"; volatile = "" }
         changed(persist: true)
-        var result = snapshot(); result["hasAudio"] = true
+        var result = snapshot(); result["hasAudio"] = true; if let id, let size = (try? FileManager.default.attributesOfItem(atPath: LectureStore.audio(id).path))?[.size] as? NSNumber { result["audioMB"] = size.doubleValue / 1_000_000 }
         queue.sync { id = nil; state = "idle" }
         return result
     }
@@ -615,6 +640,8 @@ final class AccurateRecognizer {
     static let shared = AccurateRecognizer()
     private var kit: WhisperKit?
     private var busy = false
+    /// The lesson being transcribed right now (its recording must not be deleted meanwhile).
+    private(set) var activeId: String?
     private let preferred = "openai_whisper-large-v3-v20240930_turbo_632MB"
 
     private var base: URL {
@@ -636,7 +663,7 @@ final class AccurateRecognizer {
 
     func transcribe(id: String, report: @escaping (String, Double) -> Void) async throws -> [String: Any] {
         guard !busy else { throw LectureError.unavailable("Die genaue Erkennung läuft bereits.") }
-        busy = true; defer { busy = false }
+        busy = true; activeId = id; defer { busy = false; activeId = nil }
         guard var data = LectureStore.load(id) else { throw LectureError.unavailable("Die Aufnahme wurde nicht gefunden.") }
         let audio = LectureStore.audio(id)
         guard FileManager.default.fileExists(atPath: audio.path) else { throw LectureError.unavailable("Zu diesem Transkript gibt es keine Tonaufnahme mehr.") }
