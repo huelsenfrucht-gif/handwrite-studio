@@ -70,7 +70,7 @@ export function PhotoText({ initialFiles, onClose, onText }: { initialFiles?: Fi
   };
 
   return <div className="modal-backdrop"><section className="modal photo-text" role="dialog" aria-modal="true" aria-labelledby="photo-text-title">
-    <header className="modal-header"><div><h2 id="photo-text-title">Text aus Foto</h2><p>Tafel, Heft oder Buchseite fotografieren. Der Text wird so übernommen, wie er dasteht: mit Absätzen, Einrückungen und Tabellen.</p></div><button className="icon-button" aria-label="Foto-Import schließen" onClick={onClose}><X size={20} /></button></header>
+    <header className="modal-header"><div><h2 id="photo-text-title">Text aus Foto <span className="exp-badge">Experimentell</span></h2><p>Tafel, Heft oder Buchseite fotografieren. Der Text wird so übernommen, wie er dasteht: mit Absätzen, Einrückungen und Tabellen. Die Erkennung ist noch in Erprobung – bitte das Ergebnis vor dem Übernehmen prüfen.</p></div><button className="icon-button" aria-label="Foto-Import schließen" onClick={onClose}><X size={20} /></button></header>
     <div className="modal-content">
       <input ref={input} hidden type="file" accept="image/*" multiple onChange={e => { const files = Array.from(e.target.files || []); e.target.value = ''; void load(files); }} />
       {busy ? <div className="photo-busy" role="status"><span className="spinner" />{busy}</div>

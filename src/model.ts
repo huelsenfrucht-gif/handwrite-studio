@@ -51,7 +51,7 @@ export type Library = { version: 1; profiles: Profile[]; notes: Note[]; activeId
   /** Deleted item ids with deletion time, so a sync does not bring them back. */
   deleted?: Record<string, string>;
   /** Choices from the settings for every new document. */
-  defaults?: { profileId?: string; penWidth?: number; marginLeft?: number; marginRight?: number; lineStartShift?: number } };
+  defaults?: { profileId?: string; penWidth?: number; size?: number; marginLeft?: number; marginRight?: number; lineStartShift?: number } };
 export const FOLDER_COLORS = ['#5aa9f8', '#f25c5c', '#9b2c2c', '#38b2ac', '#f6ad55', '#9f7aea', '#68d391', '#a0aec0'];
 export type PlacedGlyph = { id: string; char: string; page: number; strokes: Stroke[]; x: number; y: number; width: number; height: number; fallback: boolean; unsupported: boolean; raster?: RasterInk; hiddenByRaster?: boolean };
 export const PAGE = { width: 794, height: 1123, margin: 70 };
@@ -92,7 +92,7 @@ export function paperRules(s: Settings): Rule[] {
   if (ruleCache.size > 30) ruleCache.clear(); ruleCache.set(key, rules); return rules;
 }
 export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, variation: 100, penWidth: 1.7, color: '#000000', profileId: 'demo', seed: 42 };
-export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, marginLeft: defaults?.marginLeft ?? NEW_MARGIN_LEFT_MM, marginRight: defaults?.marginRight ?? NEW_MARGIN_RIGHT_MM, lineStartShift: defaults?.lineStartShift ?? DEFAULT_LINE_START_SHIFT, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
+export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, marginLeft: defaults?.marginLeft ?? NEW_MARGIN_LEFT_MM, marginRight: defaults?.marginRight ?? NEW_MARGIN_RIGHT_MM, lineStartShift: defaults?.lineStartShift ?? DEFAULT_LINE_START_SHIFT, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}), ...(defaults?.size ? { size: defaults.size } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
   const note = newNote('Ein kleiner Anfang');
   note.text = note.renderedText = 'Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.';
@@ -142,9 +142,29 @@ export function pathData(points: Stroke) { const hit = pathCache.get(points); if
  */
 export function normaliseOnLines(strokes: Stroke[], source: Glyph['source'], baseline: number, xLine: number): Glyph {
   const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe zuerst das Zeichen.');
-  // Pads use three equal zones; Oberlänge + x-height (2 zones) map onto the 76 units from ascender to baseline.
-  const scale = 76 / Math.max(20, 2 * (baseline - xLine)), minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
-  return { source, lined: true, advance: Math.max(10, Math.min(145, (maxX - minX) * scale + 11)), strokes: strokes.map(s => simplify(s.map(p => ({ x: (p.x - minX) * scale + 3, y: Math.max(-20, Math.min(115, 80 + (p.y - baseline) * scale)), p: p.p })))) };
+  // Pads use three equal zones; each zone maps onto the matching zone of the letters
+  // (Oberlänge 4–34, x-height 34–80, Unterlänge 80–104), so nothing gets squashed.
+  const zone = Math.max(10, baseline - xLine), scale = 46 / zone, minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
+  const y = (v: number) => v < xLine ? 34 - (xLine - v) * 30 / zone : v <= baseline ? 34 + (v - xLine) * scale : 80 + (v - baseline) * 24 / zone;
+  return { source, lined: true, advance: Math.max(10, Math.min(145, (maxX - minX) * scale + 11)), strokes: strokes.map(s => simplify(s.map(p => ({ x: (p.x - minX) * scale + 3, y: Math.max(-20, Math.min(115, y(p.y))), p: p.p })))) };
+}
+/** Top of the frame for letters with dots (i, j, ä, ö, ü). */
+export const DOT_TOP = 16;
+/** A small separate mark in the top third – the dot of an i/j or the dots of an umlaut. */
+export function hasDot(strokes: Stroke[]): boolean {
+  const pts = strokes.flat(); if (strokes.length < 2 || !pts.length) return false;
+  const minY = Math.min(...pts.map(p => p.y)), h = Math.max(1, Math.max(...pts.map(p => p.y)) - minY);
+  return strokes.some(s => { const ys = s.map(p => p.y), xs = s.map(p => p.x); return Math.max(...ys) <= minY + h * .35 && Math.max(...ys) - Math.min(...ys) <= h * .22 && Math.max(...xs) - Math.min(...xs) <= h * .3; });
+}
+/**
+ * Letters saved before the dot fix were framed from the dot down to the x-height,
+ * so their body came out too small. Stretch them once to the new frame.
+ */
+export function undotSquash(strokes: Stroke[], text: string): Stroke[] {
+  if (!/[ijäöü]/.test(text) || /[A-ZÄÖÜbdfhklt]/.test(text)) return strokes;
+  const ys = strokes.flat().map(p => p.y); if (!ys.length || Math.min(...ys) < 30 || !hasDot(strokes)) return strokes;
+  const desc = /[gjpqy]/.test(text), base = desc ? 100 : 80, f = (base - DOT_TOP) / (base - (desc ? 35 : 34));
+  return strokes.map(s => s.map(p => ({ ...p, y: base - (base - p.y) * f })));
 }
 /** Satzzeichen: everything that is neither a letter nor a digit. */
 export const isPunctuation = (char: string) => !/[\p{L}\p{N}]/u.test(char);
@@ -154,8 +174,9 @@ export function normalise(strokes: Stroke[], char: string, source: Glyph['source
   const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe oder markiere zuerst einen Buchstaben.');
   const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));
   const minY=Math.min(...pts.map(p=>p.y)), maxY=Math.max(...pts.map(p=>p.y));
-  const desc=/[gjpqy]/.test(char), tall=/[A-ZÄÖÜbdfhklt0-9ß!?()]/.test(char), dot=/[.,:;"„“'\-+=]/.test(char);
-  const height=dot?18:desc?65:tall?76:46;
-  const scale=height/Math.max(maxY-minY,1), top=dot?62:desc?35:80-height;
+  const desc=/[gjpqy]/.test(char), tall=/[A-ZÄÖÜbdfhklt0-9ß!?()]/.test(char), dot=/[.,:;"„“'\-+=]/.test(char), dotted=/^[ijäöü]$/.test(char)&&hasDot(strokes);
+  // i, j and umlauts: the dots sit above the x-height, so the frame starts higher (else the letter body shrinks).
+  const height=dot?18:dotted?(char==='j'?84:64):desc?65:tall?76:46;
+  const scale=height/Math.max(maxY-minY,1), top=dot?62:dotted?DOT_TOP:desc?35:80-height;
   return { source, advance: Math.max(16,Math.min(145,(maxX-minX)*scale+13)), strokes: strokes.map(s=>simplify(s.map(p=>({x:(p.x-minX)*scale+3,y:(p.y-minY)*scale+top,p:p.p})))) };
 }

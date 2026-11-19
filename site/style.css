@@ -126,3 +126,22 @@ h1,h2{font-family:var(--serif);font-weight:500;color:var(--navy)}
 .skip:focus{top:12px}
 a:focus-visible,.btn:focus-visible{outline:3px solid var(--navy-2);outline-offset:3px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Handschrift in Stufen */
+.split-plain{flex-wrap:wrap}
+.flow.levels{flex:1 1 400px;min-width:0}
+/* Unterricht aufnehmen */
+.split-band{padding-top:0!important;padding-bottom:0!important}
+.band .split-band h2{margin:0 0 20px}
+.transcript-card{flex:1 1 420px;min-width:0;margin:0;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 24px 48px -28px #13254a55;overflow:hidden}
+.tc-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);font-weight:600;color:var(--ink)}
+.tc-head b{margin-left:auto;font:600 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--navy)}
+.tc-dot{width:10px;height:10px;border-radius:50%;background:#d63c30}
+.transcript-card ol{list-style:none;margin:0;padding:6px 0}
+.transcript-card li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:12px 20px}
+.transcript-card li+li{border-top:1px solid #eef1f5}
+.transcript-card li.marked{background:#fff8d6}
+.transcript-card time{font-size:13px;color:var(--muted);padding-top:3px}
+.transcript-card p{margin:0;font-size:16px;line-height:1.55;color:var(--ink)}
+.transcript-card figcaption{padding:10px 20px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line)}
+.legal-note{margin:28px 0 0;padding:14px 16px;border:1px solid #ead9a8;border-radius:12px;background:#fffaf0;font-size:15px;line-height:1.55;color:#4b3d1c}

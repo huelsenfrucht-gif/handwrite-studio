@@ -1,7 +1,7 @@
 import { analyzeWord, pairRuns, sliceStrokes, type WordSample } from './contextual';
 export { pairRuns, splitPair } from './contextual';
 import { inkGapRuns } from './calibration';
-import { hasOwnGlyph, simplify, type PairSample, type Profile, type Rhythm, type Stroke } from './model';
+import { DOT_TOP, hasDot, hasOwnGlyph, simplify, type PairSample, type Profile, type Rhythm, type Stroke } from './model';
 
 /**
  * Handschrift-Stufen. Jede Stufe nutzt einen Weg, der auch bei unsauberer Schrift
@@ -65,7 +65,7 @@ export function currentLevel(p: Profile) { let n = 0; for (const l of levels(p))
 export function normalisePair(strokes: Stroke[], text: string): PairSample {
   const pts = strokes.flat(); if (pts.length < 3) throw new Error('Bitte zuerst die Buchstaben schreiben.');
   const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x)), minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
-  const tall = /[A-ZÄÖÜbdfhklt]/.test(text), desc = /[gjpqy]/.test(text), top = tall ? 4 : 34, bottom = desc ? 100 : 80, scale = (bottom - top) / Math.max(1, maxY - minY);
+  const tall = /[A-ZÄÖÜbdfhklt]/.test(text), desc = /[gjpqy]/.test(text), top = tall ? 4 : /[ijäöü]/.test(text) && hasDot(strokes) ? DOT_TOP : 34, bottom = desc ? 100 : 80, scale = (bottom - top) / Math.max(1, maxY - minY);
   const local = strokes.map(s => simplify(s.map(p => ({ x: (p.x - minX) * scale + 3, y: (p.y - minY) * scale + top, p: p.p }))));
   const width = Math.min(600, (maxX - minX) * scale + 13);
   if (width > 590) throw new Error('Bitte die Buchstaben etwas enger schreiben.');

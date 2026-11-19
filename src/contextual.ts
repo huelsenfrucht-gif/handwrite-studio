@@ -1,4 +1,4 @@
-import { isPunctuation, type Glyph, type PairSample, type Point, type Profile, type RasterInk, type Stroke } from './model';
+import { isPunctuation, undotSquash, type Glyph, type PairSample, type Point, type Profile, type RasterInk, type Stroke } from './model';
 import { composeAccented, demoGlyphs } from './demo';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
 export type Style={slant:number;baselineSpread:number;joining:number;spacing:number;samples:number};
@@ -72,7 +72,7 @@ export function sliceStrokes(strokes:Stroke[],left:number,right:number):Stroke[]
 export type WordResult={glyphs:Glyph[];kind:'original'|'contextual'|'letters';learned:number};
 function writtenGlyphs(profile:Profile,char:string):Glyph[]{
  // Punctuation from before the guide-line placement was stretched to letter size: not used.
- const exact=profile.glyphs[char]?.filter(g=>g.source==='pen'&&(!isPunctuation(char)||g.lined))||[];
+ const exact=(profile.glyphs[char]?.filter(g=>g.source==='pen'&&(!isPunctuation(char)||g.lined))||[]).map(g=>{const strokes=undotSquash(g.strokes,char);return strokes===g.strokes?g:{...g,strokes};});
  if(exact.length)return exact;
  // Accented letters reuse the writer's own base letter plus a handwritten mark.
  const accented=char.normalize('NFD')!==char?(profile.glyphs[char.normalize('NFD')[0]]?.filter(g=>g.source==='pen')||[]).map(g=>composeAccented(char,()=>g)).filter((g):g is Glyph=>!!g):[];
@@ -91,7 +91,7 @@ export function composeWord(text:string,profile:Profile,rand:()=>number):WordRes
  // pair is cut into per-letter glyphs that stay glued, so the real joining stroke remains.
  const glyphs:Glyph[]=[];
  for(const run of pairRuns(text,k=>!!profile.pairs?.[k]?.length)){
-  if(run.len>1){const key=chars.slice(run.start,run.start+run.len).join(''),options=profile.pairs![key],parts=splitPair(options[Math.floor(rand()*options.length)],key);if(parts){glyphs.push(...parts);learned+=run.len;continue;}}
+  if(run.len>1){const key=chars.slice(run.start,run.start+run.len).join(''),options=profile.pairs![key],pick=options[Math.floor(rand()*options.length)],parts=splitPair({...pick,strokes:undotSquash(pick.strokes,key)},key);if(parts){glyphs.push(...parts);learned+=run.len;continue;}}
   for(let i=run.start;i<run.start+run.len;i++)glyphs.push(single(chars[i],i));
  }
  // Every generated word uses one consistent alphabet. Photographed words,

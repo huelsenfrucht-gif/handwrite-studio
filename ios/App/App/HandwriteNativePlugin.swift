@@ -114,5 +114,6 @@ public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(HandwriteNativePlugin())
+        bridge?.registerPluginInstance(LectureRecorderPlugin())
     }
 }

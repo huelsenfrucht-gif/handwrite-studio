@@ -109,7 +109,7 @@ function layoutCore(note: Note, profiles: Profile[]):LayoutCore {
    const sources=chars.map((c,i)=>word?.glyphs[i]||(demoGlyphs[c]||[missingGlyph])[0]);
    const width=sources.reduce((n,g)=>n+g.advance*size,0);
    if(x>indent&&x+width>right)line();
-   const v=1,scale=size*(1+(rand()-.5)*.06*v),angle=(rand()-.5)*.035*v,wordY=(rand()-.5)*(style?.baselineSpread||3)*v;
+   const v=1,scale=size*(1+(rand()-.5)*.06*v),angle=(rand()-.5)*.035*v,wordY=(rand()-.5)*Math.min(2.5,style?.baselineSpread||2.5)*v;
    const cos=Math.cos(angle),sin=Math.sin(angle);let wordOffset=0;
    for(let i=0;i<chars.length;i++) {
      const char=chars[i],id=String(index++),glyph=sources[i],advance=glyph.advance*scale;

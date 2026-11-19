@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { AlignLeft, AlignRight, ArchiveRestore, ChevronRight, IndentIncrease, Minus, Plus, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, UserRound, Smartphone, Type, X } from 'lucide-react';
-import { DEFAULT_LINE_START_SHIFT, NEW_MARGIN_LEFT_MM, NEW_MARGIN_RIGHT_MM, PEN_WIDTHS, type Library, type Profile } from './model';
+import { ALargeSmall, AlignLeft, AlignRight, ArchiveRestore, ChevronRight, IndentIncrease, Minus, Plus, CircleHelp, FileText, Folder, HardDriveDownload, Info, Maximize2, Mail, Megaphone, PenLine, ShieldCheck, UserRound, Smartphone, Type, X } from 'lucide-react';
+import { DEFAULT_LINE_START_SHIFT, NEW_MARGIN_LEFT_MM, NEW_MARGIN_RIGHT_MM, PEN_WIDTHS, defaultSettings, type Library, type Profile } from './model';
 import { isUnder16, setUnder16 } from './nativeAds';
 
 /** Public pages (privacy policy, support) on the website. */
@@ -26,6 +26,7 @@ export function SettingsSheet(props: {
           <label className="st-row st-select"><span className="st-icon"><PenLine size={18} /></span><span className="st-label">Stiftstärke</span><select value={props.defaults.penWidth ?? 1.7} onChange={e => props.onDefaults({ penWidth: +e.target.value })}>{PEN_WIDTHS.map(v => <option key={v} value={v}>{v.toLocaleString('de')} px</option>)}</select></label>
           <Stepper icon={<AlignLeft size={18} />} label="Textrand links" value={props.defaults.marginLeft ?? NEW_MARGIN_LEFT_MM} min={0} max={40} step={0.5} unit="mm" onChange={v => props.onDefaults({ marginLeft: v })} />
           <Stepper icon={<AlignRight size={18} />} label="Textrand rechts" value={props.defaults.marginRight ?? NEW_MARGIN_RIGHT_MM} min={0} max={40} step={0.5} unit="mm" onChange={v => props.onDefaults({ marginRight: v })} />
+          <Stepper icon={<ALargeSmall size={18} />} label="Schriftgröße" value={props.defaults.size ?? defaultSettings.size} min={12} max={60} step={1} unit="px" onChange={v => props.onDefaults({ size: v })} />
           <Stepper icon={<IndentIncrease size={18} />} label="Zeilenanfänge versetzt" value={props.defaults.lineStartShift ?? DEFAULT_LINE_START_SHIFT} min={0} max={100} step={5} unit="%" onChange={v => props.onDefaults({ lineStartShift: v })} />
         </Group>
 

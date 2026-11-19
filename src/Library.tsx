@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Camera, Check, ChevronRight, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
+import { Camera, Check, ChevronRight, Mic, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { firstPageLayout, resolvedDrawingInk } from './engine';
 
@@ -16,7 +16,7 @@ const stamp = (iso: string) => { const d = new Date(iso), p = (n: number) => Str
 export function LibraryShell(props: {
   view: LibraryView; library: Library; saveStatus: string; children?: ReactNode;
   setView: (v: LibraryView) => void; update: (fn: (l: Library) => Library) => void;
-  openNote: (id: string) => void; createNote: (folderId?: string) => void; photoImport: (folderId?: string) => void;
+  openNote: (id: string) => void; createNote: (folderId?: string) => void; photoImport: (folderId?: string) => void; lecture: () => void;
   openSettings: () => void; openHelp: () => void; openStudio: () => void; notify: (s: string) => void;
 }) {
   const { view, library, update, notify } = props;
@@ -181,7 +181,8 @@ export function LibraryShell(props: {
         </button>}
       </section> : <h1>{title}</h1>}
       {home && <div className="gn-quick">
-        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto</span><ChevronRight size={18} /></button>
+        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto <span className="exp-badge">Experimentell</span></span><ChevronRight size={18} /></button>
+        <button onClick={() => props.lecture()}><Mic size={24} strokeWidth={1.5} /><span>Unterricht aufnehmen</span><ChevronRight size={18} /></button>
         <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Neue Handschrift</span><ChevronRight size={18} /></button>
         <button onClick={createFolder}><FolderPlus size={24} strokeWidth={1.5} /><span>Neuer Ordner</span><ChevronRight size={18} /></button>
       </div>}
@@ -197,7 +198,7 @@ export function LibraryShell(props: {
             <button className="gn-new-button" onClick={stopSelecting}>Fertig</button>
           </div> : <div className="gn-actions">
             {view === 'documents' && <div className="gn-new"><button className="gn-new-button gn-menu-trigger" onClick={() => setMenu(menu === 'new' ? null : 'new')} aria-haspopup="menu"><span>+</span>Neu</button>
-              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafel)</button></Menu>}</div>}
+              {menu === 'new' && <Menu><button role="menuitem" onClick={() => { setMenu(null); props.createNote(folderId); }}><FilePlus2 size={18} />Dokument</button><button role="menuitem" onClick={createFolder}><FolderPlus size={18} />Ordner</button><button role="menuitem" onClick={() => { setMenu(null); props.photoImport(folderId); }}><Camera size={18} />Aus Foto (Text oder Tafel) <span className="exp-badge">Experimentell</span></button></Menu>}</div>}
             <button className="gn-icon" aria-label={layoutMode === 'grid' ? 'Als Liste anzeigen' : 'Als Raster anzeigen'} title={layoutMode === 'grid' ? 'Liste' : 'Raster'} onClick={() => { const next = layoutMode === 'grid' ? 'list' : 'grid'; setLayoutMode(next); remember('hs-layout', next); }}>{layoutMode === 'grid' ? <LayoutGrid size={24} strokeWidth={1.6} /> : <List size={24} strokeWidth={1.6} />}</button>
             <span className="gn-divider" />
             <button className="gn-icon" title="Auswählen" aria-label="Auswählen" disabled={!items.length} onClick={() => { setMenu(null); setSelecting(true); }}><CheckCheck size={24} strokeWidth={1.6} /></button>

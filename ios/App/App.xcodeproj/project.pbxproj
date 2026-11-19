@@ -21,6 +21,7 @@
 		627FD282BCA00BA58FFBAC59 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01E87E0256588A5A4969C98D /* ShareViewController.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		CE94B6B477CAFC6171A917B1 /* HandwriteNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60312D69FFBC0CA91FCFD26 /* HandwriteNativePlugin.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* LectureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* LectureRecorder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		D60312D69FFBC0CA91FCFD26 /* HandwriteNativePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HandwriteNativePlugin.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* LectureRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LectureRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +139,7 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				D60312D69FFBC0CA91FCFD26 /* HandwriteNativePlugin.swift */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* LectureRecorder.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -271,6 +274,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				CE94B6B477CAFC6171A917B1 /* HandwriteNativePlugin.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* LectureRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -112,3 +112,31 @@ describe('writing guide', () => {
     expect(Math.min(...ys)).toBeCloseTo(4, 0); expect(Math.max(...ys)).toBeCloseTo(80, 0);
   });
 });
+
+describe('letters stay on the line and keep their size', () => {
+  const iStrokes = (): Stroke[] => [[{ x: 10, y: 60 }, { x: 12, y: 160 }], [{ x: 11, y: 20 }, { x: 13, y: 24 }]];
+  it('frames an i from its dot so the body keeps x-height', async () => {
+    const { normalise } = await import('../src/model');
+    const g = normalise(iStrokes(), 'i', 'pen'), body = g.strokes[0].map(p => p.y);
+    expect(Math.max(...body)).toBeCloseTo(80, 0); expect(Math.min(...body)).toBeLessThan(40);
+    const noDot = normalise([[{ x: 10, y: 60 }, { x: 12, y: 160 }]], 'i', 'pen').strokes[0].map(p => p.y);
+    expect(Math.min(...noDot)).toBeCloseTo(34, 0);
+  });
+  it('stretches an i saved with the old squashed frame, but never twice', async () => {
+    const { undotSquash } = await import('../src/model');
+    const old: Stroke[] = [[{ x: 5, y: 47 }, { x: 6, y: 80 }], [{ x: 5, y: 34 }, { x: 6, y: 36 }]];
+    const fixed = undotSquash(old, 'i'); expect(fixed[1][0].y).toBeCloseTo(16, 0); expect(fixed[0][1].y).toBeCloseTo(80, 0);
+    expect(undotSquash(fixed, 'i')).toBe(fixed);
+  });
+  it('keeps a colon written in the middle zone at full x-height', async () => {
+    const { normaliseOnLines } = await import('../src/model');
+    const ys = normaliseOnLines([[{ x: 0, y: 100 }, { x: 1, y: 102 }], [{ x: 0, y: 142 }, { x: 1, y: 144 }]], 'pen', 144, 98).strokes.flat().map(p => p.y);
+    expect(Math.min(...ys)).toBeCloseTo(36, 0); expect(Math.max(...ys)).toBeCloseTo(80, 0);
+  });
+  it('moves words only slightly up and down, even with a measured rhythm', () => {
+    const p = base(); p.words = Array.from({ length: 5 }, (_, i) => ({ id: `w${i}`, text: 'ab', strokes: letter(), cuts: [0, 20, 40], width: 40, source: 'pen' as const, normalization: 3 as const, metrics: { slant: 0, baselineSpread: 12, joining: .5, spacing: 20, baseline: 80, xHeight: 46 } }));
+    const n = newNote(); n.settings = { ...n.settings, profileId: 'p' }; n.renderedText = 'ab ab ab ab ab ab ab ab';
+    const g = layout(n, [p]).glyphs.filter(x => x.char === 'a'), bottoms = g.map(x => Math.max(...x.strokes.flat().map(q => q.y)));
+    expect(Math.max(...bottoms) - Math.min(...bottoms)).toBeLessThan(n.settings.size * 0.12);
+  });
+});
