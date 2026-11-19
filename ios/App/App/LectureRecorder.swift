@@ -3,7 +3,7 @@ import AVFoundation
 import Speech
 import Capacitor
 
-/// "Unterricht aufnehmen": records from the microphone and turns speech into text
+/// "Transkribieren": records from the microphone and turns speech into text
 /// entirely on the device. Keeps running while the app is in the background or the
 /// iPad is locked (UIBackgroundModes: audio). The transcript and the audio are saved
 /// continuously, so a lesson survives a crash or the app being closed.
@@ -52,8 +52,10 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func start(_ call: CAPPluginCall) {
         let locale = call.getString("locale") ?? "de-DE"
+        let room = call.getString("room") ?? "near", subject = call.getString("subject") ?? "general"
+        let terms = (call.getArray("terms") as? [String] ?? []).prefix(100).map { String($0.prefix(60)) }
         Task {
-            do { call.resolve(try await session.start(locale: locale)) }
+            do { call.resolve(try await session.start(locale: locale, room: room, subject: subject, terms: Array(terms))) }
             catch { call.reject(error.localizedDescription) }
         }
     }
@@ -142,11 +144,12 @@ enum LectureError: LocalizedError {
     }
 }
 
-func makeTranscriber(locale: Locale) async throws -> Transcriber {
+/// `terms`: names and technical words of the subject; the recogniser prefers them.
+func makeTranscriber(locale: Locale, terms: [String] = [], progress: ((Double) -> Void)? = nil) async throws -> Transcriber {
     if #available(iOS 26.0, *), SpeechTranscriber.isAvailable {
-        if let t = try? await AnalyzerTranscriber(locale: locale) { return t }
+        if let t = try? await AnalyzerTranscriber(locale: locale, terms: terms, progress: progress) { return t }
     }
-    return try ClassicTranscriber(locale: locale)
+    return try ClassicTranscriber(locale: locale, terms: terms)
 }
 
 @available(iOS 26.0, *)
@@ -160,17 +163,27 @@ final class AnalyzerTranscriber: Transcriber {
     private var converter: AVAudioConverter?
     private var results: Task<Void, Never>?
 
-    init(locale: Locale) async throws {
+    init(locale: Locale, terms: [String] = [], progress: ((Double) -> Void)? = nil) async throws {
         guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else { throw LectureError.unavailable("Diese Sprache wird auf diesem iPad nicht unterstützt.") }
         transcriber = SpeechTranscriber(locale: supported, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [.audioTimeRange])
         // The language model is downloaded once by the system and then works offline.
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) { try await request.downloadAndInstall() }
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+            let poll = Task { while !Task.isCancelled { progress?(request.progress.fractionCompleted); try? await Task.sleep(nanoseconds: 300_000_000) } }
+            defer { poll.cancel() }
+            try await request.downloadAndInstall()
+        }
         analyzer = SpeechAnalyzer(modules: [transcriber])
+        if !terms.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = terms
+            try? await analyzer.setContext(context)
+        }
         guard let best = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else { throw LectureError.unavailable("Kein passendes Audioformat.") }
         format = best
         let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream()
         input = continuation
-        try await analyzer.start(inputSequence: stream)
+        let analyzer = self.analyzer
+        Task { try? await analyzer.start(inputSequence: stream) }
         let transcriber = self.transcriber
         results = Task { [weak self] in
             do {
@@ -217,13 +230,15 @@ final class ClassicTranscriber: Transcriber {
     var onFinal: ((Passage) -> Void)?
     var onVolatile: ((String) -> Void)?
     private let recognizer: SFSpeechRecognizer
+    private let terms: [String]
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var requestStart = 0.0
     private var pending = 0
     private var drained: CheckedContinuation<Void, Never>?
 
-    init(locale: Locale) throws {
+    init(locale: Locale, terms: [String] = []) throws {
+        self.terms = terms
         guard let r = SFSpeechRecognizer(locale: locale), r.isAvailable else { throw LectureError.unavailable("Die Spracherkennung ist auf diesem iPad gerade nicht verfügbar.") }
         guard r.supportsOnDeviceRecognition else { throw LectureError.unavailable("Dieses iPad kann diese Sprache nicht ohne Internet erkennen.") }
         recognizer = r
@@ -235,6 +250,7 @@ final class ClassicTranscriber: Transcriber {
         req.shouldReportPartialResults = true
         if #available(iOS 16.0, *) { req.addsPunctuation = true }
         req.taskHint = .dictation
+        if !terms.isEmpty { req.contextualStrings = terms }
         let offset = time
         pending += 1
         task = recognizer.recognitionTask(with: req) { [weak self] result, error in
@@ -284,6 +300,10 @@ final class LectureSession {
     private var pauseReason = ""
     private var startedAt = Date()
     private var locale = "de-DE"
+    private var room = "near" // near | classroom | hall
+    private var subject = "general"
+    private var terms: [String] = []
+    private var voice = VoiceLift(room: "near")
     private var passages: [Passage] = []
     private var markers: [Double] = []
     private var volatile = ""
@@ -291,6 +311,13 @@ final class LectureSession {
     private var file: AVAudioFile?
     private var transcriber: Transcriber?
     private var recorded = 0.0 // seconds of audio, pauses excluded
+    private var prep = "idle" // loading | ready | unavailable
+    private var prepProgress = 0.0
+    private var level = 0.0
+    private var lastLevelSent = Date.distantPast
+    private var pending: [(AVAudioPCMBuffer, Double)] = [] // audio held back until speech recognition is ready
+    private var pendingSeconds = 0.0
+    private var missedText = false
     private let queue = DispatchQueue(label: "lecture.state")
     private var observers: [NSObjectProtocol] = []
 
@@ -306,8 +333,8 @@ final class LectureSession {
 
     func snapshot() -> [String: Any] {
         queue.sync {
-            var d: [String: Any] = ["state": state, "reason": pauseReason, "duration": recorded, "volatile": volatile]
-            if let id { d["id"] = id; d["startedAt"] = startedAt.timeIntervalSince1970 * 1000; d["locale"] = locale }
+            var d: [String: Any] = ["state": state, "reason": pauseReason, "duration": recorded, "volatile": volatile, "prep": prep, "progress": prepProgress, "level": level, "missedText": missedText]
+            if let id { d["id"] = id; d["startedAt"] = startedAt.timeIntervalSince1970 * 1000; d["locale"] = locale; d["room"] = room; d["subject"] = subject }
             d["passages"] = passages.map { ["start": $0.start, "end": $0.end, "text": $0.text] }
             d["markers"] = markers
             return d
@@ -316,36 +343,85 @@ final class LectureSession {
 
     private func changed(persist: Bool = false) {
         let snap = snapshot()
-        if persist, let id { var d = snap; d["volatile"] = nil; LectureStore.save(d, id: id) }
+        if persist, let id { var d = snap; d["volatile"] = nil; d["terms"] = queue.sync { terms }; LectureStore.save(d, id: id) }
         DispatchQueue.main.async { self.onChange?(snap) }
     }
 
-    func start(locale: String) async throws -> [String: Any] {
-        guard id == nil else { throw LectureError.busy }
+    /// Recording starts at once; speech recognition (and a first-time language download)
+    /// is prepared alongside. Audio recorded meanwhile is handed over as soon as it is ready.
+    func start(locale: String, room: String = "near", subject: String = "general", terms: [String] = []) async throws -> [String: Any] {
+        log("start(\(locale)) aufgerufen, läuft schon: \(id != nil)")
+        if id != nil { return snapshot() } // already running: show it instead of failing
         guard AVAudioSession.sharedInstance().recordPermission == .granted, SFSpeechRecognizer.authorizationStatus() == .authorized else { throw LectureError.noAccess }
-        let t = try await makeTranscriber(locale: Locale(identifier: locale))
         let newId = "lesson-\(Int(Date().timeIntervalSince1970))"
         queue.sync {
-            id = newId; self.locale = locale; startedAt = Date(); passages = []; markers = []; volatile = ""; recorded = 0; pauseReason = ""
+            id = newId; self.locale = locale; self.room = room; self.subject = subject; self.terms = terms; voice = VoiceLift(room: room); startedAt = Date(); passages = []; markers = []; volatile = ""; recorded = 0; pauseReason = ""
+            prep = "loading"; prepProgress = 0; pending = []; pendingSeconds = 0; missedText = false; transcriber = nil
         }
-        transcriber = t
-        t.onFinal = { [weak self] p in self?.queue.async { self?.passages.append(p) }; self?.changed(persist: true) }
-        t.onVolatile = { [weak self] text in self?.queue.async { self?.volatile = text }; self?.changed() }
         do { try configureAudioSession(); try startEngine() }
-        catch { await t.finish(); transcriber = nil; queue.sync { id = nil; state = "idle" }; throw error }
+        catch { queue.sync { id = nil; state = "idle"; prep = "idle" }; file = nil; LectureStore.remove(id: newId); throw error }
         observe()
         changed(persist: true)
+        prepareTranscriber(locale: locale, terms: terms, for: newId)
         return snapshot()
+    }
+
+    private func prepareTranscriber(locale: String, terms: [String], for lesson: String) {
+        Task {
+            log("Spracherkennung: vorbereiten")
+            let t = try? await makeTranscriber(locale: Locale(identifier: locale), terms: terms) { [weak self] fraction in
+                self?.queue.async { self?.prepProgress = fraction }; self?.changed()
+            }
+            guard queue.sync(execute: { id }) == lesson else { await t?.finish(); return } // stopped meanwhile
+            log("Spracherkennung: \(t.map { String(describing: type(of: $0)) } ?? "nicht verfügbar")")
+            guard let t else { queue.sync { prep = "unavailable"; pending = []; missedText = true }; changed(persist: true); return }
+            t.onFinal = { [weak self] p in self?.queue.async { self?.passages.append(p) }; self?.changed(persist: true) }
+            t.onVolatile = { [weak self] text in self?.queue.async { self?.volatile = text }; self?.changed() }
+            queue.sync {
+                for (buffer, time) in pending { t.append(buffer, at: time) }
+                pending = []; pendingSeconds = 0; transcriber = t; prep = "ready"
+            }
+            changed()
+        }
+    }
+
+    private static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard let out = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength) else { return nil }
+        out.frameLength = buffer.frameLength
+        let n = Int(buffer.frameLength), channels = Int(buffer.format.channelCount)
+        if let src = buffer.floatChannelData, let dst = out.floatChannelData { for c in 0..<channels { dst[c].update(from: src[c], count: n) } }
+        else if let src = buffer.int16ChannelData, let dst = out.int16ChannelData { for c in 0..<channels { dst[c].update(from: src[c], count: n) } }
+        return out
     }
 
     private func configureAudioSession() throws {
         let s = AVAudioSession.sharedInstance()
-        try s.setCategory(.record, mode: .spokenAudio, options: [])
+        log("Audio-Sitzung: Kategorie setzen")
+        // playAndRecord + mixWithOthers: works next to other audio in the app (e.g. an ad video)
+        // instead of having to tear it down first, which can block the audio system.
+        try s.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+        log("Audio-Sitzung: aktivieren")
         try s.setActive(true, options: [])
+        log("Audio-Sitzung: aktiv")
+        if queue.sync(execute: { room }) != "near" { preferRoomMicrophone(s) }
+    }
+
+    /// Far away speakers: use the built-in microphone with an all-round pickup where the
+    /// iPad offers one (only when no headset or external microphone is in use).
+    private func preferRoomMicrophone(_ s: AVAudioSession) {
+        guard s.currentRoute.inputs.first?.portType == .builtInMic, let mic = s.availableInputs?.first(where: { $0.portType == .builtInMic }) else { return }
+        guard let source = mic.dataSources?.first(where: { $0.supportedPolarPatterns?.contains(.omnidirectional) == true }) else { log("Mikrofon: keine Rundum-Richtung verfügbar"); return }
+        do {
+            try source.setPreferredPolarPattern(.omnidirectional)
+            try mic.setPreferredDataSource(source)
+            try s.setPreferredInput(mic)
+            log("Mikrofon: Rundum-Richtung (\(source.dataSourceName))")
+        } catch { log("Mikrofon: \(error.localizedDescription)") }
     }
 
     private func startEngine() throws {
         guard let id else { return }
+        log("Engine: vorbereiten")
         let engine = AVAudioEngine(), input = engine.inputNode, format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw LectureError.unavailable("Kein Mikrofon gefunden.") }
         if file == nil {
@@ -355,13 +431,29 @@ final class LectureSession {
         }
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             guard let self else { return }
-            let time = self.queue.sync { self.recorded }
+            self.voice.process(buffer)
             try? self.file?.write(from: buffer)
-            self.transcriber?.append(buffer, at: time)
-            self.queue.async { self.recorded += Double(buffer.frameLength) / format.sampleRate }
+            let seconds = Double(buffer.frameLength) / format.sampleRate
+            var rms: Float = 0
+            if let data = buffer.floatChannelData, buffer.frameLength > 0 { let n = Int(buffer.frameLength); var sum: Float = 0; for i in 0..<n { sum += data[0][i] * data[0][i] }; rms = (sum / Float(n)).squareRoot() }
+            let send = self.queue.sync { () -> Bool in
+                let time = self.recorded
+                if let t = self.transcriber { t.append(buffer, at: time) }
+                else if self.prep == "loading" {
+                    // Hold back up to three minutes; longer gaps are filled from the audio file later.
+                    if self.pendingSeconds < 180, let c = LectureSession.copy(buffer) { self.pending.append((c, time)); self.pendingSeconds += seconds } else { self.missedText = true }
+                }
+                self.recorded += seconds
+                self.level = Double(min(1, rms * 6))
+                if Date().timeIntervalSince(self.lastLevelSent) > 0.2 { self.lastLevelSent = Date(); return true }
+                return false
+            }
+            if send { self.changed() }
         }
         engine.prepare()
+        log("Engine: starten")
         try engine.start()
+        log("Engine: läuft")
         self.engine = engine
         queue.sync { state = "recording"; pauseReason = "" }
     }
@@ -407,8 +499,9 @@ final class LectureSession {
     func stop() async -> [String: Any] {
         guard id != nil else { return snapshot() }
         stopEngine()
-        await transcriber?.finish()
-        transcriber = nil; file = nil
+        let t = queue.sync { () -> Transcriber? in let t = transcriber; transcriber = nil; if prep == "loading" { missedText = true }; pending = []; prep = "idle"; level = 0; return t }
+        await t?.finish()
+        file = nil
         observers.forEach(NotificationCenter.default.removeObserver); observers = []
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         queue.sync { state = "stopped"; volatile = "" }
@@ -422,7 +515,7 @@ final class LectureSession {
     static func transcribeSaved(id: String) async throws -> [String: Any] {
         guard var data = LectureStore.load(id) else { throw LectureError.unavailable("Die Aufnahme wurde nicht gefunden.") }
         let file = try AVAudioFile(forReading: LectureStore.audio(id))
-        let t = try await makeTranscriber(locale: Locale(identifier: data["locale"] as? String ?? "de-DE"))
+        let t = try await makeTranscriber(locale: Locale(identifier: data["locale"] as? String ?? "de-DE"), terms: data["terms"] as? [String] ?? [])
         let found = PassageBox()
         t.onFinal = { p in found.add(p) }
         let format = file.processingFormat, chunk: AVAudioFrameCount = 16384
@@ -446,9 +539,49 @@ final class LectureSession {
 }
 
 /// Thread-safe collection of recognised passages (results arrive on other threads).
+/// Makes a distant voice easier to recognise: removes rumble below about 90 Hz (traffic,
+/// footsteps, air conditioning) and slowly lifts quiet speech towards a steady level,
+/// with a soft limit so loud moments never clip. Does nothing for "near".
+final class VoiceLift {
+    private let enabled: Bool
+    private let maxGain: Float
+    private var gain: Float = 1
+    private var lastIn: [Float] = [], lastOut: [Float] = []
+    init(room: String) {
+        enabled = room != "near"
+        maxGain = room == "hall" ? 8 : 4
+    }
+    func process(_ buffer: AVAudioPCMBuffer) {
+        guard enabled, let data = buffer.floatChannelData, buffer.frameLength > 0 else { return }
+        let n = Int(buffer.frameLength), channels = Int(buffer.format.channelCount)
+        let a = Float(exp(-2 * Double.pi * 90 / buffer.format.sampleRate))
+        if lastIn.count != channels { lastIn = Array(repeating: 0, count: channels); lastOut = lastIn }
+        var sum: Float = 0
+        for c in 0..<channels {
+            let x = data[c]
+            var px = lastIn[c], py = lastOut[c]
+            for i in 0..<n { let v = x[i]; let y = a * (py + v - px); px = v; py = y; x[i] = y; if c == 0 { sum += y * y } }
+            lastIn[c] = px; lastOut[c] = py
+        }
+        let rms = (sum / Float(n)).squareRoot()
+        // Only follow actual sound, not silence (that would just amplify noise).
+        if rms > 0.002 {
+            let target = min(maxGain, max(1, 0.06 / rms))
+            gain += (target - gain) * (target < gain ? 0.3 : 0.05)
+        }
+        let g = gain
+        for c in 0..<channels { let x = data[c]; for i in 0..<n { x[i] = tanhf(x[i] * g) } }
+    }
+}
+
 final class PassageBox {
     private var items: [Passage] = []
     private let queue = DispatchQueue(label: "lecture.passages")
     func add(_ p: Passage) { queue.sync { items.append(p) } }
     func sorted() -> [Passage] { queue.sync { items.sorted { $0.start < $1.start } } }
+}
+
+/// Diagnostics for the console (visible with `devicectl … --console` or in Xcode).
+func log(_ message: String) {
+    print("[Transkribieren] \(message)"); fflush(stdout)
 }

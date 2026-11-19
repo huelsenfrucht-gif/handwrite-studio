@@ -1,7 +1,7 @@
 .drawing-import{width:min(920px,96vw)}
 .drawing-drop{width:100%;min-height:280px;border:2px dashed #afbdd0;border-radius:12px;background:#f3f6fa;color:#42658e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .drawing-drop strong{font-size:15px}.drawing-drop span{font-size:11px;color:#74869c}
-.drawing-import label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#5b6e85}
+.drawing-import label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#6e6c66}
 .drawing-import label>input:not([type=range]){border:1px solid #d4dce7;border-radius:8px;padding:10px;background:white}
 .drawing-preview{position:relative;display:grid;place-items:center;min-height:290px;margin:15px 0;background:#e8ebef;border-radius:10px;overflow:hidden}
 .drawing-preview img,.drawing-preview svg{grid-area:1/1;max-width:100%;max-height:430px}.drawing-preview svg{background:white}

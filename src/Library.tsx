@@ -1,4 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { LiveBanner, useLiveLecture } from './LectureSheet';
 import { Camera, Check, ChevronRight, Mic, MoreHorizontal, FolderClosed, CircleHelp, CheckCheck, CornerLeftUp, Copy, FilePlus2, Files, FolderInput, FolderPlus, LayoutGrid, List, ListFilter, Palette, Pencil, PenLine, Search, Settings, Star, Trash2, X } from 'lucide-react';
 import { FOLDER_COLORS, newNote, pathData, uid, type Folder, type Library, type Note, type Profile, type Template } from './model';
 import { firstPageLayout, resolvedDrawingInk } from './engine';
@@ -22,6 +23,7 @@ export function LibraryShell(props: {
   const { view, library, update, notify } = props;
   const folders = library.folders || [];
   const [folderId, setFolderId] = useState<string | undefined>();
+  const [live] = useLiveLecture();
   const [filter, setFilter] = useState<Filter>(() => stored('hs-filter', 'all') as Filter);
   const [sort, setSort] = useState<Sort>(() => stored('hs-sort', 'updated') as Sort);
   const [layoutMode, setLayoutMode] = useState(() => stored('hs-layout', 'grid'));
@@ -129,7 +131,7 @@ export function LibraryShell(props: {
       .filter(t => t.id !== (item.kind === 'folder' ? item.folder.parentId : item.note.folderId));
     const dropping = drag && drag.over === id, dragged = drag && (drag.item.kind === 'folder' ? drag.item.folder.id : drag.item.note.id) === id;
     const isPicked = selecting && picked.has(id);
-    return <article key={id} className={`gn-item gn-${item.kind} ${dropping ? 'drop-over' : ''} ${dragged ? 'dragging' : ''} ${isPicked ? 'picked' : ''}`} data-drop={item.kind === 'folder' ? item.folder.id : undefined}>
+    return <article key={id} className={`gn-item gn-${item.kind} ${dropping ? 'drop-over' : ''} ${dragged ? 'dragging' : ''} ${isPicked ? 'picked' : ''}`} data-drop={item.kind === 'folder' ? item.folder.id : undefined} style={item.kind === 'folder' ? { ['--fc' as string]: item.folder.color } : undefined}>
       <div className="gn-cover-wrap">
         <button className="gn-cover" onPointerDown={e => { if (!selecting) press(e, item); }} onContextMenu={e => e.preventDefault()} onClick={() => { if (suppressClick.current) return; if (selecting) togglePick(id); else open(); }} aria-label={selecting ? `${item.name} ${isPicked ? 'abwählen' : 'auswählen'}` : `${item.name} öffnen`} aria-pressed={selecting ? isPicked : undefined}>{item.kind === 'folder' ? <FolderIcon color={item.folder.color} /> : <NoteCover note={item.note} profiles={library.profiles} templates={library.templates} />}</button>
         {selecting && <span className={`gn-check ${isPicked ? 'on' : ''}`} aria-hidden="true">{isPicked && <Check size={15} strokeWidth={3} />}</span>}{!selecting && <button className={`gn-star ${fav ? 'on' : ''}`} aria-pressed={!!fav} aria-label={fav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'} onClick={() => toggleFavorite(item)}><Star size={18} /></button>}
@@ -154,14 +156,20 @@ export function LibraryShell(props: {
       <div className="gn-brand"><PenLine size={28} strokeWidth={1.6} /><span>Handwritten</span>
         <button className="gn-collapse" aria-label="Seitenleiste ausblenden" onClick={() => setCollapsed(true)}><SidebarIcon /></button></div>
       <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
-        <button data-drop="root" className={`${view === 'documents' && !searching ? 'active' : ''} ${drag?.over === 'root' ? 'drop-over' : ''}`} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={21} strokeWidth={1.6} />Dokumente</button>
-        <button className={view === 'favorites' ? 'active' : ''} onClick={() => { props.setView('favorites'); setQuery(''); setSearching(false); }}><Star size={21} strokeWidth={1.6} />Favoriten</button>
-        <button className={view === 'profiles' ? 'active' : ''} onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span>Handschriften</button>
+        <button data-drop="root" className={`${view === 'documents' && !searching && !folderId ? 'active' : ''} ${drag?.over === 'root' ? 'drop-over' : ''}`} onClick={() => { props.setView('documents'); openFolder(undefined); }}><Files size={20} strokeWidth={1.7} />Alle Dokumente<span className="gn-count">{library.notes.length}</span></button>
+        <button className={view === 'favorites' ? 'active' : ''} onClick={() => { props.setView('favorites'); setQuery(''); setSearching(false); }}><Star size={20} strokeWidth={1.7} />Favoriten</button>
+        <button className={view === 'profiles' ? 'active' : ''} onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span>Meine Handschrift</button>
+        <button onClick={() => props.lecture()}><Mic size={20} strokeWidth={1.7} />Transkribieren{live && <span className="gn-live-dot" aria-label="läuft" />}</button>
       </nav>
-      <hr />
-      <nav onClick={() => { if (narrow()) setCollapsed(true); }}>
-        <button onClick={props.openSettings}><Settings size={21} strokeWidth={1.6} />Einstellungen</button>
-        <button onClick={props.openHelp}><CircleHelp size={21} strokeWidth={1.6} />Hilfe</button>
+      <div className="gn-side-label">Ordner</div>
+      <nav className="gn-folder-nav" onClick={() => { if (narrow()) setCollapsed(true); }}>
+        {folders.filter(f => !f.parentId).sort((a, b) => a.name.localeCompare(b.name, 'de')).map(f => <button key={f.id} data-drop={f.id} className={`${view === 'documents' && path[0]?.id === f.id ? 'active' : ''} ${drag?.over === f.id ? 'drop-over' : ''}`} onClick={() => openFolder(f.id)}><i style={{ background: f.color }} />{f.name}<span className="gn-count">{library.notes.filter(n => n.folderId === f.id).length || ''}</span></button>)}
+        <button className="gn-add-folder" onClick={e => { e.stopPropagation(); createFolder(); }}><FolderPlus size={18} strokeWidth={1.7} />Neuer Ordner</button>
+      </nav>
+      <nav className="gn-side-foot" onClick={() => { if (narrow()) setCollapsed(true); }}>
+        <button onClick={props.openSettings}><Settings size={19} strokeWidth={1.7} />Einstellungen</button>
+        <button onClick={props.openHelp}><CircleHelp size={19} strokeWidth={1.7} />Hilfe</button>
+        <button className="gn-side-new" onClick={() => props.createNote(view === 'documents' ? folderId : undefined)}><FilePlus2 size={18} strokeWidth={2} />Neues Dokument</button>
       </nav>
     </aside>
     {collapsed && <button className="gn-expand" aria-label="Seitenleiste einblenden" onClick={() => setCollapsed(false)}><SidebarIcon /></button>}
@@ -172,19 +180,14 @@ export function LibraryShell(props: {
     </div>
     <main className="gn-main">
       {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button data-drop="root" className={drag?.over === 'root' ? 'drop-over' : ''} onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button data-drop={f.id} className={drag?.over === f.id ? 'drop-over' : ''} onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
-      {home ? <section className="gn-hero">
-        <div className="gn-hero-text"><h1>Dokumente</h1><p>Schreib deinen Text, den Rest erledigt deine Handschrift.</p>
-          <button className="gn-primary" onClick={() => props.createNote()}>Neues Dokument<ChevronRight size={20} /></button></div>
-        {recent && <button className="gn-recent" onClick={() => props.openNote(recent.id)} aria-label={`${recent.title || 'Unbenannt'} weiterschreiben`}>
-          <span className="gn-recent-stack"><span className="gn-sheet-back" /><NoteCover note={recent} profiles={library.profiles} templates={library.templates} /></span>
-          <span className="gn-recent-label"><small>Zuletzt bearbeitet</small><strong>{recent.title || 'Unbenannt'}</strong><em>Weiterschreiben<ChevronRight size={15} /></em></span>
-        </button>}
-      </section> : <h1>{title}</h1>}
+      {live && <LiveBanner live={live} onOpen={props.lecture} />}
+      {home ? <div className="gn-head"><h1>Dokumente</h1>
+        {recent && <button className="gn-continue" onClick={() => props.openNote(recent.id)}><small>Weiterschreiben</small><strong>{recent.title || 'Unbenannt'}</strong><ChevronRight size={16} /></button>}
+      </div> : <h1>{title}</h1>}
       {home && <div className="gn-quick">
-        <button onClick={() => props.photoImport()}><Camera size={24} strokeWidth={1.5} /><span>Aus Foto <span className="exp-badge">Experimentell</span></span><ChevronRight size={18} /></button>
-        <button onClick={() => props.lecture()}><Mic size={24} strokeWidth={1.5} /><span>Unterricht aufnehmen</span><ChevronRight size={18} /></button>
-        <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Neue Handschrift</span><ChevronRight size={18} /></button>
-        <button onClick={createFolder}><FolderPlus size={24} strokeWidth={1.5} /><span>Neuer Ordner</span><ChevronRight size={18} /></button>
+        {!live && <button onClick={() => props.lecture()}><Mic size={18} strokeWidth={1.8} /><span>Transkribieren</span></button>}
+        <button onClick={() => props.photoImport()}><Camera size={18} strokeWidth={1.8} /><span>Aus Foto</span><span className="exp-badge">Experimentell</span></button>
+        <button onClick={() => props.setView('profiles')}><span className="gn-hand">Aa</span><span>Handschrift üben</span></button>
       </div>}
       {view === 'profiles' ? props.children : <>
         <div className="gn-toolbar">
@@ -204,7 +207,10 @@ export function LibraryShell(props: {
             <button className="gn-icon" title="Auswählen" aria-label="Auswählen" disabled={!items.length} onClick={() => { setMenu(null); setSelecting(true); }}><CheckCheck size={24} strokeWidth={1.6} /></button>
           </div>}
         </div>
-        {items.length ? <div className={`gn-grid ${layoutMode === 'list' ? 'list' : ''}`}>{items.map(card)}</div>
+        {items.length ? (layoutMode === 'list' ? <div className="gn-grid list">{items.map(card)}</div> : <>
+          {items.some(i => i.kind === 'folder') && <><h2 className="gn-section">Ordner</h2><div className="gn-grid gn-folders">{items.filter(i => i.kind === 'folder').map(card)}</div></>}
+          {items.some(i => i.kind === 'note') && <>{items.some(i => i.kind === 'folder') && <h2 className="gn-section">Dokumente</h2>}<div className="gn-grid">{items.filter(i => i.kind === 'note').map(card)}</div></>}
+        </>)
           : <div className="gn-empty"><EmptyIllustration star={view === 'favorites'} /><p>{query ? `Nichts gefunden für „${query}“.` : view === 'favorites' ? 'Es befinden sich keine Dokumente in „Favoriten“.' : 'Dieser Ordner ist leer.'}</p>{view === 'documents' && !query && <button className="gn-new-button" onClick={() => props.createNote(folderId)}><span>+</span>Neues Dokument</button>}</div>}
       </>}
       {drag && current && view === 'documents' && <div className={`gn-dropout ${drag.over === (current.parentId || 'root') ? 'drop-over' : ''}`} data-drop={current.parentId || 'root'}><CornerLeftUp size={18} />Hierher ziehen: raus aus „{current.name}“</div>}

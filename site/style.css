@@ -130,7 +130,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--navy-2);outline-offse
 /* Handschrift in Stufen */
 .split-plain{flex-wrap:wrap}
 .flow.levels{flex:1 1 400px;min-width:0}
-/* Unterricht aufnehmen */
+/* Transkribieren */
 .split-band{padding-top:0!important;padding-bottom:0!important}
 .band .split-band h2{margin:0 0 20px}
 .transcript-card{flex:1 1 420px;min-width:0;margin:0;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 24px 48px -28px #13254a55;overflow:hidden}

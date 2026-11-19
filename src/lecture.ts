@@ -5,15 +5,25 @@ import { hasNative } from './native';
 export type Passage = { start: number; end: number; text: string };
 export type LectureState = 'idle' | 'recording' | 'paused' | 'stopped';
 export type Lecture = {
-  state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string;
+  state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string; room?: Room; subject?: string;
   duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean;
+  /** Speech recognition: being prepared (first time: language download), ready, or not possible. */
+  prep?: 'idle' | 'loading' | 'ready' | 'unavailable'; progress?: number; level?: number; missedText?: boolean;
 };
+/** How far away the speaker is; decides how much the quiet, distant voice is lifted. */
+export type Room = 'near' | 'classroom' | 'hall';
+export const ROOMS: { id: Room; label: string; hint: string }[] = [
+  { id: 'near', label: 'Ruhig, nah', hint: 'Für Gespräche am Tisch. Der Ton bleibt unverändert.' },
+  { id: 'classroom', label: 'Klassenzimmer', hint: 'Hebt die Stimme der Lehrkraft an und dämpft Brummen und Rauschen.' },
+  { id: 'hall', label: 'Hörsaal', hint: 'Für große Räume: hebt weit entfernte Stimmen stärker an.' },
+];
+
 export type Availability = { available: boolean; engine: 'analyzer' | 'classic' | 'none'; reason: string; microphone: boolean; speech: boolean };
 
 type Plugin = {
   availability(o: { locale: string }): Promise<Availability>;
   requestAccess(): Promise<{ microphone: boolean; speech: boolean }>;
-  start(o: { locale: string }): Promise<Lecture>;
+  start(o: { locale: string; room: Room; subject: string; terms: string[] }): Promise<Lecture>;
   pause(): Promise<Lecture>;
   resume(): Promise<Lecture>;
   mark(): Promise<{ t: number }>;
@@ -48,7 +58,7 @@ export function timeOfDay(startedAt: number | undefined, offset: number) {
 }
 export function lectureTitle(l: Pick<Lecture, 'startedAt'>) {
   const d = new Date(l.startedAt || Date.now());
-  return `Unterricht ${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `Transkript ${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export type Paragraph = { start: number; text: string; marked: boolean };
@@ -69,9 +79,9 @@ export function paragraphs(l: Pick<Lecture, 'passages' | 'markers'>): Paragraph[
 }
 
 /** The document text: a heading, then one paragraph per passage; marked ones start with „Wichtig:“. */
-export function lectureText(l: Lecture, opts: { times: boolean }) {
+export function lectureText(l: Lecture, opts: { times: boolean; marks?: boolean }) {
   const end = l.startedAt ? timeOfDay(l.startedAt, l.duration) : '';
   const head = `${lectureTitle(l)}${end ? `–${end}` : ''}`;
-  const body = paragraphs(l).map(p => `${opts.times ? `[${timeOfDay(l.startedAt, p.start)}] ` : ''}${p.marked ? 'Wichtig: ' : ''}${p.text}`);
+  const body = paragraphs(l).map(p => `${opts.times ? `[${timeOfDay(l.startedAt, p.start)}] ` : ''}${p.marked && opts.marks !== false ? 'Wichtig: ' : ''}${p.text}`);
   return [head, '', ...body.flatMap((b, i) => i ? ['', b] : [b])].join('\n').slice(0, 100000);
 }

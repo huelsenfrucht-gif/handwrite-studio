@@ -92,7 +92,7 @@ function Preview({ profile, reached }: { profile: Profile; reached: number }) {
     return { paths: g.flatMap(x => x.strokes).map(s => pathData(s)), box: `${minX - 8} ${minY - 8} ${maxX - minX + 16} ${maxY - minY + 16}` };
   }, [profile]);
   if (!data) return null;
-  return <figure className="lv-preview"><svg viewBox={data.box} aria-label="Beispielsatz in deiner Handschrift">{data.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#14213d" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />)}</svg><figcaption><span>So schreibt deine Handschrift gerade.</span><span>{reached} von 5 Stufen</span></figcaption></figure>;
+  return <figure className="lv-preview"><svg viewBox={data.box} aria-label="Beispielsatz in deiner Handschrift">{data.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#1c1d21" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />)}</svg><figcaption><span>So schreibt deine Handschrift gerade.</span><span>{reached} von 5 Stufen</span></figcaption></figure>;
 }
 
 /** Pointer handling for one writing pad: pencil writes, finger scrolls (unless allowed). */
@@ -114,7 +114,7 @@ function usePad(w: number, h: number, allowTouch: boolean) {
     },
   };
 }
-const COLORS = ['#14213d', '#d0574a', '#2f7d5b'];
+const COLORS = ['#1c1d21', '#d0574a', '#2f7d5b'];
 
 /** Stufe 4–5: letter pairs written together; the split between the letters is shown and adjustable. */
 function PairTraining({ keys, level, onSave, onClose }: { keys: string[]; level: 4 | 5; onSave: (key: string, s: PairSample) => void; onClose: () => void }) {

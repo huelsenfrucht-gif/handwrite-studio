@@ -118,18 +118,18 @@
 .spinner{width:20px;height:20px;border-radius:50%;border:2.5px solid #cfe0f3;border-top-color:#1a7fd9;animation:gn-spin .8s linear infinite}
 @keyframes gn-spin{to{transform:rotate(360deg)}}
 .photo-result{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:16px}
-.photo-result>img{width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#f2f4f6}
-.photo-result label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:#5b6e85}
+.photo-result>img{width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#f4f3ef}
+.photo-result label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:#6e6c66}
 .photo-result textarea{min-height:360px;font-size:14px;line-height:1.6}
 .photo-result .button-row{grid-column:1/-1;justify-content:flex-end}
 .photo-result.board{grid-template-columns:1fr}
 .board-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.board-compare img,.board-compare svg{width:100%;max-height:380px;object-fit:contain;border-radius:10px;background:#f2f4f6}
+.board-compare img,.board-compare svg{width:100%;max-height:380px;object-fit:contain;border-radius:10px;background:#f4f3ef}
 .board-compare svg{background:#fff;box-shadow:inset 0 0 0 1px #e3e7ec}
 .board-toggle{flex-direction:row!important;align-items:center;font-size:13px!important;color:#34465a!important}
 .board-toggle input{width:18px;height:18px}
 .board-labels{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.board-labels strong{flex-basis:100%;font-size:12px;color:#5b6e85;font-weight:500}
+.board-labels strong{flex-basis:100%;font-size:12px;color:#6e6c66;font-weight:500}
 .board-labels input{width:auto;min-width:120px;flex:1 1 150px;height:36px}
 .photo-tip{margin-top:14px;font-size:11.5px;color:#7a8794}
 @media(max-width:700px){.photo-result,.board-compare,.photo-modes{grid-template-columns:1fr}}
@@ -149,7 +149,7 @@
 .native-app .gn-pill,.native-app .gn-expand{top:calc(22px + env(safe-area-inset-top))}
 .native-app .gn-main{padding-top:calc(62px + env(safe-area-inset-top))}
 .native-app .document-tabs{padding-top:env(safe-area-inset-top)}
-.sync-status{font-size:12px;color:#5b6e85;margin-top:6px}
+.sync-status{font-size:12px;color:#6e6c66;margin-top:6px}
 /* ───────── Einstellungen im Stil der Bibliothek (iOS-Gruppenlisten) ───────── */
 .st-backdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px;background:rgba(20,20,20,.28);animation:st-fade .15s ease;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
 .st-backdrop.closing{animation:st-fade-out .14s ease forwards}

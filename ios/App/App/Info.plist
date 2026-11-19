@@ -40,7 +40,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Handwritten nimmt nur auf, wenn du „Unterricht aufnehmen“ startest. Ton und Text bleiben auf diesem iPad.</string>
+	<string>Handwritten nimmt nur auf, wenn du „Transkribieren“ startest. Ton und Text bleiben auf diesem iPad.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um – ohne Internet und ohne fremde Server.</string>
 	<key>UIBackgroundModes</key>

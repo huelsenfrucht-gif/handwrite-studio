@@ -23,7 +23,7 @@ describe('lesson transcript', () => {
   });
   it('writes a heading and optional times into the document text', () => {
     const plain = lectureText(lesson({ markers: [64] }), { times: false }), lines = plain.split('\n');
-    expect(lines[0]).toMatch(/^Unterricht .*19\.11\.2026, 10:23–11:08$/);
+    expect(lines[0]).toMatch(/^Transkript .*19\.11\.2026, 10:23–11:08$/);
     expect(plain).toContain('Wichtig: Der dritte Stand');
     expect(plain).not.toContain('[10:');
     expect(lectureText(lesson(), { times: true })).toContain('[10:24] Der dritte Stand');
