@@ -1,19 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
  <defs>
-  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#24406f"/><stop offset="1" stop-color="#13254a"/></linearGradient>
-  <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#060f22" flood-opacity=".45"/></filter>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2c31"/><stop offset="1" stop-color="#1a1b1f"/></linearGradient>
+  <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="20" stdDeviation="26" flood-color="#000" flood-opacity=".45"/></filter>
  </defs>
  <rect width="1024" height="1024" fill="url(#bg)"/>
- <g transform="rotate(-7 512 540)" filter="url(#sh)">
-  <rect x="222" y="190" width="580" height="700" rx="34" fill="#ffffff"/>
-  <g stroke="#d5dbe6" stroke-width="5">
-   <line x1="262" y1="420" x2="762" y2="420"/><line x1="262" y1="520" x2="762" y2="520"/><line x1="262" y1="620" x2="762" y2="620"/><line x1="262" y1="720" x2="762" y2="720"/>
+ <g transform="rotate(-6 512 520)">
+  <rect x="196" y="196" width="632" height="632" rx="56" fill="#f4f3ef" filter="url(#sh)"/>
+  <!-- drei gleich hohe Zonen wie in der App -->
+  <g transform="translate(0 46)"><g stroke="#d9d5cc" stroke-width="6" stroke-linecap="round">
+   <line x1="250" y1="330" x2="774" y2="330"/>
+   <line x1="250" y1="470" x2="774" y2="470"/>
+   <line x1="250" y1="610" x2="774" y2="610" stroke="#bfbab0" stroke-width="7"/>
   </g>
-  <path d="M290 400 C 300 340, 330 330, 335 360 C 340 395, 300 405, 305 375 C 312 340, 360 330, 372 395 C 378 360, 395 340, 412 360 C 425 378, 410 402, 432 400 C 450 398, 452 330, 470 300 C 480 280, 495 290, 488 320 C 478 360, 470 395, 495 400 C 520 405, 520 360, 540 360 C 562 360, 560 400, 585 398 C 605 396, 612 362, 632 362 C 650 362, 652 398, 675 398 C 700 398, 712 370, 730 372"
-        fill="none" stroke="#13254a" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M290 500 C 330 470, 360 505, 400 495 C 440 485, 470 470, 520 492 C 560 508, 600 480, 640 494" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
-  <path d="M290 600 C 320 580, 350 610, 390 596 C 430 582, 470 582, 505 598" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
-  <rect x="262" y="682" width="300" height="46" rx="12" fill="#ffdd33" opacity=".75"/>
-  <path d="M282 715 C 320 692, 350 722, 395 708 C 440 694, 480 700, 530 712" fill="none" stroke="#13254a" stroke-width="15" stroke-linecap="round"/>
- </g>
+  <!-- verbundenes „h“ + „w“ als ein Strich -->
+  <path d="M262 600 C 310 590, 368 470, 392 392 C 408 338, 396 312, 374 322 C 348 334, 344 420, 350 610
+           C 360 540, 398 476, 440 474 C 480 472, 486 510, 482 560 C 478 600, 486 616, 512 600
+           C 532 586, 540 520, 548 478 C 552 540, 556 606, 588 606 C 618 606, 626 540, 634 478
+           C 640 540, 646 606, 678 606 C 716 606, 730 520, 724 478 C 720 456, 744 462, 762 470"
+        fill="none" stroke="#1c1d21" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+ </g></g>
 </svg>

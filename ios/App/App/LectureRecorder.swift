@@ -684,8 +684,30 @@ final class AccurateRecognizer {
         FileManager.default.createFile(atPath: marker.path, contents: Data())
         // Compiling the model for this iPad takes a while the first time only.
         report("load", 0)
-        let config = WhisperKitConfig(model: name, downloadBase: base, modelFolder: folder.path, verbose: false, logLevel: .error, prewarm: true, load: true, download: false)
-        let kit = try await WhisperKit(config)
+        // The Neural Engine is fastest, but compiling the large model for it can need more memory
+        // than iOS allows (the system then stops the compiler). Then the graphics chip is used,
+        // and remembered, so the next time it starts right away.
+        let key = "whisperUsesGPU"
+        func load(gpu: Bool) async throws -> WhisperKit {
+            log("Genau erkennen: Modell vorbereiten (\(gpu ? "Grafikchip" : "Neural Engine"))")
+            let compute = gpu ? ModelComputeOptions(melCompute: .cpuAndGPU, audioEncoderCompute: .cpuAndGPU, textDecoderCompute: .cpuAndGPU) : nil
+            let config = WhisperKitConfig(model: name, downloadBase: base, modelFolder: folder.path, computeOptions: compute, verbose: false, logLevel: .error, prewarm: true, load: true, download: false)
+            return try await WhisperKit(config)
+        }
+        let kit: WhisperKit
+        // The large models do not fit through the Neural Engine compiler on iPads (seen on M1).
+        if UserDefaults.standard.bool(forKey: key) || name.contains("large") {
+            kit = try await load(gpu: true)
+        } else {
+            do { kit = try await load(gpu: false) }
+            catch {
+                log("Genau erkennen: Neural Engine fehlgeschlagen (\(error.localizedDescription)), nehme Grafikchip")
+                UserDefaults.standard.set(true, forKey: key)
+                report("load", 0)
+                do { kit = try await load(gpu: true) }
+                catch { throw LectureError.unavailable("Das Sprachmodell konnte auf diesem iPad nicht vorbereitet werden. Starte das iPad neu und versuche es noch einmal.") }
+            }
+        }
         self.kit = kit
         return kit
     }
