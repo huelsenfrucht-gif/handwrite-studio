@@ -166,3 +166,4 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--navy-2);outline-offse
 .free-card p:last-child{margin-bottom:0}
 .free-card ul{margin:0;padding:0 0 0 18px;font-size:15.5px;line-height:1.75;color:var(--text)}
 @media (max-width:900px){.free-grid{grid-template-columns:1fr}.free-head h2{font-size:32px}.free{padding-top:64px;padding-bottom:64px}}
+.free-badges{flex-wrap:nowrap}.free-badges li{white-space:nowrap}@media (max-width:520px){.free-badges{flex-wrap:wrap}}
