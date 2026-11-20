@@ -61,7 +61,7 @@ export function SettingsSheet(props: {
           <Row icon={<ArchiveRestore size={18} />} label={t('Sicherung laden')} onClick={props.onRestore} chevron />
         </Group>
 
-        {native ? <Group id="st-ads" title={t('Werbung & Datenschutz')} footer={t('Werbung kommt beim Schreiben in Handschrift, vor einer neuen Handschrift und bei Sicherungen. Unter 16 gibt es nur nicht-personalisierte Werbung und keine Tracking-Abfrage (gilt ab dem nächsten App-Start).')}>
+        {native ? <Group id="st-ads" title={t('Werbung & Datenschutz')} footer={t('Handwritten ist kostenlos und wird durch Werbung finanziert. Werbung lässt sich nicht abschalten, und die App braucht dafür eine Internetverbindung. Sie kommt beim Schreiben in Handschrift, vor einer Aufnahme, vor einer neuen Handschrift und bei Sicherungen. Unter 16 gibt es nur nicht-personalisierte Werbung und keine Tracking-Abfrage (gilt ab dem nächsten App-Start).')}>
           <Row icon={<Megaphone size={18} />} label="Werbe-Einstellungen" onClick={props.onAdPrivacy} chevron />
           <label className="st-row st-select"><span className="st-icon"><UserRound size={18} /></span><span className="st-label">{t('Ich bin unter 16')}</span><input type="checkbox" className="st-switch" checked={minor} onChange={e => { setUnder16(e.target.checked); setMinor(e.target.checked); }} /></label>
           <Row icon={<ShieldCheck size={18} />} label={t('Datenschutzerklärung')} onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />

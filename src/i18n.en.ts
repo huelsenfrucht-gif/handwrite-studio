@@ -305,7 +305,7 @@ export const EN: Record<string, string> = {
   'Tonaufnahme gelöscht.': 'Recording deleted.',
   'Genau erkennen braucht einige Minuten viel Strom{battery}. Am besten schließt du das iPad vorher ans Ladekabel an.\n\nTrotzdem jetzt starten?': 'Accurate recognition uses a lot of power for a few minutes{battery}. It is best to plug in your iPad first.\n\nStart anyway?',
   ' (Akku {n} %)': ' (battery {n} %)',
-  'Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. {gb} GB). Am besten im WLAN. Danach funktioniert es ohne Internet.\n\nJetzt laden?': 'For accurate recognition the iPad downloads a speech model once (about {gb} GB). Best on Wi-Fi. After that it works without internet.\n\nDownload now?',
+  'Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. {gb} GB). Am besten im WLAN. Das passiert nur einmal.\n\nJetzt laden?': 'For accurate recognition the iPad downloads a speech model (about {gb} GB). Best on Wi-Fi. This happens only once.\n\nDownload now?',
   'Wird genau erkannt …': 'Recognising accurately …',
   'Wird neu erkannt …': 'Recognising again …',
   'Transkribieren': 'Transcribe',
@@ -376,7 +376,7 @@ export const EN: Record<string, string> = {
   'Sprachmodell wird vorbereitet': 'Preparing speech model',
   'Wird genau erkannt': 'Recognising accurately',
   'Fertig': 'Done',
-  'Nur beim ersten Mal. Danach geht es ohne Internet.': 'Only the first time. After that it works without internet.',
+  'Nur beim ersten Mal.': 'Only the first time.',
   'Beim ersten Mal kann das ein paar Minuten dauern.': 'The first time this can take a few minutes.',
   'Lass die App dabei geöffnet.': 'Keep the app open meanwhile.',
   'Genau erkennen': 'Recognise accurately',
@@ -770,4 +770,9 @@ export const EN: Record<string, string> = {
   'STUFE 3 · SCHREIBRHYTHMUS': 'STAGE 3 · WRITING RHYTHM',
   'STUFE 2 · ZAHLEN & ZEICHEN': 'STAGE 2 · NUMBERS & SYMBOLS',
   'STUFE 1 · GRUNDSCHRIFT': 'STAGE 1 · BASE HANDWRITING',
+  // Free, ad-funded, needs internet
+  'Handwritten ist kostenlos und wird durch Werbung finanziert. Werbung lässt sich nicht abschalten, und die App braucht dafür eine Internetverbindung. Sie kommt beim Schreiben in Handschrift, vor einer Aufnahme, vor einer neuen Handschrift und bei Sicherungen. Unter 16 gibt es nur nicht-personalisierte Werbung und keine Tracking-Abfrage (gilt ab dem nächsten App-Start).': 'Handwritten is free and funded by ads. Ads cannot be turned off, and the app needs an internet connection for them. They appear when writing in handwriting, before a recording, before a new handwriting and with backups. Under 16 there are only non-personalised ads and no tracking request (applies from the next app start).',
+  'Keine Internetverbindung': 'No internet connection',
+  'Handwritten ist kostenlos, weil die App Werbung zeigt. Dafür braucht sie eine Internetverbindung. Verbinde das iPad mit dem WLAN oder schalte mobile Daten ein – danach geht es sofort weiter.': 'Handwritten is free because the app shows ads. For that it needs an internet connection. Connect the iPad to Wi-Fi or turn on mobile data – then you can continue right away.',
+  'Deine Dokumente und Handschriften bleiben sicher auf dem iPad gespeichert.': 'Your documents and handwritings stay safely stored on the iPad.',
 };

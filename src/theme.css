@@ -1163,3 +1163,11 @@ button.st-row:hover,.st-details summary:hover{background:#fbfaf7}
 .tr-switch-row small{font-size:13px;font-weight:400;line-height:1.45;color:var(--hs-muted)}
 .tr-card.no-audio .tr-state{color:var(--hs-ink)}.tr-card.no-audio .tr-redo{opacity:.4}
 .tr-toggle-gap{display:block;min-width:1px}
+
+/* Ohne Internet: die App ist werbefinanziert und braucht eine Verbindung */
+.offline-gate{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;background:color-mix(in srgb,var(--hs-bg,#f4f3ef) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.offline-card{width:min(480px,100%);display:flex;flex-direction:column;align-items:center;gap:12px;padding:36px 32px;border:1px solid var(--hs-line,#e2dfd8);border-radius:24px;background:#fff;text-align:center;box-shadow:0 24px 60px -30px #1c1d2155}
+.offline-icon{display:grid;place-items:center;width:64px;height:64px;margin-bottom:4px;border-radius:50%;background:var(--hs-bg,#f4f3ef);color:var(--hs-ink,#1c1d21)}
+.offline-card h2{margin:0;font-family:var(--hs-serif);font-size:26px;color:var(--hs-ink,#1c1d21)}
+.offline-card p{margin:0;font-size:15.5px;line-height:1.55;color:var(--hs-ink,#1c1d21)}
+.offline-card .offline-fine{font-size:13.5px;color:var(--hs-muted,#6e6c66)}

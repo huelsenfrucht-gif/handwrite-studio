@@ -113,7 +113,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
     const pw = await LectureRecorder.power().catch(() => null);
     if (pw && !pw.charging && (pw.level < 0.3 || pw.lowPower) && !confirm(t('Genau erkennen braucht einige Minuten viel Strom{battery}. Am besten schließt du das iPad vorher ans Ladekabel an.\n\nTrotzdem jetzt starten?', { battery: pw.level < 1 ? t(' (Akku {n} %)', { n: Math.round(pw.level * 100) }) : '' }))) return;
     const st = await LectureRecorder.accurateStatus().catch(() => null);
-    if (st && !st.downloaded && !confirm(t('Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. {gb} GB). Am besten im WLAN. Danach funktioniert es ohne Internet.\n\nJetzt laden?', { gb: (st.sizeMB / 1000).toLocaleString(uiLocale(), { maximumFractionDigits: 1 }) }))) return;
+    if (st && !st.downloaded && !confirm(t('Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. {gb} GB). Am besten im WLAN. Das passiert nur einmal.\n\nJetzt laden?', { gb: (st.sizeMB / 1000).toLocaleString(uiLocale(), { maximumFractionDigits: 1 }) }))) return;
     const sub = await LectureRecorder.addListener('accurate', p => setAccurate(p));
     setAccurate({ phase: st?.downloaded ? 'load' : 'download', progress: 0 });
     await run(t('Wird genau erkannt …'), async () => { setReview(await LectureRecorder.transcribeAccurate({ id: l.id! })); notify?.('Genau erkannt.'); });
@@ -261,7 +261,7 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
           {p.accurate ? <div className="tr-progress" role="status">
             <strong>{{ download: t('Sprachmodell wird geladen'), load: t('Sprachmodell wird vorbereitet'), transcribe: t('Wird genau erkannt'), done: t('Fertig') }[p.accurate.phase] || t('Wird genau erkannt')}{p.accurate.phase !== 'load' ? ` · ${Math.round(p.accurate.progress * 100)} %` : ' …'}</strong>
             <span className="tr-bar"><i style={{ width: `${p.accurate.phase === 'load' ? 100 : Math.max(3, p.accurate.progress * 100)}%` }} className={p.accurate.phase === 'load' ? 'busy' : ''} /></span>
-            <small>{p.accurate.phase === 'download' ? t('Nur beim ersten Mal. Danach geht es ohne Internet.') : p.accurate.phase === 'load' ? t('Beim ersten Mal kann das ein paar Minuten dauern.') : t('Lass die App dabei geöffnet.')}</small>
+            <small>{p.accurate.phase === 'download' ? t('Nur beim ersten Mal.') : p.accurate.phase === 'load' ? t('Beim ersten Mal kann das ein paar Minuten dauern.') : t('Lass die App dabei geöffnet.')}</small>
           </div> : <div className="tr-choices">
             <button className="tr-redo strong" onClick={p.onWhisper} disabled={!!p.busy || !canAudio}><Sparkles size={17} /><span><strong>{t('Genau erkennen')}</strong><small>{t('Am genauesten, dauert einige Minuten')}</small></span></button>
             <button className="tr-redo strong" onClick={p.onAudio} disabled={!!p.busy || !canAudio}><RotateCw size={17} /><span><strong>{t('Schnell neu erkennen')}</strong><small>{t('In wenigen Sekunden')}</small></span></button>

@@ -47,7 +47,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Handwritten nimmt nur auf, wenn du „Transkribieren“ startest. Ton und Text bleiben auf diesem iPad.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um – ohne Internet und ohne fremde Server.</string>
+	<string>Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um – ohne fremde Server.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
