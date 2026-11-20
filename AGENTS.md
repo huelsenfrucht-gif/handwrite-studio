@@ -95,9 +95,64 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 - Commits auf Deutsch, aussagekräftig. `.claude/launch.json` nie committen (lokale Pfade).
 - Rechtstexte (Impressum, Datenschutz) enthalten noch Platzhalter für die echten Betreiberangaben.
 
+## Wie der Projektinhaber arbeitet
+
+- Kommuniziert auf **Deutsch**, oft per Spracheingabe (Tippfehler sind normal). Antworten auf Deutsch, klar und ohne Fachchinesisch.
+- Nutzt ein **iPad Pro (M1) im Querformat** mit Apple Pencil. Zielgruppe: Schülerinnen und Schüler (Bedienung muss ein Siebtklässler verstehen).
+- Erwartet gründliche, fertige Arbeit: selbst testen (Simulator, Screenshots), nicht nur Code ändern.
+- **Committen und pushen nur nach ausdrücklicher Zustimmung.** Am Ende einer Aufgabe kurz zusammenfassen und fragen.
+- Ändert sich die Oberfläche sichtbar, gehören **neue Website-Screenshots** dazu (`site/img/`).
+- Mag ruhiges, professionelles Design (Vorbild: GoodNotes, Notes-Apps), keine überladenen Ansichten; Einstellungen lieber zum Ausklappen.
+
+## Datenmodell (kurz)
+
+- `Library` (`src/model.ts`), gespeichert in IndexedDB (`src/storage.ts`, Schlüssel `current` und `last-good`):
+  - `notes: Note[]` – Dokument mit `text` (Eingabe), `renderedText` (geschrieben), `settings` (Schrift, Papier, Ränder, `profileId`), `edits` (verschobene/gelöschte Buchstaben), `annotations`, `drawings`, `fields` (Arbeitsblatt-Felder), `folderId`, `favorite`.
+  - `folders: Folder[]` – `parentId` für Unterordner, `color`.
+  - `profiles: Profile[]` – eine Handschrift: `glyphs` (Buchstabe → Varianten aus Strichen), `pairs` (Buchstabenverbindungen, Stufe 4/5), `rhythm` (Stufe 3), `words`, `unlocked` (Stufe 4/5 per Video).
+  - `templates` – eigene Papiervorlagen/Arbeitsblätter als Bilder (Data-URLs).
+  - `deleted` – Löschmarken (für Abgleich), `defaults` – Voreinstellungen für neue Dokumente.
+- Sicherung = diese `Library` als `.handwrite.json`.
+- Transkripte liegen **nicht** in der Library, sondern nativ in `Documents/Lectures/<id>.json` + `<id>.m4a` (siehe `LectureStore` in Swift). Tonaufnahmen werden nach Übernehmen/Exportieren gelöscht, sonst nach 7 Tagen; der Text bleibt.
+- Kleine Vorlieben in `localStorage` (`hs-lang`, `hs-tr-locale`, `hs-tr-room`, `hs-tr-subject`, `hs-tr-live`, `hs-filter`, `hs-sort`, `hs-layout`, `hs-under16`, `hs-ad-free-until`).
+
+## Native Schnittstellen (Capacitor-Plugins)
+
+- `LectureRecorder` (`ios/App/App/LectureRecorder.swift`, TS-Typen in `src/lecture.ts`):
+  `availability`, `requestAccess`, `start({locale, room, subject, terms, live})`, `pause`, `resume`, `mark`, `stop`, `current`, `saved`, `transcribeAudio` (schnell, Apple), `transcribeAccurate` (Whisper, Fortschritt per Event `accurate`), `accurateStatus`, `remove({id, audioOnly})`, `power` (Akku/Stromsparmodus). Live-Updates per Event.
+- `HandwriteNative` (`HandwriteNativePlugin.swift`, `src/native.ts`): `recognizeText`, `recognizeDocument` (Vision), `takeSharedImages` (Share-Extension).
+- Community-Plugins: `@capacitor-community/admob`, `@capacitor/network`, `@capacitor/filesystem`, `@capacitor/share`.
+
+## Wichtige Entscheidungen (und warum)
+
+- **Whisper statt Parakeet für „Genau erkennen“:** Die deutschtauglichen Parakeet-Modelle (FluidAudio v3/Ultra) liefern laut Dokumentation keine Satzzeichen – für Mitschriften ungeeignet.
+- **Großes Whisper-Modell über den Grafikchip** auf M1-iPads: Das Kompilieren für die Neural Engine überschreitet dort das Speicherlimit (iOS beendet den Compiler). Kleinere Modelle versuchen zuerst die Neural Engine und merken sich einen Fehlschlag.
+- **Modell wird nach dem Erkennen entladen** (Speicher), und vorhandene Modelle werden ohne Server-Anfrage geladen.
+- **Stille-Filter:** Whisper-Abschnitte mit hoher „no speech“-Wahrscheinlichkeit, schlechter Log-Wahrscheinlichkeit oder fast ohne Pegel werden verworfen (gegen erfundene Sätze).
+- **Mikrofon im Klassenraum:** Das iPad liegt mit dem Bildschirm zum Schüler; aufgenommen wird über das rückseitige Mikrofon mit Richtwirkung nach vorne, ohne System-Sprachaufbereitung (`.measurement`), Pegel per `VoiceLift`.
+- **Fachbegriffe** je Fach (`src/subjects.ts`) helfen der Erkennung, nur bei deutscher Aufnahmesprache.
+- **Arbeitsblätter:** Text steht auf der gedruckten Antwortlinie (Grundlinie unten im Feld), Tabellenzellen mittig.
+- **Übersetzung mit deutschen Schlüsseln** statt IDs, damit der Code lesbar bleibt.
+
+## Testen – praktische Tipps
+
+- Browser: `npm run dev` (Vite, Adresse steht in der Ausgabe). Nicht verfügbar: Transkribieren, Werbung, Vision. `?offline` zeigt die Internet-Sperre, `?ads` simuliert Werbestellen (nur im Dev-Modus).
+- Englisch testen: in der Browser-Konsole `localStorage.setItem('hs-lang','en'); location.reload()`. Fehlende Übersetzungen erscheinen im Dev-Modus als `[i18n] missing:` in der Konsole.
+- Simulator: Screenshots mit `xcrun simctl io <UDID> screenshot datei.png` (kommen im Querformat). Logs: `xcrun simctl launch --console-pty <UDID> com.handwritestudio.app`; native Meldungen beginnen mit `[Transkribieren]`.
+- Werbung im Simulator/Debug: Googles Test-Anzeigen („Test mode“), schließen über das X oben rechts.
+- Whisper braucht im Simulator mehrere GB freien Speicher auf dem Mac (beim ersten Vorbereiten).
+- Codex in der Cloud (Linux) kann `npm test`, `tsc` und den Web-Build ausführen, aber **keine iOS-Builds** – dafür braucht es einen Mac mit Xcode.
+
+## Bekannte Probleme / Ideen
+
+- Die schnelle Apple-Erkennung nach einer Aufnahme ohne Live-Text lieferte im Simulator keinen Text – auf echtem iPad prüfen.
+- Lange Zeilen in `App.tsx` erschweren Änderungen; bei größeren Umbauen gern in Komponenten aufteilen (Verhalten unverändert lassen, Tests grün halten).
+- Die Website ist nur auf Deutsch.
+
 ## Offene Punkte
 
 - Eigene AdMob-IDs eintragen (aktuell Test-Anzeigen).
 - Impressum/Datenschutz mit echten Angaben füllen.
-- App-Store-Veröffentlichung (Texte in `appstore/`).
+- App-Store-Veröffentlichung (Texte und Screenshots in `appstore/`, Rechtsprüfung in `appstore/RECHTSPRUEFUNG.md`).
 - Transkribieren im echten Klassenraum weiter testen (Mikrofon über die Rückseite, „Genau erkennen“ auf dem iPad).
+- Internet-Sperre im Flugmodus auf dem echten iPad prüfen.
