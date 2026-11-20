@@ -8,9 +8,9 @@ import { Capacitor } from '@capacitor/core';
  * which never earn money but also never risk the account.
  * The app ID also has to be set in ios/App/App/Info.plist (GADApplicationIdentifier).
  *
- * Placement (no banners):
- * - short full-screen ads before normal actions,
- * - a rewarded video before writing at least REWARD_FROM_PAGES pages.
+ * Placement (no banners): a full-screen ad, without a choice, before writing in handwriting,
+ * starting a transcription, creating a handwriting and saving/loading a backup.
+ * Every ad starts muted (the app is used in class).
  * Exports themselves are free of ads.
  * Ad length is decided by Google; showing several ads in a row is not allowed.
  */
@@ -45,10 +45,16 @@ export function initAds(): Promise<boolean> {
       if (!minor && tracking.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
       // School app: only ads rated for general audiences with parental guidance.
       await AdMob.initialize({ initializeForTesting: TESTING, tagForUnderAgeOfConsent: minor, maxAdContentRating: MaxAdContentRating.ParentalGuidance });
-      void prepareInterstitial(); void prepareRewarded();
+      await mute();
+      void prepareInterstitial();
       return true;
     } catch { return false; }
   })());
+}
+
+/** Ads always start without sound: the app is used in class. Set before every ad, to be safe. */
+async function mute() {
+  try { const { AdMob } = await load(); await AdMob.setApplicationMuted({ muted: true }); await AdMob.setApplicationVolume({ volume: 0 }); } catch { /* older SDK: nothing to do */ }
 }
 
 function prepareInterstitial() {
@@ -75,6 +81,7 @@ export async function showInterstitialAd(): Promise<void> {
     let finish = () => {};
     const closed = new Promise<void>(resolve => { finish = resolve; });
     const handles = await Promise.all([AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, () => finish())]);
+    await mute();
     await AdMob.showInterstitial();
     await Promise.race([closed, wait(90000)]);
     await Promise.all(handles.map(h => h.remove()));
@@ -117,6 +124,7 @@ export async function showRewardedAd(): Promise<RewardedAdResult> {
     ]);
     // The native promise resolves when the reward is earned, while the ad may
     // still cover the app. Wait for its dismissal before starting the action.
+    await mute();
     void AdMob.showRewardVideoAd().then(() => { rewarded = true; }).catch(() => { failed = true; finish(); });
     await Promise.race([closed, wait(120000)]);
     await Promise.all(handles.map(h => h.remove()));

@@ -137,7 +137,7 @@ Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem 
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
-Die App benötigt für Werbung eine Internetverbindung; Texte, Handschriften und Aufnahmen bleiben auf dem Gerät. Keine Anmeldung. Zum Testen: „Neues Dokument“ → Text eingeben → „In Handschrift verwandeln“. Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Apple Pencil schreiben. Vor dem Start einer Transkription, vor einer neuen Handschrift, beim Speichern/Laden einer Sicherung und ab drei handschriftlichen Seiten wird ein Belohnungsvideo angeboten, das erst nach Tippen auf „Video ansehen“ startet; „Abbrechen“ bricht auch die Aktion ab. Ist kein Video verfügbar, erscheint stattdessen eine kurze Anzeige. Texte mit 1–2 Seiten: kurze Anzeige.
+Die App benötigt für Werbung eine Internetverbindung; Texte, Handschriften und Aufnahmen bleiben auf dem Gerät. Keine Anmeldung. Zum Testen: „Neues Dokument“ → Text eingeben → „In Handschrift verwandeln“. Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Apple Pencil schreiben. Vor dem Schreiben in Handschrift, vor dem Start einer Transkription, vor einer neuen Handschrift und beim Speichern/Laden einer Sicherung erscheint eine Vollbild-Anzeige (Interstitial), ohne Auswahl und immer stummgeschaltet, weil die App im Unterricht genutzt wird. Belohnungsvideos werden nicht verwendet.
 ```
 
 ---

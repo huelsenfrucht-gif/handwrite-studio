@@ -8,12 +8,13 @@ describe('legal and ad safeguards', () => {
     const store = readFileSync('appstore/APP-STORE.md', 'utf8'), keywords = store.match(/\*\*Keywords\*\*[\s\S]*?```\n(.*)\n```/)![1];
     expect(keywords.toLowerCase()).not.toContain('goodnotes');
   });
-  it('unlocks long texts, transcription, new handwriting and backups with a video the user starts', () => {
+  it('shows a full-screen ad without a choice, never a forced rewarded video, always muted', () => {
     const choice = readFileSync('src/AdChoice.tsx', 'utf8'), ads = readFileSync('src/nativeAds.ts', 'utf8');
-    expect(ads).toContain('REWARD_FROM_PAGES = 3');
-    expect(choice).toContain("const VIDEO_FOR: AdReason['kind'][] = ['write', 'record', 'profile', 'backup', 'restore'];");
-    expect(choice).toContain('Video ansehen');
-    expect(choice).not.toContain("pick('short')");
+    // No choice: the ad simply plays. Rewarded videos may only be shown when the user opts in, so none here.
+    expect(choice).toContain('await showInterstitialAd()'); expect(choice).not.toContain('showRewardedAd');
+    // Muted for the classroom, set again right before every ad.
+    expect(ads).toContain('setApplicationMuted({ muted: true })'); expect(ads).toContain('setApplicationVolume({ volume: 0 })');
+    expect(ads).toMatch(/await mute\(\);\s*await AdMob\.showInterstitial\(\)/);
     expect(ads).not.toContain('hs-ad-free-until');
   });
   it('treats under-16 users without tracking prompt and with under-age tagging', async () => {
