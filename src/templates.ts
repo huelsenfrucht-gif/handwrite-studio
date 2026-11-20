@@ -1,6 +1,7 @@
 import * as pdfjs from 'pdfjs-dist';
 import workerURL from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { uid, type Template } from './model';
+import { t } from './i18n';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerURL;
 
@@ -17,13 +18,13 @@ function toPage(source: CanvasImageSource, w: number, h: number) {
 
 /** Turns an image or a PDF (e.g. a worksheet) into A4 page backgrounds. */
 export async function loadTemplate(file: File): Promise<Template> {
-  if (file.size > 60 * 1024 * 1024) throw new Error('Die Vorlage ist größer als 60 MB.');
-  const name = file.name.replace(/\.[^.]+$/, '').slice(0, 80) || 'Eigene Vorlage', pages: string[] = [];
+  if (file.size > 60 * 1024 * 1024) throw new Error(t('Die Vorlage ist größer als 60 MB.'));
+  const name = file.name.replace(/\.[^.]+$/, '').slice(0, 80) || t('Eigene Vorlage'), pages: string[] = [];
   if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
     const task = pdfjs.getDocument({ data: await file.arrayBuffer() });
     try {
       const pdf = await task.promise;
-      if (pdf.numPages > MAX_PAGES) throw new Error(`Die Vorlage hat mehr als ${MAX_PAGES} Seiten. Bitte teile sie vorher auf.`);
+      if (pdf.numPages > MAX_PAGES) throw new Error(t('Die Vorlage hat mehr als {n} Seiten. Bitte teile sie vorher auf.', { n: MAX_PAGES }));
       for (let n = 1; n <= pdf.numPages; n++) {
         const page = await pdf.getPage(n), base = page.getViewport({ scale: 1 }), viewport = page.getViewport({ scale: Math.min(WIDTH / base.width, HEIGHT / base.height) });
         const canvas = document.createElement('canvas'); canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
@@ -34,7 +35,7 @@ export async function loadTemplate(file: File): Promise<Template> {
   } else if (file.type.startsWith('image/')) {
     const bitmap = await createImageBitmap(file);
     try { pages.push(toPage(bitmap, bitmap.width, bitmap.height)); } finally { bitmap.close(); }
-  } else throw new Error('Bitte ein Bild (PNG, JPG …) oder ein PDF als Vorlage wählen.');
-  if (!pages.length) throw new Error('Die Vorlage enthält keine Seiten.');
+  } else throw new Error(t('Bitte ein Bild (PNG, JPG …) oder ein PDF als Vorlage wählen.'));
+  if (!pages.length) throw new Error(t('Die Vorlage enthält keine Seiten.'));
   return { id: uid(), name, pages, created: new Date().toISOString() };
 }

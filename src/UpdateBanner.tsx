@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import { t } from './i18n';
 
 // A home-screen web app on iPad has no reload button. The service worker
 // installs new versions in the background (skipWaiting + clients.claim), so a
@@ -22,8 +23,8 @@ export function UpdateBanner(){
  },[]);
  if(!ready)return null;
  return <div className="update-banner" role="status">
-  <span>Eine neue Version ist verfügbar.</span>
-  <button className="update-reload" onClick={()=>location.reload()}>Neueste Version laden</button>
-  <button className="update-later" onClick={()=>setReady(false)} aria-label="Später">Später</button>
+  <span>{t('Eine neue Version ist verfügbar.')}</span>
+  <button className="update-reload" onClick={()=>location.reload()}>{t('Neueste Version laden')}</button>
+  <button className="update-later" onClick={()=>setReady(false)} aria-label={t('Später')}>{t('Später')}</button>
  </div>;
 }

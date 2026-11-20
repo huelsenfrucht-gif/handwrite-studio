@@ -1,12 +1,13 @@
 import { type Library, initialLibrary, simplify } from './model';
 import { recalibrateWord } from './contextual';
+import { t } from './i18n';
 const DB='handwrite-studio';
 async function db(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('library');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 async function readStored(d:IDBDatabase,key:string){return new Promise<unknown>((resolve,reject)=>{const r=d.transaction('library').objectStore('library').get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
-export async function loadLibrary():Promise<Library>{const d=await db();try{const current=await readStored(d,'current');if(current){try{return validateLibrary(current);}catch{const backup=await readStored(d,'last-good');if(backup)return validateLibrary(backup);throw new Error('Die lokale Speicherung ist beschädigt und es wurde keine lesbare Sicherung gefunden.');}}const backup=await readStored(d,'last-good');return backup?validateLibrary(backup):initialLibrary();}finally{d.close();}}
+export async function loadLibrary():Promise<Library>{const d=await db();try{const current=await readStored(d,'current');if(current){try{return validateLibrary(current);}catch{const backup=await readStored(d,'last-good');if(backup)return validateLibrary(backup);throw new Error(t('Die lokale Speicherung ist beschädigt und es wurde keine lesbare Sicherung gefunden.'));}}const backup=await readStored(d,'last-good');return backup?validateLibrary(backup):initialLibrary();}finally{d.close();}}
 export async function saveLibrary(library:Library){validateLibrary(structuredClone(library));const d=await db();try{await new Promise<void>((resolve,reject)=>{const tx=d.transaction('library','readwrite'),store=tx.objectStore('library');store.put(library,'current');store.put(library,'last-good');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Lokales Speichern wurde abgebrochen.'));});}finally{d.close();}}
 export function validateLibrary(value:unknown):Library {
- const fail=()=>{throw new Error('Ungültige Studio-Sicherung. Bitte eine unveränderte .handwrite.json-Datei wählen.');};
+ const fail=()=>{throw new Error(t('Ungültige Studio-Sicherung. Bitte eine unveränderte .handwrite.json-Datei wählen.'));};
  if(!value||typeof value!=='object')return fail();const v=value as Library;
  if(v.version!==1||!Array.isArray(v.profiles)||!Array.isArray(v.notes)||v.notes.length<1||v.notes.length>5000||v.profiles.length>200)return fail();
  const str=(v:unknown,max=200000)=>typeof v==='string'&&v.length<=max;

@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { GOODNOTES, HIGHLIGHT_COLORS, PAGE, paperRules, pathData, type Note, type Profile, type Library, type Template } from './model';
 import { layout, resolvedDrawingInk, resolvedRaster, resolvedStrokes } from './engine';
+import { t } from './i18n';
 type JsPDFConstructor=typeof import('jspdf').jsPDF;
 async function loadJsPDF():Promise<JsPDFConstructor>{
  try{return(await import('jspdf')).jsPDF;}catch(primaryError){
@@ -19,7 +20,7 @@ async function shareNative(blob:Blob,name:string){
  const {uri}=await Filesystem.writeFile({path:name,data,directory:Directory.Cache});
  try{await Share.share({title:name,files:[uri]});}catch(e){if(!/cancel/i.test(String((e as Error)?.message||e)))throw e;}
 }
-export function safeName(name:string){return (name.replace(/[^\p{L}\p{N}\-_ ]/gu,'').trim()||'Dokument').slice(0,80);}
+export function safeName(name:string){return (name.replace(/[^\p{L}\p{N}\-_ ]/gu,'').trim()||t('Dokument')).slice(0,80);}
 export function exportBackup(library:Library){return download(JSON.stringify(library),`Handwritten-${new Date().toISOString().slice(0,10)}.handwrite.json`);}
 export async function createPDF(note:Note,profiles:Profile[],template?:Template){const jsPDF=await loadJsPDF(),{glyphs,pages,highlights}=layout(note,profiles);const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});const ratio=595.28/PAGE.width;
  for(let page=0;page<pages;page++){
@@ -34,7 +35,7 @@ export async function createPDF(note:Note,profiles:Profile[],template?:Template)
   for(const a of note.annotations.filter(a=>a.page===page))draw(a.points,a.color,a.width);
   for(const d of (note.drawings||[]).filter(d=>d.page===page))for(const ink of resolvedDrawingInk(d))draw(ink.points,ink.color,d.penWidth*d.scale);
  }
- pdf.setProperties({title:note.title,creator:'Handwritten',subject:'Vektorhandschrift – PDF-Seiteninhalt, keine nativen Goodnotes-Stiftstriche'});return pdf;
+ pdf.setProperties({title:note.title,creator:'Handwritten',subject:t('Vektorhandschrift – PDF-Seiteninhalt, keine nativen Goodnotes-Stiftstriche')});return pdf;
 }
 export async function exportPDF(note:Note,profiles:Profile[],template?:Template){const pdf=await createPDF(note,profiles,template);await download(pdf.output('blob'),`${safeName(note.title)}.pdf`,'application/pdf');}
 export function makeSVG(note:Note,profiles:Profile[],page:number,template?:Template){const {glyphs,highlights}=layout(note,profiles);const paths:string[]=[];
@@ -46,4 +47,4 @@ export function makeSVG(note:Note,profiles:Profile[],page:number,template?:Templ
  for(const d of (note.drawings||[]).filter(d=>d.page===page&&!d.deleted)){const visible=d.strokes.flatMap((stroke,index)=>d.hiddenStrokes?.includes(index)?[]:[{stroke,color:d.strokeColors?.[index]||d.color}]);paths.push(`<g id="drawing-${d.id}" transform="translate(${d.x} ${d.y}) scale(${d.scale})" fill="none" stroke-width="${d.penWidth}" stroke-linecap="round" stroke-linejoin="round">${visible.map(item=>`<path d="${pathData(item.stroke)}" stroke="${item.color}"/>`).join('')}</g>`);}
  return `<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 794 1123"><rect width="794" height="1123" fill="white"/>${paths.join('')}</svg>`;
 }
-export function exportSVG(note:Note,profiles:Profile[],page:number,template?:Template){return download(makeSVG(note,profiles,page,template),`${safeName(note.title)}-Seite-${page+1}.svg`,'image/svg+xml');}
+export function exportSVG(note:Note,profiles:Profile[],page:number,template?:Template){return download(makeSVG(note,profiles,page,template),`${safeName(note.title)}-${t('Seite')}-${page+1}.svg`,'image/svg+xml');}

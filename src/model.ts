@@ -1,4 +1,5 @@
 import type { WordSample } from './contextual';
+import { t } from './i18n';
 export type Point = { x: number; y: number; p?: number };
 export type Stroke = Point[];
 export type RasterInk = { data: string; x: number; y: number; width: number; height: number };
@@ -92,10 +93,10 @@ export function paperRules(s: Settings): Rule[] {
   if (ruleCache.size > 30) ruleCache.clear(); ruleCache.set(key, rules); return rules;
 }
 export const defaultSettings: Settings = { ...GOODNOTES_STANDARD, variation: 100, penWidth: 1.7, color: '#000000', profileId: 'demo', seed: 42 };
-export function newNote(title = 'Unbenanntes Dokument', defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, marginLeft: defaults?.marginLeft ?? NEW_MARGIN_LEFT_MM, marginRight: defaults?.marginRight ?? NEW_MARGIN_RIGHT_MM, lineStartShift: defaults?.lineStartShift ?? DEFAULT_LINE_START_SHIFT, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}), ...(defaults?.size ? { size: defaults.size } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
+export function newNote(title = t('Unbenanntes Dokument'), defaults?: Library['defaults']): Note { return { id: uid(), title, text: '', renderedText: '', settings: { ...defaultSettings, marginLeft: defaults?.marginLeft ?? NEW_MARGIN_LEFT_MM, marginRight: defaults?.marginRight ?? NEW_MARGIN_RIGHT_MM, lineStartShift: defaults?.lineStartShift ?? DEFAULT_LINE_START_SHIFT, ...(defaults?.profileId ? { profileId: defaults.profileId } : {}), ...(defaults?.penWidth ? { penWidth: defaults.penWidth } : {}), ...(defaults?.size ? { size: defaults.size } : {}) }, edits: {}, annotations: [], drawings: [], updated: new Date().toISOString() }; }
 export function initialLibrary(): Library {
-  const note = newNote('Ein kleiner Anfang');
-  note.text = note.renderedText = 'Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.';
+  const note = newNote(t('Ein kleiner Anfang'));
+  note.text = note.renderedText = t('Ein kleiner Anfang\n\nManchmal braucht eine gute Idee\nnur ein leeres Blatt Papier.\n\nPlatz für Gedanken, große Pläne\nund all die kleinen Dinge, die\nwir nicht vergessen möchten.\n\nMach etwas Eigenes daraus.');
   return { version: 1, profiles: [], notes: [note], activeId: note.id };
 }
 export function smooth(points: Stroke): Stroke {
@@ -141,7 +142,7 @@ export function pathData(points: Stroke) { const hit = pathCache.get(points); if
  * „-“ floats in the middle and „““ stays at the top – instead of being stretched to letter size.
  */
 export function normaliseOnLines(strokes: Stroke[], source: Glyph['source'], baseline: number, xLine: number): Glyph {
-  const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe zuerst das Zeichen.');
+  const pts = strokes.flat(); if (!pts.length) throw new Error(t('Schreibe zuerst das Zeichen.'));
   // Pads use three equal zones; each zone maps onto the matching zone of the letters
   // (Oberlänge 4–34, x-height 34–80, Unterlänge 80–104), so nothing gets squashed.
   const zone = Math.max(10, baseline - xLine), scale = 46 / zone, minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
@@ -171,7 +172,7 @@ export const isPunctuation = (char: string) => !/[\p{L}\p{N}]/u.test(char);
 /** Written by hand and usable; punctuation only in the newer, line-placed form. */
 export const hasOwnGlyph = (p: Profile, char: string) => !!p.glyphs[char]?.some(g => g.source === 'pen' && (!isPunctuation(char) || g.lined));
 export function normalise(strokes: Stroke[], char: string, source: Glyph['source']): Glyph {
-  const pts = strokes.flat(); if (!pts.length) throw new Error('Schreibe oder markiere zuerst einen Buchstaben.');
+  const pts = strokes.flat(); if (!pts.length) throw new Error(t('Schreibe oder markiere zuerst einen Buchstaben.'));
   const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));
   const minY=Math.min(...pts.map(p=>p.y)), maxY=Math.max(...pts.map(p=>p.y));
   const desc=/[gjpqy]/.test(char), tall=/[A-ZÄÖÜbdfhklt0-9ß!?()]/.test(char), dot=/[.,:;"„“'\-+=]/.test(char), dotted=/^[ijäöü]$/.test(char)&&hasDot(strokes);

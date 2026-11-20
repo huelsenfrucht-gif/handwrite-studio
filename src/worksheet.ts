@@ -1,4 +1,5 @@
 import { PAGE, uid, type Field } from './model';
+import { t } from './i18n';
 
 /**
  * Finds the places on a worksheet where an answer belongs:
@@ -206,35 +207,35 @@ export function answerPrompt(fields: Field[]) {
   const groups: { type: ReturnType<typeof fieldType>; page: number; from: number; to: number; ids: string[] }[] = [];
   slots.forEach((f, i) => { const t = fieldType(f), g = groups.at(-1); if (g && g.type === t && g.page === f.page) { g.to = i; g.ids.push(f.id); } else groups.push({ type: t, page: f.page, from: i, to: i, ids: [f.id] }); });
   const pages = [...new Set(slots.map(f => f.page))].sort((a, b) => a - b), multi = pages.length > 1;
-  const range = (g: typeof groups[number]) => g.from === g.to ? `Zeile ${g.from + 1}` : `Zeile ${g.from + 1}–${g.to + 1}`;
+  const range = (g: typeof groups[number]) => g.from === g.to ? t('Zeile {n}', { n: g.from + 1 }) : t('Zeile {a}–{b}', { a: g.from + 1, b: g.to + 1 });
   const describe = (g: typeof groups[number]) => {
     const n = g.to - g.from + 1;
     if (g.type === 'cell') {
       const tableRows = new Set(g.ids.map(id => rowIndex.get(id))).size, cols = Math.max(...[...new Set(g.ids.map(id => rowIndex.get(id)))].map(r => g.ids.filter(id => rowIndex.get(id) === r).length));
-      return `${range(g)}: die ${n} leeren Zellen einer Tabelle (${tableRows} Zeile${tableRows === 1 ? '' : 'n'} mit je ${cols} leeren Spalte${cols === 1 ? '' : 'n'}), Zeile für Zeile von links nach rechts. Vorgedruckte Zellen und die Kopfzeile auslassen. Knapp, höchstens ein kurzer Satz.`;
+      return t('{range}: die {n} leeren Zellen einer Tabelle ({rows} mit je {cols}), Zeile für Zeile von links nach rechts. Vorgedruckte Zellen und die Kopfzeile auslassen. Knapp, höchstens ein kurzer Satz.', { range: range(g), n, rows: tableRows === 1 ? t('1 Zeile') : t('{n} Zeilen', { n: tableRows }), cols: cols === 1 ? t('1 leeren Spalte') : t('{n} leeren Spalten', { n: cols }) });
     }
-    if (g.type === 'gap') return `${range(g)}: ${n === 1 ? 'eine Lücke' : `${n} Lücken`} im Text – jeweils nur das fehlende Wort oder die kurze Angabe, ohne den umgebenden Satz.`;
-    if (g.type === 'line') return `${range(g)}: ${n === 1 ? 'eine Antwortlinie' : `${n} Antwortlinien`} unter einer Frage oder Aufgabe – jeweils eine kurze, vollständige Antwort in einem Satz.`;
-    if (g.type === 'area') return `${range(g)}: ${n === 1 ? 'ein Antwortbereich' : `${n} Antwortbereiche`} mit mehreren Linien – jeweils eine ausführlichere Antwort in einer einzigen Zeile.`;
-    return `${range(g)}: ${n === 1 ? 'ein markiertes Feld' : `${n} markierte Felder`} – jeweils die passende Antwort.`;
+    if (g.type === 'gap') return t('{range}: {count} im Text – jeweils nur das fehlende Wort oder die kurze Angabe, ohne den umgebenden Satz.', { range: range(g), count: n === 1 ? t('eine Lücke') : t('{n} Lücken', { n }) });
+    if (g.type === 'line') return t('{range}: {count} unter einer Frage oder Aufgabe – jeweils eine kurze, vollständige Antwort in einem Satz.', { range: range(g), count: n === 1 ? t('eine Antwortlinie') : t('{n} Antwortlinien', { n }) });
+    if (g.type === 'area') return t('{range}: {count} mit mehreren Linien – jeweils eine ausführlichere Antwort in einer einzigen Zeile.', { range: range(g), count: n === 1 ? t('ein Antwortbereich') : t('{n} Antwortbereiche', { n }) });
+    return t('{range}: {count} – jeweils die passende Antwort.', { range: range(g), count: n === 1 ? t('ein markiertes Feld') : t('{n} markierte Felder', { n }) });
   };
   const order = multi
-    ? pages.flatMap((p, k) => [`Seite ${k + 1}:`, ...groups.filter(g => g.page === p).map(g => `  ${describe(g)}`)])
+    ? pages.flatMap((p, k) => [t('Seite {n}:', { n: k + 1 }), ...groups.filter(g => g.page === p).map(g => `  ${describe(g)}`)])
     : groups.map(describe);
   return [
-    multi ? `Fülle die ${pages.length} angehängten Arbeitsblatt-Seiten aus. Sie gehören zusammen und sind in der richtigen Reihenfolge angehängt (zuerst Seite 1, dann Seite 2 …).` : 'Fülle das angehängte Arbeitsblatt aus.',
+    multi ? t('Fülle die {n} angehängten Arbeitsblatt-Seiten aus. Sie gehören zusammen und sind in der richtigen Reihenfolge angehängt (zuerst Seite 1, dann Seite 2 …).', { n: pages.length }) : t('Fülle das angehängte Arbeitsblatt aus.'),
     '',
-    `Antworte ausschließlich mit genau ${slots.length} Antworten – eine pro Antwortfeld, in genau dieser Reihenfolge. Setze direkt nach jeder Antwort das Zeichen ${ANSWER_END} (auch nach der letzten) und schreibe jede Antwort in eine eigene Zeile. Benutze das Zeichen ${ANSWER_END} sonst nirgends. Keine Nummerierung, keine Überschriften, keine Erklärungen, kein Markdown, keine Tabelle.`,
+    t('Antworte ausschließlich mit genau {n} Antworten – eine pro Antwortfeld, in genau dieser Reihenfolge. Setze direkt nach jeder Antwort das Zeichen {end} (auch nach der letzten) und schreibe jede Antwort in eine eigene Zeile. Benutze das Zeichen {end} sonst nirgends. Keine Nummerierung, keine Überschriften, keine Erklärungen, kein Markdown, keine Tabelle.', { n: slots.length, end: ANSWER_END }),
     '',
-    multi ? 'Reihenfolge: Seite für Seite, auf jeder Seite von oben nach unten, innerhalb einer Zeile von links nach rechts. Die Zählung läuft über alle Seiten weiter. Felder für Name, Datum und Klasse zählen nicht mit.' : 'Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.',
-    'Ankreuzaufgaben (Multiple Choice, Richtig/Falsch) und kleine Kästchen zum Zuordnen oder Nummerieren gehören nicht dazu – ignoriere sie komplett.',
+    multi ? t('Reihenfolge: Seite für Seite, auf jeder Seite von oben nach unten, innerhalb einer Zeile von links nach rechts. Die Zählung läuft über alle Seiten weiter. Felder für Name, Datum und Klasse zählen nicht mit.') : t('Reihenfolge: von oben nach unten, innerhalb einer Zeile von links nach rechts. Felder für Name, Datum und Klasse zählen nicht mit.'),
+    t('Ankreuzaufgaben (Multiple Choice, Richtig/Falsch) und kleine Kästchen zum Zuordnen oder Nummerieren gehören nicht dazu – ignoriere sie komplett.'),
     ...order,
     '',
-    `Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-${ANSWER_END}“. Antworte in der Sprache des Arbeitsblatts (z. B. englisches Blatt → englische Antworten), so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.`,
+    t('Wenn du ein Feld nicht beantworten kannst, schreibe dafür nur „-{end}“. Antworte in der Sprache des Arbeitsblatts (z. B. englisches Blatt → englische Antworten), so wie eine Schülerin oder ein Schüler es auf das Blatt schreiben würde.', { end: ANSWER_END }),
     '',
     'Format:',
-    `Antwort 1${ANSWER_END}`,
-    `Antwort 2${ANSWER_END}`,
+    `${t('Antwort')} 1${ANSWER_END}`,
+    `${t('Antwort')} 2${ANSWER_END}`,
     '…',
   ].join('\n');
 }

@@ -1,16 +1,17 @@
 import * as pdfjs from 'pdfjs-dist';
 import workerURL from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { t } from './i18n';
 
 pdfjs.GlobalWorkerOptions.workerSrc=workerURL;
 
 type TextItem={str:string;transform:number[];width:number;height:number;hasEOL?:boolean};
 
 export async function extractPdfText(file:File):Promise<string>{
- if(file.size>50*1024*1024)throw new Error('Das PDF ist größer als 50 MB. Bitte teile es vorher auf.');
+ if(file.size>50*1024*1024)throw new Error(t('Das PDF ist größer als 50 MB. Bitte teile es vorher auf.'));
  const task=pdfjs.getDocument({data:await file.arrayBuffer()});
  try{
   const pdf=await task.promise;
-  if(pdf.numPages>150)throw new Error('Das PDF hat mehr als 150 Seiten. Bitte teile es vorher auf.');
+  if(pdf.numPages>150)throw new Error(t('Das PDF hat mehr als 150 Seiten. Bitte teile es vorher auf.'));
   const pages:string[]=[];
   for(let number=1;number<=pdf.numPages;number++){
    const page=await pdf.getPage(number),content=await page.getTextContent(),items=content.items.filter(item=>'str' in item).map(item=>item as unknown as TextItem).filter(item=>Boolean(item.str.trim()));
@@ -23,7 +24,7 @@ export async function extractPdfText(file:File):Promise<string>{
    page.cleanup();
   }
   const text=pages.filter(Boolean).join('\n\n');
-  if(!text)throw new Error('In diesem PDF wurde kein auswählbarer Text gefunden. Gescannte Bilder werden später unterstützt.');
+  if(!text)throw new Error(t('In diesem PDF wurde kein auswählbarer Text gefunden. Gescannte Bilder werden später unterstützt.'));
   return text;
  }finally{await task.destroy();}
 }

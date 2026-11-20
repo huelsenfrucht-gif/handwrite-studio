@@ -6,6 +6,7 @@ import { layout } from './engine';
 import { defaultSettings, isPunctuation, pathData, smooth, uid, type Glyph, type Note, type PairSample, type Point, type Profile, type Stroke } from './model';
 import { levels, measureRhythm, nextPairs, normalisePair, pairCoverage, PAIRS_CORE, RHYTHM_SENTENCES, SIGNS, splitPair, type LevelId } from './levels';
 import { adsAvailable, showRewardedAd } from './nativeAds';
+import { t } from './i18n';
 
 type View = { kind: 'list' } | { kind: 'letters' } | { kind: 'signs' } | { kind: 'rhythm' } | { kind: 'pairs'; keys: string[]; level: 4 | 5 };
 type Props = { profile: Profile; update: (fn: (p: Profile) => Profile) => void; onClose: () => void; onUse: () => void };
@@ -43,57 +44,57 @@ export function LevelSheet({ profile, update, onClose, onUse }: Props) {
   const finished = list.filter(l => l.done && l !== next), later = list.filter(l => !l.done && l !== next);
 
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}><section className="modal lv-sheet" role="dialog" aria-modal="true" aria-labelledby="lv-title">
-    <header className="lv-head"><div><span className="lv-eyebrow">Handschrift</span><h2 id="lv-title">{profile.name}</h2></div><button className="icon-button" aria-label="Schließen" onClick={onClose}><X size={20} /></button></header>
-    <ol className="lv-steps" aria-label="Stufen">{list.map(l => <li key={l.id} className={l.done ? 'done' : l === next ? 'now' : ''}><span>{l.done ? <Check size={13} strokeWidth={3} /> : l.id}</span><em>{l.title}</em></li>)}</ol>
+    <header className="lv-head"><div><span className="lv-eyebrow">{t('Handschrift')}</span><h2 id="lv-title">{profile.name}</h2></div><button className="icon-button" aria-label={t('Schließen')} onClick={onClose}><X size={20} /></button></header>
+    <ol className="lv-steps" aria-label={t('Stufen')}>{list.map(l => <li key={l.id} className={l.done ? 'done' : l === next ? 'now' : ''}><span>{l.done ? <Check size={13} strokeWidth={3} /> : l.id}</span><em>{l.title}</em></li>)}</ol>
     <div className="lv-scroll">
       {basicDone && <Preview profile={profile} reached={reached} />}
       {next && <section className="lv-group" aria-labelledby="lv-next">
-        <h3 id="lv-next" className="lv-group-title">{allDone ? 'Weiter verbessern' : 'Als Nächstes'}</h3>
+        <h3 id="lv-next" className="lv-group-title">{allDone ? t('Weiter verbessern') : t('Als Nächstes')}</h3>
         <div className="lv-item lv-next">
           <span className="lv-num">{next.id}</span>
           <div className="lv-body">
             <div className="lv-title"><strong>{next.title}</strong><span>{next.effort}</span></div>
             <p>{next.what}</p>
-            {next.id >= 4 && basicDone && <p className="lv-note">{next.id === 4 ? `Schon verbunden: ${coverage} % aller Buchstabenübergänge eines typischen Textes.` : 'Jede Runde nimmt die wichtigsten fehlenden Verbindungen.'}</p>}
+            {next.id >= 4 && basicDone && <p className="lv-note">{next.id === 4 ? t('Schon verbunden: {n} % aller Buchstabenübergänge eines typischen Textes.', { n: coverage }) : t('Jede Runde nimmt die wichtigsten fehlenden Verbindungen.')}</p>}
             {next.progress > 0 && <div className="lv-progress"><progress max={next.total} value={next.progress} /><span>{next.progress}/{next.total}</span></div>}
           </div>
           <div className="lv-action">
-            {next.locked ? <button className="button primary" disabled={unlocking} onClick={unlock}><Play size={15} />{unlocking ? 'Video läuft …' : adsAvailable() ? 'Mit Video freischalten' : 'Freischalten'}</button>
-              : <button className="button primary" onClick={() => start(next.id)}>{next.done ? (next.id === 5 ? 'Weitere 10' : 'Wiederholen') : next.progress ? 'Fortsetzen' : 'Starten'}</button>}
+            {next.locked ? <button className="button primary" disabled={unlocking} onClick={unlock}><Play size={15} />{unlocking ? t('Video läuft …') : adsAvailable() ? t('Mit Video freischalten') : t('Freischalten')}</button>
+              : <button className="button primary" onClick={() => start(next.id)}>{next.done ? (next.id === 5 ? 'Weitere 10' : t('Wiederholen')) : next.progress ? t('Fortsetzen') : t('Starten')}</button>}
           </div>
         </div>
-        {next.locked && <p className="lv-fine">Stufe 4 und 5 schaltest du einmalig mit einem kurzen, freiwilligen Werbevideo frei. Stufe 1–3 sind immer frei.</p>}
+        {next.locked && <p className="lv-fine">{t('Stufe 4 und 5 schaltest du einmalig mit einem kurzen, freiwilligen Werbevideo frei. Stufe 1–3 sind immer frei.')}</p>}
       </section>}
       {finished.length > 0 && <section className="lv-group" aria-labelledby="lv-done">
-        <h3 id="lv-done" className="lv-group-title">Fertig</h3>
+        <h3 id="lv-done" className="lv-group-title">{t('Fertig')}</h3>
         <ul className="lv-rows done">{finished.map(l => <li key={l.id} className="lv-row">
           <span className="lv-dot done"><Check size={14} /></span><strong>{l.id} · {l.title}</strong><span className="lv-row-meta">{l.progress}/{l.total}</span>
-          {!l.locked && <button className="text-button" onClick={() => start(l.id)}>{l.id === 5 ? 'Weitere 10' : 'Wiederholen'}</button>}
+          {!l.locked && <button className="text-button" onClick={() => start(l.id)}>{l.id === 5 ? 'Weitere 10' : t('Wiederholen')}</button>}
         </li>)}</ul>
       </section>}
       {later.length > 0 && <section className="lv-group" aria-labelledby="lv-later">
-        <h3 id="lv-later" className="lv-group-title">Danach</h3>
+        <h3 id="lv-later" className="lv-group-title">{t('Danach')}</h3>
         <ul className="lv-rows">{later.map(l => <li key={l.id} className="lv-row">
           <span className="lv-dot">{l.id}</span><strong>{l.title}</strong><span className="lv-row-meta">{l.effort}</span>
-          {!basicDone ? <span className="lv-hint">Nach Stufe 1</span> : l.locked ? <span className="lv-hint"><Lock size={13} /> mit Stufe 4</span> : <button className="text-button" onClick={() => start(l.id)}>{l.progress ? 'Fortsetzen' : 'Starten'}</button>}
+          {!basicDone ? <span className="lv-hint">{t('Nach Stufe 1')}</span> : l.locked ? <span className="lv-hint"><Lock size={13} /> {t('mit Stufe 4')}</span> : <button className="text-button" onClick={() => start(l.id)}>{l.progress ? t('Fortsetzen') : t('Starten')}</button>}
         </li>)}</ul>
       </section>}
     </div>
-    <footer className="lv-foot"><button className="button" onClick={onClose}>Schließen</button>{basicDone && <button className={`button ${allDone ? 'primary' : ''}`} onClick={onUse}><PenLine size={16} />{allDone ? 'Im Studio verwenden' : 'Jetzt schon verwenden'}</button>}</footer>
+    <footer className="lv-foot"><button className="button" onClick={onClose}>{t('Schließen')}</button>{basicDone && <button className={`button ${allDone ? 'primary' : ''}`} onClick={onUse}><PenLine size={16} />{allDone ? t('Im Studio verwenden') : t('Jetzt schon verwenden')}</button>}</footer>
   </section></div>;
 }
 
 /** The same sentence in the current handwriting, so each stage shows its effect. */
 function Preview({ profile, reached }: { profile: Profile; reached: number }) {
   const data = useMemo(() => {
-    const note: Note = { id: 'preview', title: '', text: '', renderedText: 'Clara schreibt heute ihre Geschichte.', settings: { ...defaultSettings, profileId: profile.id, paper: 'blank', size: 26, lineStartShift: 0, marginLeft: 2, marginRight: 2 }, edits: {}, annotations: [], updated: '' };
+    const note: Note = { id: 'preview', title: '', text: '', renderedText: t('Clara schreibt heute ihre Geschichte.'), settings: { ...defaultSettings, profileId: profile.id, paper: 'blank', size: 26, lineStartShift: 0, marginLeft: 2, marginRight: 2 }, edits: {}, annotations: [], updated: '' };
     const g = layout(note, [profile]).glyphs.filter(x => x.page === 0), pts = g.flatMap(x => x.strokes.flat());
     if (!pts.length) return null;
     const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x)), minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
     return { paths: g.flatMap(x => x.strokes).map(s => pathData(s)), box: `${minX - 8} ${minY - 8} ${maxX - minX + 16} ${maxY - minY + 16}` };
   }, [profile]);
   if (!data) return null;
-  return <figure className="lv-preview"><svg viewBox={data.box} aria-label="Beispielsatz in deiner Handschrift">{data.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#1c1d21" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />)}</svg><figcaption><span>So schreibt deine Handschrift gerade.</span><span>{reached} von 5 Stufen</span></figcaption></figure>;
+  return <figure className="lv-preview"><svg viewBox={data.box} aria-label={t('Beispielsatz in deiner Handschrift')}>{data.paths.map((d, i) => <path key={i} d={d} fill="none" stroke="#1c1d21" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />)}</svg><figcaption><span>{t('So schreibt deine Handschrift gerade.')}</span><span>{reached} {t('von 5 Stufen')}</span></figcaption></figure>;
 }
 
 /** Pointer handling for one writing pad: pencil writes, finger scrolls (unless allowed). */
@@ -123,22 +124,22 @@ function PairTraining({ keys, level, onSave, onClose }: { keys: string[]; level:
   const pad = usePad(900, 260, touch), key = keys[i], done = i >= keys.length;
   const sample = useMemo(() => { if (!pad.strokes.length || done) return null; try { const s = normalisePair(pad.strokes.map(x => smooth(x)), key); const cuts = s.cuts.map((c, k) => k === 0 || k === s.cuts.length - 1 ? c : Math.max(s.cuts[k - 1] + 4, Math.min(s.cuts[k + 1] - 4, c + (nudge[k] || 0)))); return { ...s, cuts }; } catch { return null; } }, [pad.strokes, key, nudge, done]);
   const parts = sample ? splitPair(sample, key) : null;
-  const next = () => { if (!sample || !parts) return; onSave(key, sample); pad.clear(); setNudge([]); setMsg(`„${key}“ gespeichert.`); setI(n => n + 1); };
-  const skip = () => { pad.clear(); setNudge([]); setMsg(`„${key}“ übersprungen.`); setI(n => n + 1); };
+  const next = () => { if (!sample || !parts) return; onSave(key, sample); pad.clear(); setNudge([]); setMsg(t('„{k}“ gespeichert.', { k: key })); setI(n => n + 1); };
+  const skip = () => { pad.clear(); setNudge([]); setMsg(t('„{k}“ übersprungen.', { k: key })); setI(n => n + 1); };
   return <div className="modal-backdrop"><section className="modal training-modal guided-training lv-train" role="dialog" aria-modal="true" aria-labelledby="pair-title">
-    <header className="modal-header"><div><span className="eyebrow">STUFE {level} · {level === 4 ? 'VERBINDUNGEN' : 'FEINSCHLIFF'}</span><h2 id="pair-title">Buchstaben zusammen schreiben</h2><p>{Math.min(i, keys.length)}/{keys.length} geschafft</p></div><button className="icon-button" aria-label="Schließen" onClick={onClose}><X size={21} /></button></header>
+    <header className="modal-header"><div><span className="eyebrow">{t('STUFE {n}', { n: level })} · {level === 4 ? t('VERBINDUNGEN') : t('FEINSCHLIFF')}</span><h2 id="pair-title">{t('Buchstaben zusammen schreiben')}</h2><p>{Math.min(i, keys.length)}/{keys.length} geschafft</p></div><button className="icon-button" aria-label={t('Schließen')} onClick={onClose}><X size={21} /></button></header>
     <div className="guided-progress"><progress max={keys.length} value={i} /><span>{Math.round(i / keys.length * 100)} %</span></div>
-    {done ? <div className="guided-complete"><span className="complete-icon"><Check size={30} /></span><h3>Diese Runde ist geschafft.</h3><p>Deine Wörter verwenden ab jetzt diese Verbindungen so, wie du sie geschrieben hast.</p><div className="complete-actions"><button className="button primary" onClick={onClose}>Weiter zu den Stufen<ChevronRight size={17} /></button></div></div>
+    {done ? <div className="guided-complete"><span className="complete-icon"><Check size={30} /></span><h3>{t('Diese Runde ist geschafft.')}</h3><p>{t('Deine Wörter verwenden ab jetzt diese Verbindungen so, wie du sie geschrieben hast.')}</p><div className="complete-actions"><button className="button primary" onClick={onClose}>{t('Weiter zu den Stufen')}<ChevronRight size={17} /></button></div></div>
       : <div className="lv-pair">
-        <div className="lv-pair-top"><div className="letter-prompt"><div><span>Schreibe zusammenhängend, wie in einem Wort</span><strong>{key}</strong></div></div><button className={`button touch-writing-toggle ${touch ? 'active' : ''}`} aria-pressed={touch} onClick={() => setTouch(t => !t)}><PenLine size={16} />{touch ? 'Finger schreibt mit' : 'Finger schreibt nicht'}</button></div>
-        <svg viewBox="0 0 900 260" className="training-pad lv-pad" aria-label={`Zeichenfläche für ${key}`} {...pad.handlers}><rect width={900} height={260} fill="#fffefa" /><GuideLines x1={30} x2={870} top={50} zone={60} /><GuideText text={key} cx={450} top={50} zone={60} />{!pad.strokes.length && !pad.live.length && <text x={450} y={250} textAnchor="middle" fill="#a19e96" fontSize={13}>„{key}“ in einem Zug schreiben – so wie mitten in einem Wort</text>}{[...pad.strokes, pad.live].filter(s => s.length).map((s, k) => <path key={k} d={pathData(s)} fill="none" stroke="#1c1d21" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
+        <div className="lv-pair-top"><div className="letter-prompt"><div><span>{t('Schreibe zusammenhängend, wie in einem Wort')}</span><strong>{key}</strong></div></div><button className={`button touch-writing-toggle ${touch ? 'active' : ''}`} aria-pressed={touch} onClick={() => setTouch(t => !t)}><PenLine size={16} />{touch ? t('Finger schreibt mit') : t('Finger schreibt nicht')}</button></div>
+        <svg viewBox="0 0 900 260" className="training-pad lv-pad" aria-label={t('Zeichenfläche für {k}', { k: key })} {...pad.handlers}><rect width={900} height={260} fill="#fffefa" /><GuideLines x1={30} x2={870} top={50} zone={60} /><GuideText text={key} cx={450} top={50} zone={60} />{!pad.strokes.length && !pad.live.length && <text x={450} y={250} textAnchor="middle" fill="#a19e96" fontSize={13}>„{key}{t('“ in einem Zug schreiben – so wie mitten in einem Wort')}</text>}{[...pad.strokes, pad.live].filter(s => s.length).map((s, k) => <path key={k} d={pathData(s)} fill="none" stroke="#1c1d21" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />)}</svg>
         <div className="lv-split">
           {parts && sample ? <>
-            <svg viewBox={`-4 0 ${sample.width + 8} 104`} className="lv-split-view" aria-label="So wird getrennt">{parts.map((g, k) => { const off = sample.cuts[k]; return g.strokes.map((s, j) => <path key={`${k}-${j}`} d={pathData(s.map(p => ({ ...p, x: p.x + off })))} fill="none" stroke={COLORS[k % 3]} strokeWidth={2.4} strokeLinecap="round" />); })}{sample.cuts.slice(1, -1).map((c, k) => <line key={k} x1={c} x2={c} y1={0} y2={104} stroke="#a19e96" strokeDasharray="3 3" />)}</svg>
-            <div className="lv-split-ctl"><span>Trennung zwischen den Buchstaben</span>{sample.cuts.slice(1, -1).map((_, k) => <span key={k} className="lv-nudge"><button aria-label="Trennung nach links" onClick={() => setNudge(n => { const m = [...n]; m[k + 1] = (m[k + 1] || 0) - 3; return m; })}><ChevronLeft size={18} /></button><button aria-label="Trennung nach rechts" onClick={() => setNudge(n => { const m = [...n]; m[k + 1] = (m[k + 1] || 0) + 3; return m; })}><ChevronRight size={18} /></button></span>)}</div>
-          </> : <p className="lv-split-empty">Hier siehst du gleich, wo die App die Buchstaben trennt. Jede Farbe ist ein Buchstabe.</p>}
+            <svg viewBox={`-4 0 ${sample.width + 8} 104`} className="lv-split-view" aria-label={t('So wird getrennt')}>{parts.map((g, k) => { const off = sample.cuts[k]; return g.strokes.map((s, j) => <path key={`${k}-${j}`} d={pathData(s.map(p => ({ ...p, x: p.x + off })))} fill="none" stroke={COLORS[k % 3]} strokeWidth={2.4} strokeLinecap="round" />); })}{sample.cuts.slice(1, -1).map((c, k) => <line key={k} x1={c} x2={c} y1={0} y2={104} stroke="#a19e96" strokeDasharray="3 3" />)}</svg>
+            <div className="lv-split-ctl"><span>{t('Trennung zwischen den Buchstaben')}</span>{sample.cuts.slice(1, -1).map((_, k) => <span key={k} className="lv-nudge"><button aria-label={t('Trennung nach links')} onClick={() => setNudge(n => { const m = [...n]; m[k + 1] = (m[k + 1] || 0) - 3; return m; })}><ChevronLeft size={18} /></button><button aria-label={t('Trennung nach rechts')} onClick={() => setNudge(n => { const m = [...n]; m[k + 1] = (m[k + 1] || 0) + 3; return m; })}><ChevronRight size={18} /></button></span>)}</div>
+          </> : <p className="lv-split-empty">{t('Hier siehst du gleich, wo die App die Buchstaben trennt. Jede Farbe ist ein Buchstabe.')}</p>}
         </div>
-        <div className="training-save"><button className="button" onClick={skip}>Überspringen</button><button className="text-button" disabled={!pad.strokes.length} onClick={() => pad.setStrokes(s => s.slice(0, -1))}><RotateCcw size={15} />Letzten Strich entfernen</button><p role="status">{msg}</p><button className="button primary" disabled={!parts} onClick={next}><PenLine size={17} />Speichern & weiter</button></div>
+        <div className="training-save"><button className="button" onClick={skip}>{t('Überspringen')}</button><button className="text-button" disabled={!pad.strokes.length} onClick={() => pad.setStrokes(s => s.slice(0, -1))}><RotateCcw size={15} />{t('Letzten Strich entfernen')}</button><p role="status">{msg}</p><button className="button primary" disabled={!parts} onClick={next}><PenLine size={17} />{t('Speichern & weiter')}</button></div>
       </div>}
   </section></div>;
 }
@@ -149,15 +150,15 @@ function RhythmTraining({ onSave, onClose }: { onSave: (r: NonNullable<Profile['
   const pads = [usePad(1000, 124, touch), usePad(1000, 124, touch), usePad(1000, 124, touch)];
   const evaluate = () => { try { const r = measureRhythm(pads.map(p => p.strokes.map(s => smooth(s)))); onSave(r.rhythm, r.words.map(w => ({ ...w, id: `rhythm-${uid()}` }))); setDone(true); } catch (e) { setMsg((e as Error).message); } };
   return <div className="modal-backdrop"><section className="modal training-modal guided-training lv-train" role="dialog" aria-modal="true" aria-labelledby="rhythm-title">
-    <header className="modal-header"><div><span className="eyebrow">STUFE 3 · SCHREIBRHYTHMUS</span><h2 id="rhythm-title">Drei kurze Sätze</h2><p>Schreib so, wie du sonst auch schreibst – nicht schöner.</p></div><button className="icon-button" aria-label="Schließen" onClick={onClose}><X size={21} /></button></header>
-    {done ? <div className="guided-complete"><span className="complete-icon"><Check size={30} /></span><h3>Stufe 3 geschafft.</h3><p>Wortabstand, Grundlinie und wie oft du Buchstaben verbindest kommen jetzt aus deiner Schrift. Als Nächstes: Verbindungen.</p><div className="complete-actions"><button className="button primary" onClick={onClose}>Weiter zu den Stufen<ChevronRight size={17} /></button></div></div>
+    <header className="modal-header"><div><span className="eyebrow">{t('STUFE 3 · SCHREIBRHYTHMUS')}</span><h2 id="rhythm-title">{t('Drei kurze Sätze')}</h2><p>{t('Schreib so, wie du sonst auch schreibst – nicht schöner.')}</p></div><button className="icon-button" aria-label={t('Schließen')} onClick={onClose}><X size={21} /></button></header>
+    {done ? <div className="guided-complete"><span className="complete-icon"><Check size={30} /></span><h3>{t('Stufe 3 geschafft.')}</h3><p>{t('Wortabstand, Grundlinie und wie oft du Buchstaben verbindest kommen jetzt aus deiner Schrift. Als Nächstes: Verbindungen.')}</p><div className="complete-actions"><button className="button primary" onClick={onClose}>{t('Weiter zu den Stufen')}<ChevronRight size={17} /></button></div></div>
       : <div className="line-route">
-        <div className="line-instructions"><div><h3>Ein Satz pro Zeile</h3><p>Lass zwischen den Wörtern so viel Platz wie sonst auch. Die Buchstaben werden hier nicht ausgeschnitten – die App misst nur deinen Rhythmus.</p></div><button className={`button touch-writing-toggle ${touch ? 'active' : ''}`} aria-pressed={touch} onClick={() => setTouch(t => !t)}><PenLine size={16} />{touch ? 'Finger schreibt mit' : 'Finger schreibt nicht'}</button></div>
+        <div className="line-instructions"><div><h3>{t('Ein Satz pro Zeile')}</h3><p>{t('Lass zwischen den Wörtern so viel Platz wie sonst auch. Die Buchstaben werden hier nicht ausgeschnitten – die App misst nur deinen Rhythmus.')}</p></div><button className={`button touch-writing-toggle ${touch ? 'active' : ''}`} aria-pressed={touch} onClick={() => setTouch(t => !t)}><PenLine size={16} />{touch ? t('Finger schreibt mit') : t('Finger schreibt nicht')}</button></div>
         {RHYTHM_SENTENCES.map((text, k) => { const p = pads[k]; return <div className="calibration-row" key={text}>
-          <div className="calibration-copy"><span>Satz {k + 1}</span><strong>{text}</strong></div>
+          <div className="calibration-copy"><span>{t('Satz')} {k + 1}</span><strong>{text}</strong></div>
           <div className="calibration-pad-wrap"><svg viewBox="0 0 1000 124" className="training-pad calibration-pad lv-line-pad" aria-label={`Satz ${k + 1}: ${text}`} {...p.handlers}><rect width={1000} height={124} fill="#fffefa" /><GuideLines x1={16} x2={984} top={26} zone={24} /><GuideText text={text} x={28} top={26} zone={24} maxWidth={900} />{[...p.strokes, p.live].filter(s => s.length).map((s, j) => <path key={j} d={pathData(s)} fill="none" stroke="#1c1d21" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />)}</svg><button className="icon-button clear-line" aria-label={`Letzten Strich in Satz ${k + 1} entfernen`} disabled={!p.strokes.length} onClick={() => p.setStrokes(s => s.slice(0, -1))}><RotateCcw size={17} /></button></div>
         </div>; })}
-        <div className="training-save line-save"><button className="button" onClick={onClose}><ArrowLeft size={16} />Zurück</button><p role="status">{msg || 'Die Auswertung bleibt vollständig auf diesem Gerät.'}</p><button className="button primary" disabled={pads.some(p => !p.strokes.length)} onClick={evaluate}><ScanLine size={17} />Auswerten</button></div>
+        <div className="training-save line-save"><button className="button" onClick={onClose}><ArrowLeft size={16} />{t('Zurück')}</button><p role="status">{msg || t('Die Auswertung bleibt vollständig auf diesem Gerät.')}</p><button className="button primary" disabled={pads.some(p => !p.strokes.length)} onClick={evaluate}><ScanLine size={17} />{t('Auswerten')}</button></div>
       </div>}
   </section></div>;
 }

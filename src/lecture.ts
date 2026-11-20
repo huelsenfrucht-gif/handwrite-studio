@@ -1,5 +1,6 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { hasNative } from './native';
+import { locale, t } from './i18n';
 
 /** One recognised passage, in seconds of recorded audio (pauses do not count). */
 export type Passage = { start: number; end: number; text: string };
@@ -15,9 +16,9 @@ export type Lecture = {
 /** How far away the speaker is; decides how much the quiet, distant voice is lifted. */
 export type Room = 'near' | 'classroom' | 'hall';
 export const ROOMS: { id: Room; label: string; hint: string }[] = [
-  { id: 'near', label: 'Am Tisch', hint: 'Für Gespräche direkt am iPad. Der Ton bleibt unverändert.' },
-  { id: 'classroom', label: 'Klassenzimmer', hint: 'Hört über die Rückseite nach vorne zur Tafel, hebt die Stimme der Lehrkraft an und dämpft Geräusche direkt am iPad.' },
-  { id: 'hall', label: 'Hörsaal', hint: 'Für große Räume: hört enger nach vorne und hebt weit entfernte Stimmen stärker an.' },
+  { id: 'near', label: t('Am Tisch'), hint: t('Für Gespräche direkt am iPad. Der Ton bleibt unverändert.') },
+  { id: 'classroom', label: t('Klassenzimmer'), hint: t('Hört über die Rückseite nach vorne zur Tafel, hebt die Stimme der Lehrkraft an und dämpft Geräusche direkt am iPad.') },
+  { id: 'hall', label: t('Hörsaal'), hint: t('Für große Räume: hört enger nach vorne und hebt weit entfernte Stimmen stärker an.') },
 ];
 
 export type Availability = { available: boolean; engine: 'analyzer' | 'classic' | 'none'; reason: string; microphone: boolean; speech: boolean };
@@ -46,8 +47,8 @@ export const LectureRecorder = registerPlugin<Plugin>('LectureRecorder');
 export const lectureSupported = hasNative;
 
 export const LANGUAGES = [
-  { id: 'de-DE', label: 'Deutsch' }, { id: 'en-US', label: 'Englisch' }, { id: 'fr-FR', label: 'Französisch' },
-  { id: 'es-ES', label: 'Spanisch' }, { id: 'it-IT', label: 'Italienisch' },
+  { id: 'de-DE', label: t('Deutsch') }, { id: 'en-US', label: t('Englisch') }, { id: 'fr-FR', label: t('Französisch') },
+  { id: 'es-ES', label: t('Spanisch') }, { id: 'it-IT', label: t('Italienisch') },
 ] as const;
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -64,7 +65,7 @@ export function timeOfDay(startedAt: number | undefined, offset: number) {
 }
 export function lectureTitle(l: Pick<Lecture, 'startedAt'>) {
   const d = new Date(l.startedAt || Date.now());
-  return `Transkript ${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${t('Transkript')} ${d.toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export type Paragraph = { start: number; text: string; marked: boolean };
@@ -88,6 +89,6 @@ export function paragraphs(l: Pick<Lecture, 'passages' | 'markers'>): Paragraph[
 export function lectureText(l: Lecture, opts: { times: boolean; marks?: boolean }) {
   const end = l.startedAt ? timeOfDay(l.startedAt, l.duration) : '';
   const head = `${lectureTitle(l)}${end ? `–${end}` : ''}`;
-  const body = paragraphs(l).map(p => `${opts.times ? `[${timeOfDay(l.startedAt, p.start)}] ` : ''}${p.marked && opts.marks !== false ? 'Wichtig: ' : ''}${p.text}`);
+  const body = paragraphs(l).map(p => `${opts.times ? `[${timeOfDay(l.startedAt, p.start)}] ` : ''}${p.marked && opts.marks !== false ? `${t('Wichtig:')} ` : ''}${p.text}`);
   return [head, '', ...body.flatMap((b, i) => i ? ['', b] : [b])].join('\n').slice(0, 100000);
 }

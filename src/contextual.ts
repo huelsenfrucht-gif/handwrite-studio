@@ -1,5 +1,6 @@
 import { isPunctuation, undotSquash, type Glyph, type PairSample, type Point, type Profile, type RasterInk, type Stroke } from './model';
 import { composeAccented, demoGlyphs } from './demo';
+import { t } from './i18n';
 export type WordSample={id:string;text:string;strokes:Stroke[];cuts:number[];width:number;source:'pen'|'photo';normalization?:3;synthetic?:boolean;raster?:RasterInk;metrics:{slant:number;baselineSpread:number;joining:number;spacing:number;baseline?:number;xHeight?:number;quality?:number}};
 export type Style={slant:number;baselineSpread:number;joining:number;spacing:number;samples:number};
 const quantile=(values:number[],q:number)=>{const s=[...values].sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(s.length*q))]||0;};
@@ -40,12 +41,12 @@ export function findCuts(strokes:Stroke[],text:string,width:number){
 }
 export function estimateSlant(strokes:Stroke[]){let vertical=0,total=0;for(const s of strokes)for(let i=1;i<s.length;i++){const dx=s[i].x-s[i-1].x,dy=s[i].y-s[i-1].y;if(Math.abs(dy)>Math.abs(dx)*1.5&&Math.abs(dy)>.2){total+=(-dx/dy)*Math.abs(dy);vertical+=Math.abs(dy);}}return Math.max(-.7,Math.min(.7,total/Math.max(1,vertical)));}
 export function analyzeWord(raw:Stroke[],text:string,source:'pen'|'photo',id:string,alignedCuts?:number[]):WordSample{
- text=text.trim().normalize('NFC');if(!/^[\p{L}\p{N}]{2,24}$/u.test(text))throw new Error('Bitte ein einzelnes Wort mit 2–24 Buchstaben oder Zahlen eingeben.');
- const pts=raw.flat();if(pts.length<5)throw new Error('Bitte zuerst ein zusammenhängendes Wort schreiben oder aus einem Foto erkennen.');
+ text=text.trim().normalize('NFC');if(!/^[\p{L}\p{N}]{2,24}$/u.test(text))throw new Error(t('Bitte ein einzelnes Wort mit 2–24 Buchstaben oder Zahlen eingeben.'));
+ const pts=raw.flat();if(pts.length<5)throw new Error(t('Bitte zuerst ein zusammenhängendes Wort schreiben oder aus einem Foto erkennen.'));
  const x0=Math.min(...pts.map(p=>p.x)),x1=Math.max(...pts.map(p=>p.x)),y0=quantile(pts.map(p=>p.y),.02),y1=quantile(pts.map(p=>p.y),.98);
- if(x1-x0<5||y1-y0<5)throw new Error('Die Schreibprobe ist zu klein.');
+ if(x1-x0<5||y1-y0<5)throw new Error(t('Die Schreibprobe ist zu klein.'));
  const local=raw.map(s=>s.map(p=>({...p,x:p.x-x0}))),rawWidth=x1-x0,chars=Array.from(text),validCuts=alignedCuts?.length===chars.length+1&&alignedCuts.every(Number.isFinite)&&alignedCuts.every((c,i,a)=>i===0||c>a[i-1]),rawCuts=validCuts?alignedCuts!.map(c=>Math.max(0,Math.min(rawWidth,c-x0))):findCuts(local,text,rawWidth);if(validCuts){rawCuts[0]=0;rawCuts[rawCuts.length-1]=rawWidth;}const frame=bodyFrame(local,text,rawCuts),scale=Math.max(.08,Math.min(20,52/frame.xHeight)),width=rawWidth*scale;
- if(width>6000)throw new Error('Die Probe ist zu breit. Bitte nur ein einzelnes Wort markieren.');
+ if(width>6000)throw new Error(t('Die Probe ist zu breit. Bitte nur ein einzelnes Wort markieren.'));
  const strokes=local.map(s=>s.map(p=>({...p,x:p.x*scale,y:(p.y-frame.baseline)*scale+80}))),cuts=rawCuts.map(c=>c*scale);
  const bottoms:number[]=[];for(let i=0;i<Array.from(text).length;i++){const ps=strokes.flat().filter(p=>p.x>=cuts[i]&&p.x<=cuts[i+1]);if(ps.length)bottoms.push(quantile(ps.map(p=>p.y),.88));}
  const baseline=quantile(bottoms,.5),baselineSpread=Math.sqrt(bottoms.reduce((s,v)=>s+(v-baseline)**2,0)/Math.max(1,bottoms.length));
@@ -54,7 +55,7 @@ export function analyzeWord(raw:Stroke[],text:string,source:'pen'|'photo',id:str
  return{id,text,strokes,cuts,width,source,normalization:3,metrics:{slant:Math.max(-.7,Math.min(.7,slantTotal/Math.max(1,vertical))),baselineSpread:Math.min(12,baselineSpread),joining:connected/(Array.from(text).length-1),spacing:width/Array.from(text).length,baseline:80,xHeight:52,quality:frame.confidence}};
 }
 export function relabelWord(sample:WordSample,text:string):WordSample{
- text=text.trim().normalize('NFC');if(!/^[\p{L}\p{N}]{2,24}$/u.test(text))throw new Error('Bitte ein einzelnes Wort mit 2–24 Buchstaben oder Zahlen eingeben.');
+ text=text.trim().normalize('NFC');if(!/^[\p{L}\p{N}]{2,24}$/u.test(text))throw new Error(t('Bitte ein einzelnes Wort mit 2–24 Buchstaben oder Zahlen eingeben.'));
  return Array.from(text).length===Array.from(sample.text).length?{...sample,text}:analyzeWord(sample.strokes,text,sample.source,sample.id);
 }
 export function recalibrateWord(w:WordSample):WordSample{if(w.normalization===3)return w;const frame=bodyFrame(w.strokes,w.text,w.cuts),scale=Math.max(.25,Math.min(4,52/frame.xHeight)),strokes=w.strokes.map(s=>s.map(p=>({...p,x:p.x*scale,y:(p.y-frame.baseline)*scale+80}))),cuts=w.cuts.map(c=>c*scale),width=w.width*scale;return{...w,normalization:3,strokes,cuts,width,metrics:{...w.metrics,baselineSpread:Math.min(12,w.metrics.baselineSpread*scale),spacing:width/Array.from(w.text).length,baseline:80,xHeight:52,quality:frame.confidence}};}

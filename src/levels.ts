@@ -2,6 +2,7 @@ import { analyzeWord, pairRuns, sliceStrokes, type WordSample } from './contextu
 export { pairRuns, splitPair } from './contextual';
 import { inkGapRuns } from './calibration';
 import { DOT_TOP, hasDot, hasOwnGlyph, simplify, type PairSample, type Profile, type Rhythm, type Stroke } from './model';
+import { t } from './i18n';
 
 /**
  * Handschrift-Stufen. Jede Stufe nutzt einen Weg, der auch bei unsauberer Schrift
@@ -16,7 +17,7 @@ import { DOT_TOP, hasDot, hasOwnGlyph, simplify, type PairSample, type Profile, 
  */
 export const BASIC = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const SIGNS = '0123456789.,!?:-()äöüßÄÖÜ';
-export const RHYTHM_SENTENCES = ['Clara schreibt heute einen Brief', 'Der kleine Hund spielt im Garten', 'Wir lernen zusammen für die Schule'] as const;
+export const RHYTHM_SENTENCES = [t('Clara schreibt heute einen Brief'), t('Der kleine Hund spielt im Garten'), t('Wir lernen zusammen für die Schule')] as const;
 /** The 20 most frequent letter connections in German (word-internal). */
 export const PAIRS_CORE = ['en', 'er', 'ch', 'sch', 'ei', 'ie', 'st', 'te', 'in', 'nd', 'ge', 'un', 'de', 'be', 'au', 'an', 'ng', 'll', 'ck', 'tz'];
 /** Stufe 5: further connections and capital starts, picked by what still matters most. */
@@ -51,11 +52,11 @@ export function levels(p: Profile): LevelInfo[] {
   const l4 = PAIRS_CORE.filter(k => p.pairs?.[k]?.length).length, l5 = PAIRS_MORE.filter(k => p.pairs?.[k]?.length).length;
   const base = l1 === BASIC.length, locked = !p.unlocked;
   return [
-    { id: 1, title: 'Grundschrift', what: 'Jeden Klein- und Großbuchstaben einmal einzeln schreiben.', effort: '52 Buchstaben · ca. 5 Min.', done: base, progress: l1, total: BASIC.length, locked: false },
-    { id: 2, title: 'Zahlen & Zeichen', what: 'Ziffern, Satzzeichen, Umlaute und ß in deiner Schrift statt der Ersatzschrift.', effort: `${SIGNS.length} Zeichen · ca. 2 Min.`, done: l2 === SIGNS.length, progress: l2, total: SIGNS.length, locked: false },
-    { id: 3, title: 'Schreibrhythmus', what: 'Drei kurze Sätze. Die App lernt daraus deinen Wortabstand, wie gerade du auf der Linie schreibst und ob du Buchstaben verbindest.', effort: '3 Sätze · ca. 1 Min.', done: (p.rhythm?.samples || 0) > 0, progress: p.rhythm?.samples ? 3 : 0, total: 3, locked: false },
-    { id: 4, title: 'Verbindungen', what: 'Die 20 häufigsten Buchstabenpaare wie „ch“, „ei“ oder „st“ – so wie du sie zusammenhängend schreibst.', effort: '20 Paare · ca. 3 Min.', done: l4 === PAIRS_CORE.length, progress: l4, total: PAIRS_CORE.length, locked },
-    { id: 5, title: 'Feinschliff', what: 'Weitere Verbindungen und Wortanfänge wie „Cl“, „Sch“ oder „St“. Die App wählt immer die wichtigsten fehlenden.', effort: 'je 10 Paare · beliebig oft', done: l5 === PAIRS_MORE.length, progress: l5, total: PAIRS_MORE.length, locked },
+    { id: 1, title: t('Grundschrift'), what: t('Jeden Klein- und Großbuchstaben einmal einzeln schreiben.'), effort: t('52 Buchstaben · ca. 5 Min.'), done: base, progress: l1, total: BASIC.length, locked: false },
+    { id: 2, title: t('Zahlen & Zeichen'), what: t('Ziffern, Satzzeichen, Umlaute und ß in deiner Schrift statt der Ersatzschrift.'), effort: t('{n} Zeichen · ca. 2 Min.', { n: SIGNS.length }), done: l2 === SIGNS.length, progress: l2, total: SIGNS.length, locked: false },
+    { id: 3, title: t('Schreibrhythmus'), what: t('Drei kurze Sätze. Die App lernt daraus deinen Wortabstand, wie gerade du auf der Linie schreibst und ob du Buchstaben verbindest.'), effort: t('3 Sätze · ca. 1 Min.'), done: (p.rhythm?.samples || 0) > 0, progress: p.rhythm?.samples ? 3 : 0, total: 3, locked: false },
+    { id: 4, title: t('Verbindungen'), what: t('Die 20 häufigsten Buchstabenpaare wie „ch“, „ei“ oder „st“ – so wie du sie zusammenhängend schreibst.'), effort: t('20 Paare · ca. 3 Min.'), done: l4 === PAIRS_CORE.length, progress: l4, total: PAIRS_CORE.length, locked },
+    { id: 5, title: t('Feinschliff'), what: t('Weitere Verbindungen und Wortanfänge wie „Cl“, „Sch“ oder „St“. Die App wählt immer die wichtigsten fehlenden.'), effort: t('je 10 Paare · beliebig oft'), done: l5 === PAIRS_MORE.length, progress: l5, total: PAIRS_MORE.length, locked },
   ];
 }
 /** The highest level reached in a row (0 = not even the basic alphabet). */
@@ -63,12 +64,12 @@ export function currentLevel(p: Profile) { let n = 0; for (const l of levels(p))
 
 /** Like a single letter, but the frame comes from all letters of the pair (ascender/descender). */
 export function normalisePair(strokes: Stroke[], text: string): PairSample {
-  const pts = strokes.flat(); if (pts.length < 3) throw new Error('Bitte zuerst die Buchstaben schreiben.');
+  const pts = strokes.flat(); if (pts.length < 3) throw new Error(t('Bitte zuerst die Buchstaben schreiben.'));
   const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x)), minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
   const tall = /[A-ZÄÖÜbdfhklt]/.test(text), desc = /[gjpqy]/.test(text), top = tall ? 4 : /[ijäöü]/.test(text) && hasDot(strokes) ? DOT_TOP : 34, bottom = desc ? 100 : 80, scale = (bottom - top) / Math.max(1, maxY - minY);
   const local = strokes.map(s => simplify(s.map(p => ({ x: (p.x - minX) * scale + 3, y: (p.y - minY) * scale + top, p: p.p }))));
   const width = Math.min(600, (maxX - minX) * scale + 13);
-  if (width > 590) throw new Error('Bitte die Buchstaben etwas enger schreiben.');
+  if (width > 590) throw new Error(t('Bitte die Buchstaben etwas enger schreiben.'));
   const cuts = pairCuts(local, Array.from(text).length, width);
   return { strokes: local, cuts, width };
 }
@@ -125,7 +126,7 @@ export function measureRhythm(lines: Stroke[][], sentences: readonly string[] = 
     // analyzeWord normalises the x-height to 52, letters use 46 → convert to glyph units.
     for (const r of runs) gaps.push((r.to - r.from) * scale * 46 / 52);
   });
-  if (!gaps.length || words.length < 4) throw new Error('Die Sätze waren nicht deutlich genug. Bitte zwischen den Wörtern etwas Platz lassen und noch einmal schreiben.');
+  if (!gaps.length || words.length < 4) throw new Error(t('Die Sätze waren nicht deutlich genug. Bitte zwischen den Wörtern etwas Platz lassen und noch einmal schreiben.'));
   return { rhythm: { wordGap: Math.round(median(gaps) * 10) / 10, joining: Math.round(median(joins) * 100) / 100, samples: lines.length }, words };
 }
 function median(v: number[]) { if (!v.length) return 0; const s = [...v].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; }
