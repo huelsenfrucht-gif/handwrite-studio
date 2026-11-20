@@ -1171,3 +1171,5 @@ button.st-row:hover,.st-details summary:hover{background:#fbfaf7}
 .offline-card h2{margin:0;font-family:var(--hs-serif);font-size:26px;color:var(--hs-ink,#1c1d21)}
 .offline-card p{margin:0;font-size:15.5px;line-height:1.55;color:var(--hs-ink,#1c1d21)}
 .offline-card .offline-fine{font-size:13.5px;color:var(--hs-muted,#6e6c66)}
+.reward-choice .primary-choice{border-color:var(--hs-ink);box-shadow:inset 0 0 0 1px var(--hs-ink)}
+.reward-ask{width:min(520px,calc(100vw - 32px));max-width:none}.reward-choice{grid-template-columns:repeat(2,minmax(0,1fr))}.reward-choice .button{min-width:0;height:auto;white-space:normal}.reward-choice small{white-space:normal}

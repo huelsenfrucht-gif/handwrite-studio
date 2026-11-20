@@ -14,7 +14,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 ## Verbindliche Produktregeln
 
 1. **100 % kostenlos, nur durch Werbung finanziert** (Google AdMob). Kein Abo, keine In-App-Käufe, keine Bezahlversion.
-2. **Werbung lässt sich nicht abschalten.** Es gibt keinen Schalter dafür. Einzige „Belohnung“: Ein freiwillig angesehenes Video gibt 30 Minuten ohne Werbung und schaltet Handschrift-Stufe 4/5 einmalig frei. Das Video muss freiwillig bleiben.
+2. **Werbung lässt sich nicht abschalten.** Es gibt keinen Schalter dafür. An jeder Werbestelle (außer „In Handschrift verwandeln“ bei Texten unter 4 Seiten = direkt kurze Werbung) wählt der Nutzer in `src/AdChoice.tsx`: kurze Werbung oder Video mit Belohnung (30 Minuten ganz ohne Werbung). Stufe 4/5 wird einmalig per Video freigeschaltet. **Belohnungsvideos müssen laut AdMob-Richtlinien freiwillig gewählt werden** – nie erzwingen.
 3. **Die App braucht eine Internetverbindung** (WLAN oder mobile Daten), damit Werbung geladen werden kann. Ohne Verbindung zeigt `src/OfflineGate.tsx` eine Sperre. Eine **laufende Aufnahme wird nie abgebrochen**, die Sperre kommt erst danach.
 4. **Inhalte bleiben auf dem iPad:** Texte, Handschriften, Fotos und Aufnahmen werden nur auf dem Gerät verarbeitet, nichts wird hochgeladen. Einzige Downloads: das Whisper-Sprachmodell (einmalig, Hugging Face) und Werbung.
 5. **Keine Markennamen in der Oberfläche**, außer wo technisch nötig (Dateiformat „.goodnotes“ im Export mit Marken-Hinweis).

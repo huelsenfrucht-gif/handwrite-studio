@@ -775,4 +775,9 @@ export const EN: Record<string, string> = {
   'Keine Internetverbindung': 'No internet connection',
   'Handwritten ist kostenlos, weil die App Werbung zeigt. Dafür braucht sie eine Internetverbindung. Verbinde das iPad mit dem WLAN oder schalte mobile Daten ein – danach geht es sofort weiter.': 'Handwritten is free because the app shows ads. For that it needs an internet connection. Connect the iPad to Wi-Fi or turn on mobile data – then you can continue right away.',
   'Deine Dokumente und Handschriften bleiben sicher auf dem iPad gespeichert.': 'Your documents and handwritings stay safely stored on the iPad.',
+  // Ad choice
+  '{n} Seiten schreiben': 'Writing {n} pages',
+  'Neue Handschrift': 'New handwriting',
+  'Danach geht es direkt weiter': 'Then you continue right away',
+  'Ca. 15–30 Sek. · danach 30 Minuten ganz ohne Werbung': 'About 15–30 sec · then 30 minutes with no ads at all',
 };

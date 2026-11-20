@@ -9,8 +9,10 @@ describe('legal and ad safeguards', () => {
     expect(keywords.toLowerCase()).not.toContain('goodnotes');
   });
   it('offers the rewarded video only as a free choice next to a normal ad, with a real reward', () => {
-    const app = readFileSync('src/App.tsx', 'utf8'), ads = readFileSync('src/nativeAds.ts', 'utf8');
-    expect(app).toContain('Kurze Werbung'); expect(app).toContain('Video ansehen');
+    const choice = readFileSync('src/AdChoice.tsx', 'utf8'), ads = readFileSync('src/nativeAds.ts', 'utf8');
+    expect(choice).toContain('Kurze Werbung'); expect(choice).toContain('Video ansehen');
+    // The video is only shown when the user picked it.
+    expect(choice).toMatch(/choice === 'video'\) await showRewardedAd\(\); else await showInterstitialAd\(\)/);
     expect(ads).toMatch(/RewardAdPluginEvents\.Rewarded, \(\) => \{[^}]*grantAdFree\(\)/);
   });
   it('treats under-16 users without tracking prompt and with under-age tagging', async () => {

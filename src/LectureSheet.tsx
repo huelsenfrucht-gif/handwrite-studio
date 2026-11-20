@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, AudioLines, Check, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Download, Lock, Mic, Pause, PenLine, Play, RotateCw, Save, Star, Trash2, X } from 'lucide-react';
 import { download, safeName } from './export';
-import { adFreeUntil, adsAvailable, showInterstitialAd } from './nativeAds';
+import { adFreeUntil, adsAvailable } from './nativeAds';
+import { adBreak } from './AdChoice';
 import { clock, LANGUAGES, LectureRecorder, lectureSupported, lectureText, lectureTitle, paragraphs, ROOMS, timeOfDay, type Availability, type Lecture, type Room } from './lecture';
 import { SUBJECTS, subjectTerms } from './subjects';
 import { getLang, locale as uiLocale, t } from './i18n';
@@ -82,10 +83,10 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
       if (!r.microphone || !r.speech) throw new Error(t('Ohne Mikrofon und Spracherkennung geht es nicht. Du kannst beides in den iPad-Einstellungen unter „Handwritten“ erlauben.'));
       a = await LectureRecorder.availability({ locale }); setAvail(a);
     }
+    // An ad break before the recording starts (the app is free); “Cancel” cancels the start.
+    if (adsAvailable() && Date.now() >= adFreeUntil()) { setBusy(t('Kurze Werbung …')); const go = await adBreak({ kind: 'record' }); setBusy(t('Wird gestartet …')); if (!go) return; }
     // The microphone normally starts at once; say so clearly if the system keeps it blocked.
     const slow = setTimeout(() => setError(t('Das Mikrofon startet gerade nicht. Schließe andere Apps, die das Mikrofon nutzen (z. B. Anrufe oder Sprachmemos), und versuche es erneut.')), 12000);
-    // A short ad before the recording starts (the app is free); never blocks the start.
-    if (adsAvailable() && Date.now() >= adFreeUntil()) { setBusy(t('Kurze Werbung …')); await showInterstitialAd(); setBusy(t('Wird gestartet …')); }
     // The built-in vocabulary is German: only useful when German is spoken.
     const terms = locale.startsWith('de') ? [...new Set([...subjectTerms(subject), ...(subject === 'general' ? [] : subjectTerms('general'))])].slice(0, 90) : [];
     try { setLive(await LectureRecorder.start({ locale, room, subject, terms, live: liveText })); setError(''); } finally { clearTimeout(slow); }
