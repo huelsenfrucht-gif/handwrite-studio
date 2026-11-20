@@ -4,17 +4,19 @@ import { t } from './i18n';
 import { adsAvailable, showInterstitialAd, showRewardedAd } from './nativeAds';
 
 /**
- * A rewarded video is offered only when writing at least three pages.
- * The user starts it explicitly; cancelling also cancels the action.
+ * A rewarded video unlocks these actions: writing at least three pages, starting a transcription,
+ * creating a handwriting, saving and loading a backup. (Writing 1–2 pages gets a short ad instead.)
+ * The user starts the video explicitly; cancelling also cancels the action.
  */
 export type AdReason = { kind: 'write'; pages: number } | { kind: 'record' } | { kind: 'profile' } | { kind: 'backup' } | { kind: 'restore' };
+const VIDEO_FOR: AdReason['kind'][] = ['write', 'record', 'profile', 'backup', 'restore'];
 type Ask = { reason: AdReason; done: (allowed: boolean) => void };
 let open: ((a: Ask) => void) | null = null;
 
 /** Resolves true once the ad was shown (or none was needed), false if the user cancelled. */
 export async function adBreak(reason: AdReason): Promise<boolean> {
   if (!adsAvailable()) return true;
-  if (reason.kind !== 'write') { await showInterstitialAd(); return true; }
+  if (!VIDEO_FOR.includes(reason.kind)) { await showInterstitialAd(); return true; }
   if (!open) return false;
   return new Promise<boolean>(done => open!({ reason, done }));
 }

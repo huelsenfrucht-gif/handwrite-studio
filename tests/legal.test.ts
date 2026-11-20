@@ -8,10 +8,10 @@ describe('legal and ad safeguards', () => {
     const store = readFileSync('appstore/APP-STORE.md', 'utf8'), keywords = store.match(/\*\*Keywords\*\*[\s\S]*?```\n(.*)\n```/)![1];
     expect(keywords.toLowerCase()).not.toContain('goodnotes');
   });
-  it('shows a video only from three handwritten pages and short ads elsewhere', () => {
+  it('unlocks long texts, transcription, new handwriting and backups with a video the user starts', () => {
     const choice = readFileSync('src/AdChoice.tsx', 'utf8'), ads = readFileSync('src/nativeAds.ts', 'utf8');
     expect(ads).toContain('REWARD_FROM_PAGES = 3');
-    expect(choice).toContain("reason.kind !== 'write'");
+    expect(choice).toContain("const VIDEO_FOR: AdReason['kind'][] = ['write', 'record', 'profile', 'backup', 'restore'];");
     expect(choice).toContain('Video ansehen');
     expect(choice).not.toContain("pick('short')");
     expect(ads).not.toContain('hs-ad-free-until');

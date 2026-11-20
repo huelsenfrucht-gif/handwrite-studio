@@ -798,4 +798,5 @@ export const EN: Record<string, string> = {
   'Die ganze Aufnahme noch einmal erkennen, dauert nur wenige Sekunden': 'Recognise the whole recording again, takes only a few seconds',
   '„Transkribieren“ nimmt den Unterricht auf, der Text erscheint live. Danach übernimmst du den Text in deine Handschrift.': '“Transcribe” records the lesson and the text appears live. Afterwards you turn the text into your handwriting.',
   'Ein Service der pvh debt capital advisory GmbH': 'A service of pvh debt capital advisory GmbH',
+  'Werbung …': 'Ad …',
 };

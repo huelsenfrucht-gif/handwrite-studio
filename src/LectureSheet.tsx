@@ -84,7 +84,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
       a = await LectureRecorder.availability({ locale }); setAvail(a);
     }
     // An ad break before the recording starts (the app is free); “Cancel” cancels the start.
-    if (adsAvailable()) { setBusy(t('Kurze Werbung …')); const go = await adBreak({ kind: 'record' }); setBusy(t('Wird gestartet …')); if (!go) return; }
+    if (adsAvailable()) { setBusy(t('Werbung …')); const go = await adBreak({ kind: 'record' }); setBusy(t('Wird gestartet …')); if (!go) return; }
     // The microphone normally starts at once; say so clearly if the system keeps it blocked.
     const slow = setTimeout(() => setError(t('Das Mikrofon startet gerade nicht. Schließe andere Apps, die das Mikrofon nutzen (z. B. Anrufe oder Sprachmemos), und versuche es erneut.')), 12000);
     // The built-in vocabulary is German: only useful when German is spoken.
