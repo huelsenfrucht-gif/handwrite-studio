@@ -6,7 +6,7 @@ import type { Glyph } from './model';
  * (Oberlänge · x-height · Unterlänge) and a very light model text behind it.
  * The model only helps with orientation; it is never saved.
  */
-const LINE = '#cdd4de', MODEL = '#e9ecf1';
+const LINE = '#d6d3cb', MODEL = '#ecebe6';
 
 /** Glyph space (ascender 4, x-height 34, baseline 80, descender ~104) → three equal zones. */
 export const guideY = (y: number, top: number, zone: number) =>

@@ -151,7 +151,7 @@ function Intro(p: { avail: Availability | null; locale: string; setLocale: (l: s
     </details>
     {unavailable && <p className="tr-sub">{p.avail!.reason || 'Die Spracherkennung ist auf diesem iPad nicht verfügbar.'}</p>}
     <label className="tr-consent"><input type="checkbox" checked={p.consent} onChange={e => p.setConsent(e.target.checked)} />
-      <span><strong>Alle Anwesenden sind einverstanden</strong><small>Niemand darf heimlich aufgenommen werden.</small></span></label>
+      <span><strong>Alle Anwesenden sind einverstanden</strong><small>Niemand darf heimlich aufgenommen werden (§ 201 StGB).</small></span></label>
     {p.error}
     <button className="tr-start big" disabled={!p.consent || !!p.busy || !!unavailable} onClick={p.onStart}><span className="tr-rec-dot" aria-hidden="true" />{p.busy || 'Aufnahme starten'}</button>
     <p className="tr-tip">Leg das iPad einfach vor dich auf den Tisch. Es hört über die Rückseite nach vorne zur Tafel.</p>

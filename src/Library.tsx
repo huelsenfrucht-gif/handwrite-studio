@@ -50,7 +50,8 @@ export function LibraryShell(props: {
   }, [folders, library.notes, query, view, folderId, filter, sort]);
 
   const now = () => new Date().toISOString();
-  const createFolder = (parentId?: string) => { const f: Folder = { id: uid(), name: 'Neuer Ordner', color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length], parentId, created: now(), updated: now() }; update(l => ({ ...l, folders: [...(l.folders || []), f] })); setRenaming(f.id); setMenu(null); };
+  const [nameFocus, setNameFocus] = useState<string | null>(null);
+  const createFolder = (parentId?: string) => { const f: Folder = { id: uid(), name: 'Neuer Ordner', color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length], parentId, created: now(), updated: now() }; update(l => ({ ...l, folders: [...(l.folders || []), f] })); setMenu(null); setPicked(new Set()); setFolderId(f.id); setQuery(''); setSearching(false); if (view !== 'documents') props.setView('documents'); setNameFocus(f.id); };
   const editFolder = (id: string, fn: (f: Folder) => Folder) => update(l => ({ ...l, folders: (l.folders || []).map(f => f.id === id ? { ...fn(f), updated: now() } : f) }));
   const editNote = (id: string, fn: (n: Note) => Note) => update(l => ({ ...l, notes: l.notes.map(n => n.id === id ? fn(n) : n) }));
   const rename = (item: Item, name: string) => { const value = name.trim().slice(0, 100); setRenaming(null); if (!value) return; if (item.kind === 'folder') editFolder(item.folder.id, f => ({ ...f, name: value })); else editNote(item.note.id, n => ({ ...n, title: value, updated: now() })); };
@@ -163,7 +164,7 @@ export function LibraryShell(props: {
       <div className="gn-side-label">Ordner</div>
       <nav className="gn-folder-nav" onClick={() => { if (narrow()) setCollapsed(true); }}>
         {folders.filter(f => !f.parentId).sort((a, b) => a.name.localeCompare(b.name, 'de')).map(f => <button key={f.id} data-drop={f.id} className={`${view === 'documents' && path[0]?.id === f.id ? 'active' : ''} ${drag?.over === f.id ? 'drop-over' : ''}`} onClick={() => openFolder(f.id)}><i style={{ background: f.color }} />{f.name}<span className="gn-count">{library.notes.filter(n => n.folderId === f.id).length || ''}</span></button>)}
-        <button className="gn-add-folder" onClick={e => { e.stopPropagation(); if (folderId) openFolder(undefined); createFolder(); }}><FolderPlus size={18} strokeWidth={1.7} />Neuer Ordner</button>
+        <button className="gn-add-folder" onClick={e => { e.stopPropagation(); createFolder(); }}><FolderPlus size={18} strokeWidth={1.7} />Neuer Ordner</button>
       </nav>
       <nav className="gn-side-foot" onClick={() => { if (narrow()) setCollapsed(true); }}>
         <button onClick={props.openSettings}><Settings size={19} strokeWidth={1.7} />Einstellungen</button>
@@ -181,6 +182,14 @@ export function LibraryShell(props: {
       {path.length > 0 && view === 'documents' && !query && <nav className="gn-crumbs" aria-label="Ordnerpfad"><button data-drop="root" className={drag?.over === 'root' ? 'drop-over' : ''} onClick={() => openFolder(undefined)}>Dokumente</button>{path.map((f, i) => <span key={f.id}><ChevronRight size={14} />{i === path.length - 1 ? <strong>{f.name}</strong> : <button data-drop={f.id} className={drag?.over === f.id ? 'drop-over' : ''} onClick={() => openFolder(f.id)}>{f.name}</button>}</span>)}</nav>}
       {live && <LiveBanner live={live} onOpen={props.lecture} />}
       {home ? <div className="gn-head"><h1>Dokumente</h1>
+      </div> : current && view === 'documents' && !query ? <div className="gn-folder-head" style={{ ['--fc' as string]: current.color }}>
+        <span className="gn-folder-badge" aria-hidden="true"><FolderClosed size={22} strokeWidth={1.8} /></span>
+        <input key={current.id} className="gn-folder-name" aria-label="Ordnername" defaultValue={current.name} maxLength={100} autoFocus={nameFocus === current.id}
+          onFocus={e => { if (nameFocus === current.id) { e.currentTarget.select(); setNameFocus(null); } }}
+          onBlur={e => { const v = e.currentTarget.value.trim().slice(0, 100); if (v && v !== current.name) editFolder(current.id, f => ({ ...f, name: v })); else e.currentTarget.value = current.name; }}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { e.currentTarget.value = current.name; e.currentTarget.blur(); } }} />
+        <div className="gn-folder-colors" role="radiogroup" aria-label="Ordnerfarbe">{FOLDER_COLORS.map(c => <button key={c} role="radio" aria-checked={current.color === c} aria-label={`Farbe ${c}`} style={{ background: c }} className={current.color === c ? 'on' : ''} onClick={() => editFolder(current.id, f => ({ ...f, color: c }))}>{current.color === c && <Check size={13} strokeWidth={3} />}</button>)}</div>
+        <button className="gn-folder-del" aria-label="Ordner löschen" title="Ordner löschen" onClick={() => remove({ kind: 'folder', folder: current, updated: current.updated, name: current.name })}><Trash2 size={18} /></button>
       </div> : <h1>{title}</h1>}
       {home && <div className="gn-quick">
         {!live && <button onClick={() => props.lecture()}><Mic size={18} strokeWidth={1.8} /><span>Transkribieren</span></button>}
@@ -264,7 +273,7 @@ function FolderIcon({ color }: { color: string }) {
   return <span className="hs-folder" style={{ ['--fc' as string]: color }} aria-hidden="true"><span className="hs-folder-sheet b" /><span className="hs-folder-sheet a" /><span className="hs-folder-face"><FolderClosed size={30} strokeWidth={1.6} /></span></span>;
 }
 const SidebarIcon = () => <svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="23" rx="5" /><path d="M12 1.5v23M5 7h3.5M5 11h3.5M5 15h3.5" /></svg>;
-const EmptyIllustration = ({ star }: { star: boolean }) => <svg width="130" height="170" viewBox="0 0 130 170" aria-hidden="true"><rect x="8" y="22" width="114" height="146" rx="4" fill="#dcecf8" /><rect x="8" y="150" width="114" height="18" rx="3" fill="#cfe6f8" /><path d="M42 66h30" stroke="#64a9ec" strokeWidth="3" strokeLinecap="round" />{star && <><path d="m104 18 4 8 9 1.3-6.5 6.3 1.5 8.9-8-4.2-8 4.2 1.5-8.9-6.5-6.3 9-1.3z" fill="#f59c8f" /><path d="M93 5l4 6M104 2v6M115 5l-4 6" stroke="#64a9ec" strokeWidth="1.5" strokeLinecap="round" /></>}</svg>;
+const EmptyIllustration = ({ star }: { star: boolean }) => <svg width="130" height="150" viewBox="0 0 130 150" aria-hidden="true"><rect x="24" y="14" width="86" height="116" rx="6" fill="#ecebe6" transform="rotate(-7 67 72)" /><rect x="20" y="16" width="86" height="116" rx="6" fill="#fff" stroke="#e2dfd8" />{[48, 64, 80, 96, 112].map(y => <path key={y} d={`M32 ${y}h62`} stroke="#e2dfd8" strokeWidth="1.5" />)}<path d="M34 44c6-8 10 4 15-2s7-6 11 0 6 1 9-3" fill="none" stroke="#1c1d21" strokeWidth="2.2" strokeLinecap="round" />{star && <path d="m104 18 4 8 9 1.3-6.5 6.3 1.5 8.9-8-4.2-8 4.2 1.5-8.9-6.5-6.3 9-1.3z" fill="#f6dc6b" stroke="#c9a52a" strokeWidth="1" />}</svg>;
 
 /** Drop-down menu that always stays inside the visible screen: shifted sideways, opened upwards when there is no room below. */
 function Menu({ children }: { children: ReactNode }) {
