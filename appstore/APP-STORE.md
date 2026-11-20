@@ -47,7 +47,7 @@ https://appstoreconnect.apple.com → **Apps → +  → Neue App**
 | Plattform | iOS |
 | Name | **Handwritten** (max. 30 Zeichen). Falls App Store Connect den Namen als vergeben meldet: **Handwritten – Deine Schrift**. Auf dem Home-Bildschirm steht immer „Handwritten“. |
 | Primäre Sprache | Deutsch |
-| Bundle-ID | `com.handwritestudio.app` (erscheint nach Teil A.1 automatisch, sonst unter developer.apple.com → Identifiers anlegen) |
+| Bundle-ID | `de.vonhuelsen.handwritten` (in Xcode für App und Share Extension mit dem Developer-Team hinterlegt) |
 | SKU | `handwrite-studio-1` |
 
 ### App-Informationen

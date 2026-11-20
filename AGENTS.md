@@ -10,7 +10,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 
 - Website (live): https://huelsenfrucht-gif.github.io/handwrite-studio/
 - Repository: https://github.com/huelsenfrucht-gif/handwrite-studio (Branch `main`)
-- Bundle-ID: `com.handwritestudio.app`, App-Name „Handwritten“, iOS ab 16.0
+- Bundle-ID: `de.vonhuelsen.handwritten`, App-Name „Handwritten“, iOS ab 16.0
 - Sprache der Nutzer: Deutsch (Hauptsprache), Englisch wählbar
 
 ## Verbindliche Produktregeln
@@ -76,7 +76,7 @@ iOS (Xcode muss installiert sein, Projekt `ios/App/App.xcodeproj`, Scheme `App`)
 cd ios/App && xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
   -destination 'id=<SIMULATOR-UDID>' -derivedDataPath build/DDsim build
 xcrun simctl install <SIMULATOR-UDID> build/DDsim/Build/Products/Debug-iphonesimulator/App.app
-xcrun simctl launch <SIMULATOR-UDID> com.handwritestudio.app
+xcrun simctl launch <SIMULATOR-UDID> de.vonhuelsen.handwritten
 
 # Echtes iPad (ID mit `xcrun devicectl list devices` finden)
 xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
@@ -137,7 +137,7 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 
 - Browser: `npm run dev` (Vite, Adresse steht in der Ausgabe). Nicht verfügbar: Transkribieren, Werbung, Vision. `?offline` zeigt die Internet-Sperre, `?ads` simuliert Werbestellen (nur im Dev-Modus).
 - Englisch testen: in der Browser-Konsole `localStorage.setItem('hs-lang','en'); location.reload()`. Fehlende Übersetzungen erscheinen im Dev-Modus als `[i18n] missing:` in der Konsole.
-- Simulator: Screenshots mit `xcrun simctl io <UDID> screenshot datei.png` (kommen im Querformat). Logs: `xcrun simctl launch --console-pty <UDID> com.handwritestudio.app`; native Meldungen beginnen mit `[Transkribieren]`.
+- Simulator: Screenshots mit `xcrun simctl io <UDID> screenshot datei.png` (kommen im Querformat). Logs: `xcrun simctl launch --console-pty <UDID> de.vonhuelsen.handwritten`; native Meldungen beginnen mit `[Transkribieren]`.
 - Werbung im Simulator/Debug: Googles Test-Anzeigen („Test mode“), schließen über das X oben rechts.
 - Codex in der Cloud (Linux) kann `npm test`, `tsc` und den Web-Build ausführen, aber **keine iOS-Builds** – dafür braucht es einen Mac mit Xcode.
 

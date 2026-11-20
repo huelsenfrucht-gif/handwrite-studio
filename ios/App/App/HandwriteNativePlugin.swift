@@ -17,7 +17,7 @@ public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "takeSharedImages", returnType: CAPPluginReturnPromise),
     ]
 
-    static let sharePasteboard = "com.handwritestudio.app.share"
+    static let sharePasteboard = "de.vonhuelsen.handwritten.share"
 
     // MARK: Text recognition
 

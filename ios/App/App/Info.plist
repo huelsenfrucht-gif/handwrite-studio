@@ -29,7 +29,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.handwritestudio.app</string>
+			<string>de.vonhuelsen.handwritten</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>handwritestudio</string>

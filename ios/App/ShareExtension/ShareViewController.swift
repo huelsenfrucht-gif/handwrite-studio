@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// to the app through a team-private pasteboard and opens the app, which then
 /// shows them in "Foto in deine Handschrift".
 class ShareViewController: UIViewController {
-    static let marker = "com.handwritestudio.app.share"
+    static let marker = "de.vonhuelsen.handwritten.share"
     private let status = UILabel()
 
     override func viewDidLoad() {
