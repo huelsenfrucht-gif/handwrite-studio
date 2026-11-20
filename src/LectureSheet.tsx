@@ -64,6 +64,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
   const [room, setRoom] = useState<Room>(() => stored('hs-tr-room', 'classroom') as Room);
   const [subject, setSubject] = useState(() => stored('hs-tr-subject', 'general'));
   const [consent, setConsent] = useState(false);
+  const [liveText, setLiveText] = useState(() => stored('hs-tr-live', 'on') !== 'off');
   const [busy, setBusy] = useState(''), [error, setError] = useState('');
   const native = lectureSupported();
 
@@ -73,7 +74,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
 
   const run = async (label: string, fn: () => Promise<void>) => { setBusy(label); setError(''); try { await fn(); } catch (e) { setError((e as Error).message || String(e)); } finally { setBusy(''); } };
   const start = () => run('Wird gestartet …', async () => {
-    remember('hs-tr-locale', locale); remember('hs-tr-room', room); remember('hs-tr-subject', subject);
+    remember('hs-tr-locale', locale); remember('hs-tr-room', room); remember('hs-tr-subject', subject); remember('hs-tr-live', liveText ? 'on' : 'off');
     let a = avail;
     if (!a?.microphone || !a?.speech) {
       const r = await LectureRecorder.requestAccess();
@@ -85,9 +86,13 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
     // A short ad before the recording starts (the app is free); never blocks the start.
     if (adsAvailable() && Date.now() >= adFreeUntil()) { setBusy('Kurze Werbung …'); await showInterstitialAd(); setBusy('Wird gestartet …'); }
     const terms = [...new Set([...subjectTerms(subject), ...(subject === 'general' ? [] : subjectTerms('general'))])].slice(0, 90);
-    try { setLive(await LectureRecorder.start({ locale, room, subject, terms })); setError(''); } finally { clearTimeout(slow); }
+    try { setLive(await LectureRecorder.start({ locale, room, subject, terms, live: liveText })); setError(''); } finally { clearTimeout(slow); }
   });
-  const stop = () => run('Wird abgeschlossen …', async () => { const done = await LectureRecorder.stop(); setLive(null); setReview(done); });
+  const stop = () => run('Wird abgeschlossen …', async () => {
+    const done = await LectureRecorder.stop(); setLive(null); setReview(done);
+    // Live text was off (or not ready): recognise the recording now, quickly with the iPad's own recogniser.
+    if (done.id && done.hasAudio !== false && (!done.passages.length || done.missedText)) { setBusy('Text wird erkannt …'); try { setReview(await LectureRecorder.transcribeAudio({ id: done.id })); } catch { /* keep the recording; the buttons can retry */ } }
+  });
   const toDocument = (l: Lecture, opts: { times: boolean; marks: boolean }) => run('Wird übernommen …', async () => {
     onDocument(lectureTitle(l), lectureText(l, opts));
     if (l.id) await LectureRecorder.remove({ id: l.id }).catch(() => undefined);
@@ -102,7 +107,9 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
   const deleteAudio = (l: Lecture) => { if (!confirm('Tonaufnahme löschen? Der Text bleibt erhalten, kann danach aber nicht mehr neu erkannt werden.')) return; void run('', async () => { await LectureRecorder.remove({ id: l.id!, audioOnly: true }); setReview({ ...l, hasAudio: false, audioMB: 0 }); notify?.('Tonaufnahme gelöscht.'); }); };
   const [accurate, setAccurate] = useState<{ phase: string; progress: number } | null>(null);
   const fromWhisper = async (l: Lecture) => {
-    if (!l.id) return;
+    if (!l.id || l.hasAudio === false) return;
+    const pw = await LectureRecorder.power().catch(() => null);
+    if (pw && !pw.charging && (pw.level < 0.3 || pw.lowPower) && !confirm(`Genau erkennen braucht einige Minuten viel Strom${pw.level < 1 ? ` (Akku ${Math.round(pw.level * 100)} %)` : ''}. Am besten schließt du das iPad vorher ans Ladekabel an.\n\nTrotzdem jetzt starten?`)) return;
     const st = await LectureRecorder.accurateStatus().catch(() => null);
     if (st && !st.downloaded && !confirm(`Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. ${(st.sizeMB / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} GB). Am besten im WLAN. Danach funktioniert es ohne Internet.\n\nJetzt laden?`)) return;
     const sub = await LectureRecorder.addListener('accurate', p => setAccurate(p));
@@ -110,7 +117,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
     await run('Wird genau erkannt …', async () => { setReview(await LectureRecorder.transcribeAccurate({ id: l.id! })); notify?.('Genau erkannt.'); });
     void sub.remove(); setAccurate(null);
   };
-  const fromAudio = (l: Lecture) => run('Wird neu erkannt …', async () => { if (l.id) setReview(await LectureRecorder.transcribeAudio({ id: l.id })); });
+  const fromAudio = (l: Lecture) => run('Wird neu erkannt …', async () => { if (l.id && l.hasAudio !== false) setReview(await LectureRecorder.transcribeAudio({ id: l.id })); });
 
   const err = error && <p className="tr-error" role="alert"><AlertTriangle size={16} />{error}</p>;
   if (native && live) return <Live live={live} busy={busy} error={err} onBack={onClose}
@@ -121,13 +128,13 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <section className="modal lv-sheet tr-sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
       {!native ? <><header className="lv-head"><div><span className="lv-eyebrow">Transkribieren</span><h2 id="tr-title">Neues Transkript</h2></div><button className="icon-button" aria-label="Schließen" onClick={onClose}><X size={20} /></button></header><div className="tr-body"><p className="tr-sub">Transkribieren ist in der iPad-App verfügbar.</p></div></>
-        : <Intro avail={avail} locale={locale} setLocale={setLocale} room={room} setRoom={setRoom} subject={subject} setSubject={setSubject} consent={consent} setConsent={setConsent} busy={busy} onStart={start} onCancel={onClose} saved={saved} onOpen={setReview} onDelete={discard} error={err} />}
+        : <Intro liveText={liveText} setLiveText={setLiveText} avail={avail} locale={locale} setLocale={setLocale} room={room} setRoom={setRoom} subject={subject} setSubject={setSubject} consent={consent} setConsent={setConsent} busy={busy} onStart={start} onCancel={onClose} saved={saved} onOpen={setReview} onDelete={discard} error={err} />}
       {!native && err}
     </section>
   </div>;
 }
 
-function Intro(p: { avail: Availability | null; locale: string; setLocale: (l: string) => void; room: Room; setRoom: (r: Room) => void; subject: string; setSubject: (s: string) => void; consent: boolean; setConsent: (v: boolean) => void; busy: string; onStart: () => void; onCancel: () => void; saved: Lecture[]; onOpen: (l: Lecture) => void; onDelete: (l: Lecture) => void; error: ReactNode }) {
+function Intro(p: { liveText: boolean; setLiveText: (v: boolean) => void; avail: Availability | null; locale: string; setLocale: (l: string) => void; room: Room; setRoom: (r: Room) => void; subject: string; setSubject: (s: string) => void; consent: boolean; setConsent: (v: boolean) => void; busy: string; onStart: () => void; onCancel: () => void; saved: Lecture[]; onOpen: (l: Lecture) => void; onDelete: (l: Lecture) => void; error: ReactNode }) {
   const unavailable = p.avail && !p.avail.available;
   return <div className="tr-simple">
     <button className="icon-button tr-close" aria-label="Schließen" onClick={p.onCancel}><X size={20} /></button>
@@ -140,13 +147,14 @@ function Intro(p: { avail: Availability | null; locale: string; setLocale: (l: s
       <span className="tr-select"><select value={p.subject} onChange={e => p.setSubject(e.target.value)}>{SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select><ChevronDown size={18} /></span>
     </label>
     <details className="tr-more">
-      <summary><span>Weitere Einstellungen</span><small>{langLabel(p.locale)} · {roomLabel(p.room)}</small><ChevronDown size={18} /></summary>
+      <summary><span>Weitere Einstellungen</span><small>{langLabel(p.locale)} · {roomLabel(p.room)}{p.liveText ? '' : ' · Live-Text aus'}</small><ChevronDown size={18} /></summary>
       <div className="tr-more-body">
         <label className="tr-field small"><span>Sprache</span><span className="tr-select"><select value={p.locale} onChange={e => p.setLocale(e.target.value)}>{LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}</select><ChevronDown size={16} /></span></label>
         <div className="tr-field small"><span>Raum</span>
           <div className="tr-segment" role="radiogroup" aria-label="Raum">{ROOMS.map(r => <button key={r.id} role="radio" aria-checked={p.room === r.id} className={p.room === r.id ? 'on' : ''} onClick={() => p.setRoom(r.id)}>{r.label}</button>)}</div>
           <small>{ROOMS.find(r => r.id === p.room)?.hint}</small>
         </div>
+        <label className="tr-field small tr-switch-row"><span>Live-Text während der Aufnahme<small>Aus spart Akku. Der Text wird dann direkt nach der Aufnahme erkannt.</small></span><input type="checkbox" className="st-switch" checked={p.liveText} onChange={e => p.setLiveText(e.target.checked)} /></label>
       </div>
     </details>
     {unavailable && <p className="tr-sub">{p.avail!.reason || 'Die Spracherkennung ist auf diesem iPad nicht verfügbar.'}</p>}
@@ -177,7 +185,7 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
   const span = LIVE_BARS * .2, marks = live.markers.filter(t => t > live.duration - span).map(t => 1 - (live.duration - t) / span);
   const status = paused ? (live.reason === 'interrupted' ? 'Unterbrochen, z. B. durch einen Anruf' : 'Pausiert')
     : live.prep === 'loading' ? `Sprachpaket wird geladen${live.progress ? ` · ${Math.round(live.progress * 100)} %` : ' …'} · Ton wird schon aufgenommen`
-      : live.prep === 'unavailable' ? 'Nimmt auf · Text wird nach dem Beenden erkannt' : 'Nimmt auf';
+      : live.prep === 'unavailable' || live.prep === 'off' ? 'Nimmt auf · Text wird nach dem Beenden erkannt' : 'Nimmt auf';
   const meta = [langLabel(live.locale), subjectLabel(live.subject), roomLabel(live.room)].filter(Boolean).join(' · ');
   return <div className="tr-screen" role="dialog" aria-modal="true" aria-label="Transkription läuft">
     <header className="tr-top">
@@ -189,7 +197,7 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
       <div className="tr-doc">
         <div className="tr-doc-head"><h1>Transkript · {shortDate(live)}</h1><span>Seit {timeOfDay(live.startedAt, 0)}{live.markers.length ? ` · ${live.markers.length} markiert` : ''}</span></div>
         {!follow ? <p className="tr-hidden">Der Text ist ausgeblendet. Die Aufnahme läuft weiter.</p>
-          : !items.length && !live.volatile ? <p className="tr-hidden">{live.prep === 'loading' ? 'Der Text erscheint, sobald die Spracherkennung bereit ist. Bis dahin wird alles aufgenommen.' : 'Sobald gesprochen wird, erscheint hier der Text.'}</p>
+          : !items.length && !live.volatile ? <p className="tr-hidden">{live.prep === 'off' ? 'Live-Text ist aus, um Akku zu sparen. Die Aufnahme läuft, der Text wird direkt nach dem Beenden erkannt.' : live.prep === 'loading' ? 'Der Text erscheint, sobald die Spracherkennung bereit ist. Bis dahin wird alles aufgenommen.' : 'Sobald gesprochen wird, erscheint hier der Text.'}</p>
             : <>{items.map((it, i) => <div key={i} className={`tr-para ${it.marked ? 'marked' : ''}`}><time>{timeOfDay(live.startedAt, it.start)}</time><p>{it.text}{i === items.length - 1 && !live.volatile && !paused && <span className="tr-caret" />}</p></div>)}
               {live.volatile && <div className="tr-para"><time>{items.length ? '' : timeOfDay(live.startedAt, live.duration)}</time><p><span className="tr-volatile">{live.volatile}</span>{!paused && <span className="tr-caret" />}</p></div>}</>}
       </div>
@@ -203,7 +211,7 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
         <div className="tr-future" />
       </div>
       <div className="tr-controls">
-        <button className={`tr-toggle ${follow ? 'on' : ''}`} role="switch" aria-checked={follow} onClick={() => { setFollow(!follow); remember('hs-tr-follow', follow ? '0' : '1'); }}>Text mitlesen<span className="tr-switch" /></button>
+        {live.prep === 'off' ? <span className="tr-toggle-gap" /> : <button className={`tr-toggle ${follow ? 'on' : ''}`} role="switch" aria-checked={follow} onClick={() => { setFollow(!follow); remember('hs-tr-follow', follow ? '0' : '1'); }}>Text mitlesen<span className="tr-switch" /></button>}
         <div className="tr-buttons">
           {paused ? <button className="tr-round outline" onClick={p.onResume} disabled={!!p.busy} aria-label="Fortsetzen" title="Fortsetzen"><Play size={24} fill="currentColor" /></button>
             : <button className="tr-round outline" onClick={p.onPause} disabled={!!p.busy} aria-label="Pausieren" title="Pausieren"><Pause size={24} fill="currentColor" /></button>}
@@ -240,23 +248,23 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
       <main className="tr-text">
         <div className="tr-doc">
           <div className="tr-doc-head"><h1>Transkript · {shortDate(l)}</h1><span>{timeOfDay(l.startedAt, 0)}{end ? `–${end}` : ''} · {clock(l.duration)} · {empty ? 'noch kein Text' : `${items.length === 1 ? "1 Absatz" : `${items.length} Absätze`}`}{l.markers.length ? ` · ${l.markers.length} markiert` : ''}{l.accurate ? ' · genau erkannt' : ''}</span></div>
-          {(empty || l.missedText) && canAudio && !l.accurate && <p className="tr-hidden">{empty ? 'Während der Aufnahme konnte noch kein Text erkannt werden.' : 'Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.'} Tippe rechts auf „Genau erkennen“.</p>}
+          {p.busy === 'Text wird erkannt …' ? <p className="tr-hidden">Der Text wird gerade aus der Aufnahme erkannt. Das dauert meist nur wenige Sekunden.</p> : (empty || l.missedText) && canAudio && !l.accurate && <p className="tr-hidden">{empty ? 'Während der Aufnahme konnte noch kein Text erkannt werden.' : 'Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.'} Tippe rechts auf „Genau erkennen“.</p>}
           {items.map((it, i) => <div key={i} className={`tr-para ${it.marked ? 'marked' : ''}`}><time>{timeOfDay(l.startedAt, it.start)}</time><p>{it.text}</p></div>)}
         </div>
       </main>
       <aside className="tr-aside">
-        {canAudio && <section className="tr-card">
+        <section className={`tr-card ${canAudio ? '' : 'no-audio'}`}>
           <h3>Text verbessern</h3>
-          <p className="tr-state">{l.accurate ? <><Check size={15} />Mit dem großen Sprachmodell erkannt</> : 'Jetzt: schnelle Erkennung während der Aufnahme'}</p>
+          <p className="tr-state">{!canAudio ? 'Tonaufnahme gelöscht: Der Text kann nicht mehr neu erkannt werden.' : l.accurate ? <><Check size={15} />Mit dem großen Sprachmodell erkannt</> : empty ? 'Noch kein Text erkannt' : 'Jetzt: schnelle Erkennung des iPads'}</p>
           {p.accurate ? <div className="tr-progress" role="status">
             <strong>{{ download: 'Sprachmodell wird geladen', load: 'Sprachmodell wird vorbereitet', transcribe: 'Wird genau erkannt', done: 'Fertig' }[p.accurate.phase] || 'Wird genau erkannt'}{p.accurate.phase !== 'load' ? ` · ${Math.round(p.accurate.progress * 100)} %` : ' …'}</strong>
             <span className="tr-bar"><i style={{ width: `${p.accurate.phase === 'load' ? 100 : Math.max(3, p.accurate.progress * 100)}%` }} className={p.accurate.phase === 'load' ? 'busy' : ''} /></span>
             <small>{p.accurate.phase === 'download' ? 'Nur beim ersten Mal. Danach geht es ohne Internet.' : p.accurate.phase === 'load' ? 'Beim ersten Mal kann das ein paar Minuten dauern.' : 'Lass die App dabei geöffnet.'}</small>
           </div> : <div className="tr-choices">
-            <button className="tr-redo strong" onClick={p.onWhisper} disabled={!!p.busy}><Sparkles size={17} /><span><strong>Genau erkennen</strong><small>Am genauesten, dauert einige Minuten</small></span></button>
-            <button className="tr-redo strong" onClick={p.onAudio} disabled={!!p.busy}><RotateCw size={17} /><span><strong>Schnell neu erkennen</strong><small>In wenigen Sekunden</small></span></button>
+            <button className="tr-redo strong" onClick={p.onWhisper} disabled={!!p.busy || !canAudio}><Sparkles size={17} /><span><strong>Genau erkennen</strong><small>Am genauesten, dauert einige Minuten</small></span></button>
+            <button className="tr-redo strong" onClick={p.onAudio} disabled={!!p.busy || !canAudio}><RotateCw size={17} /><span><strong>Schnell neu erkennen</strong><small>In wenigen Sekunden</small></span></button>
           </div>}
-        </section>}
+        </section>
         <details className="tr-more">
           <summary><span>Beim Übernehmen</span><small>{[times && 'Uhrzeiten', marks && '„Wichtig:“'].filter(Boolean).join(' · ') || 'nur Text'}</small><ChevronDown size={18} /></summary>
           <div className="tr-more-body tr-rows">
@@ -300,7 +308,7 @@ export function LiveBanner({ live, onOpen }: { live: Lecture; onOpen: () => void
       <span className="tr-banner-dot"><span className="tr-rec-dot" /></span>
       <span className="tr-banner-text">
         <span><strong>{paused ? 'Transkription pausiert' : 'Transkription läuft'}</strong><b>{clock(shown)}</b>{meta && <small>{meta}</small>}</span>
-        <em>{flash ? 'Stelle als wichtig markiert' : words || (live.prep === 'loading' ? 'Spracherkennung wird vorbereitet, der Ton wird schon aufgenommen.' : 'Wartet auf Sprache …')}</em>
+        <em>{flash ? 'Stelle als wichtig markiert' : words || (live.prep === 'off' ? 'Nimmt auf · Live-Text aus, der Text kommt nach dem Beenden' : live.prep === 'loading' ? 'Spracherkennung wird vorbereitet, der Ton wird schon aufgenommen.' : 'Wartet auf Sprache …')}</em>
       </span>
       <span className="tr-banner-wave" aria-hidden="true">{levels.map((v, i) => <i key={i} style={{ height: `${Math.round(4 + v * 24)}px` }} />)}</span>
     </button>

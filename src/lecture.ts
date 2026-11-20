@@ -8,7 +8,7 @@ export type Lecture = {
   state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string; room?: Room; subject?: string;
   duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean; audioMB?: number;
   /** Speech recognition: being prepared (first time: language download), ready, or not possible. */
-  prep?: 'idle' | 'loading' | 'ready' | 'unavailable'; progress?: number; level?: number; missedText?: boolean;
+  prep?: 'idle' | 'loading' | 'ready' | 'unavailable' | 'off'; progress?: number; level?: number; missedText?: boolean;
   /** Recognised again with the large Whisper model („Genau erkennen“). */
   accurate?: boolean;
 };
@@ -25,7 +25,8 @@ export type Availability = { available: boolean; engine: 'analyzer' | 'classic' 
 type Plugin = {
   availability(o: { locale: string }): Promise<Availability>;
   requestAccess(): Promise<{ microphone: boolean; speech: boolean }>;
-  start(o: { locale: string; room: Room; subject: string; terms: string[] }): Promise<Lecture>;
+  start(o: { locale: string; room: Room; subject: string; terms: string[]; live?: boolean }): Promise<Lecture>;
+  power(): Promise<{ level: number; charging: boolean; lowPower: boolean }>;
   pause(): Promise<Lecture>;
   resume(): Promise<Lecture>;
   mark(): Promise<{ t: number }>;

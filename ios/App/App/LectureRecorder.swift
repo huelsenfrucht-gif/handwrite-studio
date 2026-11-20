@@ -29,6 +29,7 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "transcribeAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "accurateStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "power", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "transcribeAccurate", returnType: CAPPluginReturnPromise),
     ]
 
@@ -58,8 +59,9 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         let locale = call.getString("locale") ?? "de-DE"
         let room = call.getString("room") ?? "near", subject = call.getString("subject") ?? "general"
         let terms = (call.getArray("terms") as? [String] ?? []).prefix(100).map { String($0.prefix(60)) }
+        let live = call.getBool("live") ?? true
         Task {
-            do { call.resolve(try await session.start(locale: locale, room: room, subject: subject, terms: Array(terms))) }
+            do { call.resolve(try await session.start(locale: locale, room: room, subject: subject, terms: Array(terms), live: live)) }
             catch { call.reject(error.localizedDescription) }
         }
     }
@@ -87,6 +89,15 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func accurateStatus(_ call: CAPPluginCall) { call.resolve(AccurateRecognizer.shared.status()) }
+
+    /// Battery state, so the slow, power-hungry recognition can suggest the charger first.
+    @objc func power(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let d = UIDevice.current; d.isBatteryMonitoringEnabled = true
+            let charging = d.batteryState == .charging || d.batteryState == .full
+            call.resolve(["level": d.batteryLevel < 0 ? 1 : Double(d.batteryLevel), "charging": charging || d.batteryState == .unknown, "lowPower": ProcessInfo.processInfo.isLowPowerModeEnabled])
+        }
+    }
 
     /// Recognises a saved recording again with a large Whisper model (downloaded once).
     @objc func transcribeAccurate(_ call: CAPPluginCall) {
@@ -381,20 +392,21 @@ final class LectureSession {
 
     /// Recording starts at once; speech recognition (and a first-time language download)
     /// is prepared alongside. Audio recorded meanwhile is handed over as soon as it is ready.
-    func start(locale: String, room: String = "near", subject: String = "general", terms: [String] = []) async throws -> [String: Any] {
+    func start(locale: String, room: String = "near", subject: String = "general", terms: [String] = [], live: Bool = true) async throws -> [String: Any] {
         log("start(\(locale)) aufgerufen, läuft schon: \(id != nil)")
         if id != nil { return snapshot() } // already running: show it instead of failing
         guard AVAudioSession.sharedInstance().recordPermission == .granted, SFSpeechRecognizer.authorizationStatus() == .authorized else { throw LectureError.noAccess }
         let newId = "lesson-\(Int(Date().timeIntervalSince1970))"
         queue.sync {
             id = newId; self.locale = locale; self.room = room; self.subject = subject; self.terms = terms; voice = VoiceLift(room: room); startedAt = Date(); passages = []; markers = []; volatile = ""; recorded = 0; pauseReason = ""
-            prep = "loading"; prepProgress = 0; pending = []; pendingSeconds = 0; missedText = false; transcriber = nil
+            prep = live ? "loading" : "off"; prepProgress = 0; pending = []; pendingSeconds = 0; missedText = false; transcriber = nil
         }
         do { try configureAudioSession(); try startEngine() }
         catch { queue.sync { id = nil; state = "idle"; prep = "idle" }; file = nil; LectureStore.remove(id: newId); throw error }
         observe()
         changed(persist: true)
-        prepareTranscriber(locale: locale, terms: terms, for: newId)
+        // Without live text only the sound is recorded (saves battery); the text is recognised afterwards.
+        if live { prepareTranscriber(locale: locale, terms: terms, for: newId) } else { log("Live-Text aus: nur Aufnahme") }
         return snapshot()
     }
 
@@ -684,9 +696,15 @@ final class AccurateRecognizer {
         defer { poll.cancel() }
         log("Genau erkennen: \(variant), Sprache \(language)")
         let results = try await kit.transcribe(audioPath: audio.path, decodeOptions: options)
+        // Whisper sometimes "hears" sentences in silence or noise. Drop segments the model itself
+        // was unsure about, and those where the recording is (almost) silent.
+        let loudness = SegmentLoudness(url: audio)
         let passages = results.flatMap { $0.segments }.compactMap { seg -> [String: Any]? in
             let text = seg.text.replacingOccurrences(of: "<\\|[^|]*\\|>", with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? nil : ["start": Double(seg.start), "end": Double(seg.end), "text": text]
+            let rms = loudness?.rms(from: Double(seg.start), to: Double(seg.end)) ?? 1
+            let made = seg.noSpeechProb > 0.5 || seg.avgLogprob < -1.0 || seg.compressionRatio > 2.4 || rms < (loudness?.silence ?? 0)
+            log(String(format: "Abschnitt %.1f–%.1f s: noSpeech %.2f, logprob %.2f, ratio %.2f, Pegel %.4f%@", seg.start, seg.end, seg.noSpeechProb, seg.avgLogprob, seg.compressionRatio, rms, made ? " → verworfen" : ""))
+            return text.isEmpty || made ? nil : ["start": Double(seg.start), "end": Double(seg.end), "text": text]
         }
         guard !passages.isEmpty else { throw LectureError.unavailable("In der Tonaufnahme wurde keine Sprache gefunden.") }
         data["passages"] = passages
@@ -695,20 +713,34 @@ final class AccurateRecognizer {
         data["state"] = "stopped"
         LectureStore.save(data, id: id)
         report("done", 1)
+        // Give the memory back right away (about 1 GB); the model loads again from the iPad next time.
+        await kit.unloadModels(); self.kit = nil
         return data
     }
 
     private func prepare(report: @escaping (String, Double) -> Void) async throws -> WhisperKit {
         if let kit { return kit }
         let name = variant
-        let folder: URL
-        do {
-            report("download", 0)
-            folder = try await WhisperKit.download(variant: name, downloadBase: base) { progress in report("download", progress.fractionCompleted) }
-        } catch {
-            throw LectureError.unavailable("Das Sprachmodell konnte nicht geladen werden. Für den einmaligen Download (ca. 0,6 GB) braucht das iPad Internet.")
+        var folder: URL
+        // Already on the iPad: use it directly, without asking the server (works offline, e.g. at school).
+        let folderKey = "whisperFolder.\(name)"
+        let standard = base.appendingPathComponent("models/argmaxinc/whisperkit-coreml/\(name)")
+        if FileManager.default.fileExists(atPath: marker.path), let saved = UserDefaults.standard.string(forKey: folderKey),
+           FileManager.default.fileExists(atPath: base.appendingPathComponent(saved).path) {
+            folder = base.appendingPathComponent(saved)
+        } else if FileManager.default.fileExists(atPath: marker.path), FileManager.default.fileExists(atPath: standard.appendingPathComponent("AudioEncoder.mlmodelc").path) {
+            folder = standard
+        } else {
+            do {
+                report("download", 0)
+                folder = try await WhisperKit.download(variant: name, downloadBase: base) { progress in report("download", progress.fractionCompleted) }
+            } catch {
+                throw LectureError.unavailable("Das Sprachmodell konnte nicht geladen werden. Für den einmaligen Download (ca. 0,6 GB) braucht das iPad Internet.")
+            }
+            FileManager.default.createFile(atPath: marker.path, contents: Data())
+            // Remember where it is, relative to the (stable) app folder.
+            if folder.path.hasPrefix(base.path) { UserDefaults.standard.set(String(folder.path.dropFirst(base.path.count + 1)), forKey: folderKey) }
         }
-        FileManager.default.createFile(atPath: marker.path, contents: Data())
         // Compiling the model for this iPad takes a while the first time only.
         report("load", 0)
         // The Neural Engine is fastest, but compiling the large model for it can need more memory
@@ -737,5 +769,37 @@ final class AccurateRecognizer {
         }
         self.kit = kit
         return kit
+    }
+}
+
+
+/// Loudness of parts of a recording, to tell speech from silence (catches made-up Whisper text).
+final class SegmentLoudness {
+    private let file: AVAudioFile
+    /// Below this level a part counts as silent (relative to the loud parts of this recording).
+    let silence: Float
+    init?(url: URL) {
+        guard let f = try? AVAudioFile(forReading: url) else { return nil }
+        file = f
+        // Sample the recording in 1-second blocks (at most 600 spread over the file) and take the loud end as reference.
+        let rate = f.processingFormat.sampleRate, total = Double(f.length) / rate
+        let step = max(1, total / 600)
+        var levels: [Float] = []
+        var t = 0.0
+        while t < total { if let v = SegmentLoudness.read(f, from: t, to: min(total, t + 1)) { levels.append(v) }; t += step }
+        levels.sort()
+        let loud = levels.isEmpty ? 0 : levels[Int(Double(levels.count - 1) * 0.9)]
+        silence = loud * 0.08
+    }
+    func rms(from: Double, to: Double) -> Float? { SegmentLoudness.read(file, from: from, to: max(to, from + 0.2)) }
+    private static func read(_ f: AVAudioFile, from: Double, to: Double) -> Float? {
+        let rate = f.processingFormat.sampleRate
+        let start = AVAudioFramePosition(from * rate), count = AVAudioFrameCount(max(1, min(Double(f.length - start), (to - from) * rate)))
+        guard start >= 0, start < f.length, let buf = AVAudioPCMBuffer(pcmFormat: f.processingFormat, frameCapacity: count) else { return nil }
+        f.framePosition = start
+        guard (try? f.read(into: buf, frameCount: count)) != nil, let ch = buf.floatChannelData, buf.frameLength > 0 else { return nil }
+        var sum: Float = 0; let n = Int(buf.frameLength)
+        for i in 0..<n { let v = ch[0][i]; sum += v * v }
+        return (sum / Float(n)).squareRoot()
     }
 }
