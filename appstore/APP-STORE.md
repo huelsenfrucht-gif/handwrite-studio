@@ -6,13 +6,11 @@ Alles in diesem Ordner ist fertig vorbereitet. Was nur du machen kannst, steht i
 
 ## Teil A – Was du selbst erledigen musst
 
-### 1. Apple Developer Program (99 € / Jahr)
-Mit dem kostenlosen „Personal Team“ kann man **nicht** in den App Store hochladen.
-1. https://developer.apple.com/programs/enroll/ → mit deiner Apple-ID anmelden und als **Einzelperson** registrieren.
-2. Die Freischaltung dauert meist 1–2 Tage.
-3. Danach in Xcode: **Settings → Accounts** → dein Team erscheint als „(Individual)“. Notiere die neue **Team-ID** und sag sie mir – ich trage sie ein (aktuell steht dort noch das Personal Team `HP6Q78GUA5`).
-
-> Hinweis: Unter 18? Dann muss ein Erziehungsberechtigter das Konto anlegen und die Verträge annehmen.
+### 1. Apple Developer Program (99 € / Jahr) – als Organisation
+Anbieter der App ist die **pvh debt capital advisory GmbH** (siehe Impressum). Damit im App Store die GmbH als Anbieter erscheint und zum Impressum passt, das Konto **als Organisation** anlegen, nicht als Einzelperson.
+1. Vorher eine **D-U-N-S-Nummer** für die GmbH besorgen (kostenlos, über https://developer.apple.com/enroll/duns-lookup/ – dauert einige Tage, falls die Firma noch keine hat).
+2. https://developer.apple.com/programs/enroll/ → als **Organisation** registrieren (Firmenname genau wie im Handelsregister, D-U-N-S-Nummer, Firmen-Website, rechtlich vertretungsberechtigte Person: Botho v. Hülsen).
+3. Danach in Xcode: **Settings → Accounts** → das Firmen-Team erscheint. Die **Team-ID** an Claude/Codex geben – sie wird im Projekt eingetragen (aktuell steht dort noch das persönliche Team).
 
 ### 2. AdMob (sonst verdienst du nichts)
 1. https://admob.google.com → App hinzufügen → iOS → „noch nicht im App Store“.
@@ -21,10 +19,22 @@ Mit dem kostenlosen „Personal Team“ kann man **nicht** in den App Store hoch
    Ich trage sie in `src/nativeAds.ts` und `ios/App/App/Info.plist` ein. Solange dort Googles Test-IDs stehen, zeigt die App nur Testwerbung.
 4. Nach der Veröffentlichung in AdMob die App mit dem App-Store-Eintrag verknüpfen und unter **Datenschutz & Mitteilungen** die DSGVO-Nachricht (Einwilligung) und die IDFA-Erklärung veröffentlichen.
 
-### 3. Datenschutzerklärung ausfüllen
-In `public/datenschutz.html` und `public/support.html` stehen Platzhalter: **[Vor- und Nachname]**, **[Adresse]**, **[E-Mail-Adresse]**. Die müssen ausgefüllt werden (Pflicht laut DSGVO und Apple). Schick mir die Angaben oder trag sie selbst ein – danach ist die Seite automatisch online unter:
+### 3. Rechtstexte – erledigt
+Impressum, Datenschutzerklärung, Nutzungsbedingungen und Hilfe enthalten die echten Angaben der pvh debt capital advisory GmbH (Kontakt: kontakt@handwritten-app.de). In der App sind sie unter **Einstellungen → Hilfe & Rechtliches** (Impressum, Nutzungsbedingungen, Hilfe & Kontakt) und **Einstellungen → Werbung & Datenschutz** (Datenschutzerklärung) verlinkt.
 - Datenschutz: https://huelsenfrucht-gif.github.io/handwrite-studio/datenschutz.html
 - Support: https://huelsenfrucht-gif.github.io/handwrite-studio/support.html
+- Impressum: https://huelsenfrucht-gif.github.io/handwrite-studio/impressum.html
+- Nutzungsbedingungen: https://huelsenfrucht-gif.github.io/handwrite-studio/nutzungsbedingungen.html
+
+**Wichtig:** Die Postfach-Adresse kontakt@handwritten-app.de muss tatsächlich E-Mails empfangen und regelmäßig gelesen werden.
+
+### 4. Eigene Domain www.handwritten-app.de verbinden (empfohlen, vor dem Einreichen)
+Die Rechtstexte nennen www.handwritten-app.de. Die Domain ist registriert, zeigt aber noch nicht auf die Website. So verbinden:
+1. Beim Domain-Anbieter (DNS-Einstellungen von handwritten-app.de):
+   - `www` als **CNAME** auf `huelsenfrucht-gif.github.io`
+   - die Hauptdomain (`@`) mit vier **A-Einträgen**: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+2. Auf GitHub: Repository → **Settings → Pages → Custom domain** `www.handwritten-app.de` eintragen, nach der Prüfung **Enforce HTTPS** anhaken.
+3. Danach Bescheid geben: Dann werden die Links in der App und hier auf https://www.handwritten-app.de/… umgestellt (die alten github.io-Links leiten automatisch weiter).
 
 ---
 
@@ -46,6 +56,16 @@ https://appstoreconnect.apple.com → **Apps → +  → Neue App**
 - **Altersfreigabe:** Fragebogen überall „Nein“ → ergibt 4+. (Wegen Werbung: Werbung ist erlaubt, nur keine Glücksspiel-/Erwachseneninhalte – im AdMob-Konto unter „Blockierungseinstellungen“ sensible Kategorien sperren.)
 - **Datenschutz-URL:** siehe Teil A.3
 - **Support-URL:** siehe Teil A.3
+- **Marketing-URL (optional):** https://huelsenfrucht-gif.github.io/handwrite-studio/
+- **Copyright:** `2026 pvh debt capital advisory GmbH`
+
+### Händlerstatus (EU, Digital Services Act)
+Unter **App Store Connect → Business → Compliance** bzw. beim ersten Einreichen fragt Apple, ob du **Händler** bist. Für die GmbH: **Ja, Händler**. Apple zeigt diese Angaben auf der App-Seite in der EU an:
+- Adresse: Gartenstraße 11, 60594 Frankfurt am Main, Deutschland
+- Telefon: +49 69 13816018
+- E-Mail: kontakt@handwritten-app.de
+
+Apple prüft Telefon und E-Mail mit einem Bestätigungscode.
 
 ### Preise
 Kostenlos, alle Länder (oder nur Deutschland, Österreich, Schweiz).
@@ -113,6 +133,7 @@ Unter **App-Datenschutz → Los geht’s**: „Ja, wir erheben Daten“ (wegen A
 Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem Gerät.
 
 ### App-Review-Informationen
+- **Kontakt für die Prüfung:** Botho v. Hülsen, +49 69 13816018, kontakt@handwritten-app.de
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
@@ -142,15 +163,15 @@ Bei jedem Update: in Xcode unter **App → General** die **Build-Nummer** um 1 e
 ---
 
 ## Was bereits erledigt ist
-- App-Icon 1024 × 1024 im Navy-Design (ohne Transparenz, wie Apple es verlangt)
+- App-Icon 1024 × 1024 im Design „Graphit & Papier“ (ohne Transparenz, wie Apple es verlangt)
 - Nur iPad (die App ist für Apple Pencil gemacht) – damit braucht es nur iPad-Screenshots
 - Datenschutz-Manifest (`PrivacyInfo.xcprivacy`), Tracking-Abfrage, SKAdNetwork-IDs, Kamera-/Foto-Texte
 - Verschlüsselungs-Angabe (`ITSAppUsesNonExemptEncryption = NO`)
-- Datenschutzerklärung und Support-Seite (Platzhalter ausfüllen!)
-- Datenschutz und Hilfe in den Einstellungen verlinkt
+- Impressum, Datenschutzerklärung, Nutzungsbedingungen und Support-Seite mit echten Angaben
+- Datenschutz, Impressum, Nutzungsbedingungen und Hilfe in den Einstellungen verlinkt
 - Release-Archiv baut fehlerfrei
-- 4 Screenshots in Originalgröße
+- 5 Screenshots in Originalgröße
 
 
 > Fremde App-Namen (z. B. Goodnotes) gehören laut Apple-Richtlinie 2.3.7 nicht in Keywords oder Untertitel. In der Beschreibung nur als Kompatibilitätshinweis.
-> Impressum: https://huelsenfrucht-gif.github.io/handwrite-studio/impressum.html (Platzhalter ausfüllen!)
+> Impressum: https://huelsenfrucht-gif.github.io/handwrite-studio/impressum.html

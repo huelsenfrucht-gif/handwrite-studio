@@ -16,11 +16,11 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 ## Verbindliche Produktregeln
 
 1. **100 % kostenlos, nur durch Werbung finanziert** (Google AdMob). Kein Abo, keine In-App-Käufe, keine Bezahlversion.
-2. **Werbung lässt sich nicht abschalten.** An normalen Werbestellen läuft eine kurze Werbung. Beim Erzeugen von mindestens 3 Seiten Handschrift wird in `src/AdChoice.tsx` ein Belohnungsvideo angeboten: „Video ansehen“ oder „Abbrechen“. Das Video startet nur nach ausdrücklicher Wahl; Abbrechen bricht die Aktion ab. Es gibt keine 30 Minuten werbefreie Zeit. Auch Stufe 4/5 wird mit einer kurzen Anzeige freigeschaltet.
+2. **Werbung lässt sich nicht abschalten.** An normalen Werbestellen läuft eine kurze Werbung. Beim Erzeugen von mindestens 3 Seiten Handschrift wird in `src/AdChoice.tsx` ein Belohnungsvideo angeboten: „Video ansehen“ oder „Abbrechen“. Das Video startet nur nach ausdrücklicher Wahl; Abbrechen bricht die Aktion ab. Ist kein Video verfügbar oder kann es nicht starten, folgt automatisch eine kurze Werbung und die Aktion geht weiter. Wer ein gestartetes Video vorzeitig schließt, bekommt keinen Ersatz und muss es erneut versuchen. Es gibt keine 30 Minuten werbefreie Zeit. Auch Stufe 4/5 wird mit einer kurzen Anzeige freigeschaltet.
 3. **Die App braucht eine Internetverbindung** (WLAN oder mobile Daten), damit Werbung geladen werden kann. Ohne Verbindung zeigt `src/OfflineGate.tsx` eine Sperre. Eine **laufende Aufnahme wird nie abgebrochen**, die Sperre kommt erst danach.
 4. **Inhalte bleiben auf dem iPad:** Texte, Handschriften, Fotos und Aufnahmen werden nur auf dem Gerät verarbeitet, nichts wird hochgeladen. Einzige Downloads: Werbung (und Apples eigene Sprachpakete über das System).
 5. **Keine Markennamen in der Oberfläche**, außer wo technisch nötig (Dateiformat „.goodnotes“ im Export mit Marken-Hinweis).
-6. Werbung nie mitten beim Schreiben oder Aufnehmen. Werbestellen: vor „In Handschrift verwandeln“ (1–2 Seiten: kurze Werbung, ab 3 Seiten: Belohnungsvideo), vor dem Start einer Transkription, vor einer neuen Handschrift, beim Speichern/Laden einer Sicherung (jeweils kurze Werbung).
+6. Werbung nie mitten beim Schreiben oder Aufnehmen. Werbestellen: vor „In Handschrift verwandeln“ (1–2 Seiten: kurze Werbung, ab 3 Seiten: Belohnungsvideo mit kurzer Werbung als Ersatz, falls kein Video verfügbar ist), vor dem Start einer Transkription, vor einer neuen Handschrift, beim Speichern/Laden einer Sicherung (jeweils kurze Werbung).
 7. Unter 16 (Schalter in den Einstellungen): nur nicht-personalisierte Werbung, keine Tracking-Abfrage.
 8. Design „Graphit & Papier“: Tinte `#1c1d21`, Seitenleiste `#202125`, Papier `#f4f3ef`, Linien `#e2dfd8`/`#cfccc4`, gedämpfter Text `#6e6c66`, Markierung `#f6dc6b`/`#fbf3d2`, Aufnahme-Rot `#e5484d` (nur dafür). Serifen-Überschriften (`--hs-serif`). Neue Farben aus dieser Palette nehmen, keine Blau-/Grüntöne.
 9. Immer im **iPad-Querformat** testen, Hochformat darf nicht kaputtgehen.
@@ -95,7 +95,7 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 - Kleine, gezielte Änderungen; vorhandene Stile und Muster weiterverwenden.
 - Nach Änderungen: `npx tsc --noEmit -p .` und `npm test`, Oberfläche im Simulator (Querformat) ansehen.
 - Commits auf Deutsch, aussagekräftig. `.claude/launch.json` nie committen (lokale Pfade).
-- Rechtstexte (Impressum, Datenschutz) enthalten noch Platzhalter für die echten Betreiberangaben.
+- Rechtstexte sind vollständig: Anbieter ist die **pvh debt capital advisory GmbH** (Frankfurt am Main), Kontakt `kontakt@handwritten-app.de`. Impressum, Datenschutz, Nutzungsbedingungen und Hilfe liegen in `site/` und sind in der App unter Einstellungen verlinkt (`SITE` in `src/SettingsSheet.tsx`). Inhaltliche Änderungen an diesen Texten nur nach Rücksprache.
 
 ## Wie der Projektinhaber arbeitet
 
@@ -121,7 +121,7 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 ## Native Schnittstellen (Capacitor-Plugins)
 
 - `LectureRecorder` (`ios/App/App/LectureRecorder.swift`, TS-Typen in `src/lecture.ts`):
-  `availability`, `requestAccess`, `start({locale, room, subject, terms, live})`, `pause`, `resume`, `mark`, `stop`, `current`, `saved`, `transcribeAudio` (ganze Aufnahme neu erkennen, Apple), `remove({id, audioOnly})`. Live-Updates per Event.
+  `availability`, `requestAccess`, `start({locale, room, subject, terms, live})`, `pause`, `resume`, `mark`, `stop`, `current`, `saved`, `transcribeAudio` (ganze Aufnahme neu erkennen, Apple), `setTopic({id, topic})` (Thema im gespeicherten Transkript), `remove({id, audioOnly})`. Live-Updates per Event.
 - `HandwriteNative` (`HandwriteNativePlugin.swift`, `src/native.ts`): `recognizeText`, `recognizeDocument` (Vision), `takeSharedImages` (Share-Extension).
 - Community-Plugins: `@capacitor-community/admob`, `@capacitor/network`, `@capacitor/filesystem`, `@capacitor/share`.
 
@@ -150,7 +150,8 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 ## Offene Punkte
 
 - Eigene AdMob-IDs eintragen (aktuell Test-Anzeigen).
-- Impressum/Datenschutz mit echten Angaben füllen.
+- Domain www.handwritten-app.de mit GitHub Pages verbinden, danach `SITE` in der App und die URLs in `appstore/APP-STORE.md` umstellen.
+- Apple-Entwicklerkonto als Organisation (D-U-N-S) anlegen, Händlerstatus (EU) angeben.
 - App-Store-Veröffentlichung (Texte und Screenshots in `appstore/`, Rechtsprüfung in `appstore/RECHTSPRUEFUNG.md`).
 - Transkribieren im echten Klassenraum weiter testen (Mikrofon über die Rückseite).
 - Internet-Sperre im Flugmodus auf dem echten iPad prüfen.

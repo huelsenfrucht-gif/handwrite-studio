@@ -3,7 +3,7 @@ import { AlertTriangle, AudioLines, ChevronDown, ChevronLeft, ChevronRight, Down
 import { download, safeName } from './export';
 import { adsAvailable } from './nativeAds';
 import { adBreak } from './AdChoice';
-import { clock, LANGUAGES, LectureRecorder, lectureSupported, lectureText, lectureTitle, paragraphs, ROOMS, timeOfDay, type Availability, type Lecture, type Room } from './lecture';
+import { clock, LANGUAGES, LectureRecorder, lectureDocumentTitle, lectureSupported, lectureText, lectureTitle, paragraphs, ROOMS, timeOfDay, type Availability, type Lecture, type Room } from './lecture';
 import { SUBJECTS, subjectTerms } from './subjects';
 import { getLang, locale as uiLocale, t } from './i18n';
 
@@ -96,25 +96,26 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
     // Live text was off (or not ready): recognise the recording now, quickly with the iPad's own recogniser.
     if (done.id && done.hasAudio !== false && (!done.passages.length || done.missedText)) { setBusy(t('Text wird erkannt …')); try { setReview(await LectureRecorder.transcribeAudio({ id: done.id })); } catch { /* keep the recording; the buttons can retry */ } }
   });
+  const persistTopic = async (l: Lecture) => { if (l.id) await LectureRecorder.setTopic({ id: l.id, topic: l.topic || '' }); };
   const toDocument = (l: Lecture, opts: { times: boolean; marks: boolean }) => run(t('Wird übernommen …'), async () => {
-    onDocument(lectureTitle(l), lectureText(l, opts));
+    onDocument(lectureDocumentTitle(l), lectureText(l, opts));
     if (l.id) await LectureRecorder.remove({ id: l.id }).catch(() => undefined);
   });
   const discard = (l: Lecture) => { if (!l.id || !confirm(t('Dieses Transkript und die Tonaufnahme endgültig löschen?'))) return; void run('', async () => { await LectureRecorder.remove({ id: l.id! }); setReview(r => r?.id === l.id ? null : r); await refreshSaved(); }); };
-  const exportText = (l: Lecture, opts: { times: boolean; marks: boolean }) => run(t('Wird exportiert …'), async () => { await download(lectureText(l, opts), `${safeName(lectureTitle(l))}.txt`, 'text/plain'); exported.current = l.id || null; });
+  const exportText = (l: Lecture, opts: { times: boolean; marks: boolean }) => run(t('Wird exportiert …'), async () => { await persistTopic(l); await download(lectureText(l, opts), `${safeName(lectureDocumentTitle(l))}.txt`, 'text/plain'); exported.current = l.id || null; });
   // Everything is already stored on the iPad; leaving keeps the transcript for later.
   // After an export the recording is no longer needed: it goes when the transcript is left (it can be large).
   const exported = useRef<string | null>(null);
   const dropAudio = async (l: Lecture) => { if (l.id && l.hasAudio !== false) await LectureRecorder.remove({ id: l.id, audioOnly: true }).catch(() => undefined); };
-  const keep = () => { if (review && exported.current === review.id) void dropAudio(review); exported.current = null; onClose(); notify?.(t('Transkript gespeichert. Du findest es unter „Transkribieren“.')); };
+  const keep = () => { void run(t('Wird gespeichert …'), async () => { if (review) { await persistTopic(review); if (exported.current === review.id) await dropAudio(review); } exported.current = null; onClose(); notify?.(t('Transkript gespeichert. Du findest es unter „Transkribieren“.')); }); };
   const deleteAudio = (l: Lecture) => { if (!confirm(t('Tonaufnahme löschen? Der Text bleibt erhalten, kann danach aber nicht mehr neu erkannt werden.'))) return; void run('', async () => { await LectureRecorder.remove({ id: l.id!, audioOnly: true }); setReview({ ...l, hasAudio: false, audioMB: 0 }); notify?.(t('Tonaufnahme gelöscht.')); }); };
-  const fromAudio = (l: Lecture) => run(t('Wird neu erkannt …'), async () => { if (l.id && l.hasAudio !== false) setReview(await LectureRecorder.transcribeAudio({ id: l.id })); });
+  const fromAudio = (l: Lecture) => run(t('Wird neu erkannt …'), async () => { if (l.id && l.hasAudio !== false) { await persistTopic(l); setReview(await LectureRecorder.transcribeAudio({ id: l.id })); } });
 
   const err = error && <p className="tr-error" role="alert"><AlertTriangle size={16} />{error}</p>;
   if (native && live) return <Live live={live} busy={busy} error={err} onBack={onClose}
     onPause={() => run('', async () => setLive(await LectureRecorder.pause()))} onResume={() => run('', async () => setLive(await LectureRecorder.resume()))}
     onMark={() => run('', async () => { await LectureRecorder.mark(); setLive(await LectureRecorder.current()); })} onStop={stop} />;
-  if (native && review) return <Review lecture={review} busy={busy} error={err} onBack={keep} onSave={keep} onExport={o => exportText(review, o)} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} onDeleteAudio={() => deleteAudio(review)} />;
+  if (native && review) return <Review lecture={review} busy={busy} error={err} onTopicChange={topic => setReview(r => r ? { ...r, topic } : r)} onBack={keep} onSave={keep} onExport={o => exportText(review, o)} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} onDeleteAudio={() => deleteAudio(review)} />;
 
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <section className="modal lv-sheet tr-sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
@@ -158,7 +159,7 @@ function Intro(p: { liveText: boolean; setLiveText: (v: boolean) => void; avail:
       <summary><span>{t('Gespeicherte Transkripte')}</span><small>{p.saved.length}</small><ChevronDown size={18} /></summary>
       <div className="tr-saved">{p.saved.map(l => <div key={l.id} className="tr-saved-row">
         <span className="tr-saved-icon"><AudioLines size={16} /></span>
-        <button onClick={() => p.onOpen(l)}><strong>{lectureTitle(l)}</strong><small>{clock(l.duration)} · {l.passages.length ? (paragraphs(l).length === 1 ? t('1 Absatz') : t('{n} Absätze', { n: paragraphs(l).length })) : t('nur Ton')}{l.hasAudio ? ((l.audioMB || 0) >= 1 ? ` · Ton ${Math.round(l.audioMB!)} MB` : t(' · mit Ton')) : ''}</small></button>
+        <button onClick={() => p.onOpen(l)}><strong>{l.topic?.trim() || lectureTitle(l)}</strong><small>{l.topic?.trim() ? `${lectureTitle(l)} · ` : ''}{clock(l.duration)} · {l.passages.length ? (paragraphs(l).length === 1 ? t('1 Absatz') : t('{n} Absätze', { n: paragraphs(l).length })) : t('nur Ton')}{l.hasAudio ? ((l.audioMB || 0) >= 1 ? ` · Ton ${Math.round(l.audioMB!)} MB` : t(' · mit Ton')) : ''}</small></button>
         <button className="tr-round small" aria-label={t('Transkript löschen')} onClick={() => p.onDelete(l)}><Trash2 size={16} /></button>
       </div>)}</div>
     </details>}
@@ -216,7 +217,7 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
   </div>;
 }
 
-function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: () => void; onSave: () => void; onExport: (o: { times: boolean; marks: boolean }) => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void; onDeleteAudio: () => void }) {
+function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onTopicChange: (topic: string) => void; onBack: () => void; onSave: () => void; onExport: (o: { times: boolean; marks: boolean }) => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void; onDeleteAudio: () => void }) {
   const l = p.lecture, items = paragraphs(l), empty = !items.length, canAudio = l.hasAudio !== false;
   const [times, setTimes] = useState(false), [marks, setMarks] = useState(true), [next, setNext] = useState(false);
   useEffect(() => { if (!next) return; const close = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest('.tr-next')) setNext(false); }; document.addEventListener('pointerdown', close); return () => document.removeEventListener('pointerdown', close); }, [next]);
@@ -244,6 +245,11 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
         </div>
       </main>
       <aside className="tr-aside">
+        <section className="tr-card tr-topic-card">
+          <label htmlFor="tr-topic">{t('Thema')}</label>
+          <input id="tr-topic" type="text" maxLength={120} value={l.topic || ''} onChange={e => p.onTopicChange(e.target.value)} placeholder={t('z. B. Die Französische Revolution')} />
+          <small>{t('Das Thema steht im gespeicherten Transkript und wird in Handschrift übernommen.')}</small>
+        </section>
         <section className={`tr-card ${canAudio ? '' : 'no-audio'}`}>
           <h3>{t('Text verbessern')}</h3>
           <p className="tr-state">{!canAudio ? t('Tonaufnahme gelöscht: Der Text kann nicht mehr neu erkannt werden.') : empty ? t('Noch kein Text erkannt') : t('Erkannt mit der Spracherkennung des iPads')}</p>

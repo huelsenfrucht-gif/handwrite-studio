@@ -18,7 +18,7 @@ Bewertung je Punkt: **✅ Umgesetzt und geprüft** · **🟡 Umgesetzt, weitere 
 | 4 | Rewarded Video | Ab 4 Seiten **nur** Video oder Abbrechen – Video faktisch Pflicht | Gleichwertige Wahl: „Kurze Werbung“ **oder** „Video ansehen → 30 Min. werbefrei“ (echte Belohnung, gutgeschrieben erst beim Reward-Event) | 🟡 |
 | 5 | Jugendliche & Werbung | Keine Altersberücksichtigung | Schalter „Ich bin unter 16“: kein ATT-Prompt, `tagForUnderAgeOfConsent`, nur nicht-personalisierte Werbung; für alle `maxAdContentRating = ParentalGuidance` | 🟡 |
 | 6 | Aussage „Alle Daten bleiben auf dem Gerät“ | In Hilfe, Einstellungen, Datenschutz pauschal | Präzisiert: **Dokumente/Handschriften** bleiben lokal; Werbe-SDK überträgt Geräte-/Nutzungsdaten an Google | ✅ |
-| 7 | Impressum | Fehlte | `public/impressum.html` mit **Platzhaltern** (keine erfundenen Daten), in Einstellungen verlinkt | 🔴 Angaben fehlen |
+| 7 | Impressum | Fehlte | `site/impressum.html` mit den Angaben der pvh debt capital advisory GmbH (§ 5 DDG, § 18 Abs. 2 MStV), in den Einstellungen verlinkt | ✅ erledigt |
 | 8 | Lizenzhinweise | Keine Attribution in App/Website (CC BY / CC BY-SA-Daten im OCR-Modell und Lexikon) | `public/lizenzen.html`, in Einstellungen verlinkt | 🟡 |
 | 9 | KI-Ausfüllen | App ruft **keine** KI auf; erzeugt nur einen Prompt zum Kopieren | Hinweis im Dialog: Antworten können falsch sein, Prüfschritt, Lern- statt Täuschungszweck; Datenschutz erklärt, dass Nutzer selbst entscheidet | ✅ |
 | 10 | UI-Nähe zu bekannter Notiz-App | Bibliothek mit Notizbuch-Regal, Titel-Chevron, Desktop-Ordnersymbol | Bibliothek neu: eigene **Karten** (Vorschau oben, Name/Datum, „⋯“-Menü), eigene Ordner-Darstellung (gestapelte Blätter) | 🟡 |
@@ -111,7 +111,9 @@ Netzwerkzugriffe im Web-Code: nur eigene Modelldateien (`/models/…`) und – *
 
 ## 9. Veröffentlichungs-Checkliste
 
-- [ ] Impressum, Datenschutz, Support: Platzhalter ausfüllen
+- [x] Impressum, Datenschutz, Support: echte Angaben eingetragen (pvh debt capital advisory GmbH, kontakt@handwritten-app.de)
+- [ ] Domain www.handwritten-app.de mit der Website verbinden (siehe APP-STORE.md, Teil A.4)
+- [ ] Apple-Entwicklerkonto als Organisation (D-U-N-S) und Händlerstatus (EU) angeben
 - [ ] Apple Developer Program, Team-ID eintragen
 - [ ] AdMob: echte App-/Anzeigen-IDs, UMP-Nachricht + IDFA-Erklärung veröffentlichen, sensible Kategorien blockieren
 - [ ] App-Store-Datenschutzangaben gemäß `APP-STORE.md`

@@ -1068,6 +1068,10 @@ div.tr-field.small small{font-size:13px;font-weight:400;line-height:1.45;color:v
 /* Ergebnis: Seitenleiste mit Karten */
 .tr-aside{gap:14px}
 .tr-card{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--hs-line);border-radius:16px;background:#fff}
+.tr-topic-card label{font-size:14px;font-weight:650;color:var(--hs-ink)}
+.tr-topic-card input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--hs-line);border-radius:10px;background:var(--hs-bg);color:var(--hs-ink);font:inherit;font-size:15px;outline:none}
+.tr-topic-card input:focus{border-color:var(--hs-ink)}
+.tr-topic-card small{font-size:12.5px;line-height:1.4;color:var(--hs-muted)}
 .tr-card h3{margin:0}
 .tr-state{display:flex;align-items:center;gap:6px;margin:0;font-size:13.5px;line-height:1.4;color:var(--hs-muted)}
 .tr-state svg{color:#2f7d4f}

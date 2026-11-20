@@ -26,7 +26,10 @@ describe('legal and ad safeguards', () => {
     for (const f of ['impressum', 'lizenzen', 'datenschutz', 'nutzungsbedingungen']) expect(readFileSync(`site/${f}.html`, 'utf8').length).toBeGreaterThan(500);
     const privacy = readFileSync('site/datenschutz.html', 'utf8');
     expect(privacy).toContain('Werbe-SDK von Google'); expect(privacy).not.toContain('Alle Daten bleiben');
-    expect(readFileSync('site/impressum.html', 'utf8')).toContain('[Vor- und Nachname]');
+    // Real provider details (§ 5 DDG), no placeholders left in any legal page.
+    const imprint = readFileSync('site/impressum.html', 'utf8');
+    for (const must of ['pvh debt capital advisory GmbH', 'Gartenstraße 11', 'HRB 97578', 'kontakt@handwritten-app.de', '§ 18 Abs. 2 MStV']) expect(imprint).toContain(must);
+    for (const f of ['impressum', 'datenschutz', 'nutzungsbedingungen', 'support']) expect(readFileSync(`site/${f}.html`, 'utf8'), f).not.toMatch(/\[(Vor- und Nachname|Adresse|E-Mail-Adresse)\]/);
   });
 });
 

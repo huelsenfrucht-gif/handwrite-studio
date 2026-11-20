@@ -30,12 +30,21 @@ export function AdChoice() {
   useEffect(() => { open = setAsk; return () => { open = null; }; }, []);
   if (!ask) return null;
   const cancel = () => { if (busy) return; setAsk(null); setError(''); ask.done(false); };
-  const watch = async () => { setBusy(true); setError(''); const rewarded = await showRewardedAd(); setBusy(false); if (rewarded) { setAsk(null); ask.done(true); } else setError(t('Das Video konnte nicht geladen werden. Bitte versuche es erneut.')); };
+  const watch = async () => {
+    setBusy(true); setError('');
+    try {
+      const result = await showRewardedAd();
+      if (result === 'unavailable') await showInterstitialAd();
+      if (result === 'rewarded' || result === 'unavailable') { setAsk(null); ask.done(true); }
+      else setError(t('Das Video wurde vorzeitig beendet. Bitte sieh es vollständig an.'));
+    } finally { setBusy(false); }
+  };
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) cancel(); }}>
     <section className="modal reward-ask" role="dialog" aria-modal="true" aria-labelledby="reward-title">
       <div className="reward-icon"><Sparkles size={26} /></div>
       <h2 id="reward-title">{title(ask.reason)}</h2>
       <p>{t('Sieh dir das Video an, um diese Aktion freizuschalten.')}</p>
+      <p>{t('Falls kein Video verfügbar ist, erscheint stattdessen eine kurze Werbung.')}</p>
       <div className="reward-choice">
         <button className="button primary-choice" disabled={busy} onClick={() => void watch()}><strong>{busy ? t('Video wird geladen …') : t('Video ansehen')}</strong><small>{t('Danach geht es direkt weiter')}</small></button>
       </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { clock, lectureText, paragraphs, type Lecture } from '../src/lecture';
+import { clock, lectureDocumentTitle, lectureText, paragraphs, type Lecture } from '../src/lecture';
 
 const lesson = (over: Partial<Lecture> = {}): Lecture => ({
   state: 'stopped', id: 'lesson-1', startedAt: new Date(2026, 10, 19, 10, 23).getTime(), duration: 2700, markers: [],
@@ -27,6 +27,12 @@ describe('lesson transcript', () => {
     expect(plain).toContain('Wichtig: Der dritte Stand');
     expect(plain).not.toContain('[10:');
     expect(lectureText(lesson(), { times: true })).toContain('[10:24] Der dritte Stand');
+  });
+  it('keeps an optional topic in exported text and the handwriting document title', () => {
+    const l = lesson({ topic: '  Die Französische Revolution  ' });
+    expect(lectureText(l, { times: false })).toContain('\n\nThema: Die Französische Revolution\n\nHeute');
+    expect(lectureDocumentTitle(l)).toMatch(/^Die Französische Revolution – Transkript /);
+    expect(lectureText(lesson(), { times: false })).not.toContain('Thema:');
   });
   it('shows durations as mm:ss and h:mm:ss', () => {
     expect(clock(65)).toBe('01:05'); expect(clock(3725)).toBe('1:02:05');

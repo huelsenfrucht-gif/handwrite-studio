@@ -6,7 +6,7 @@ import { locale, t } from './i18n';
 export type Passage = { start: number; end: number; text: string };
 export type LectureState = 'idle' | 'recording' | 'paused' | 'stopped';
 export type Lecture = {
-  state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string; room?: Room; subject?: string;
+  state: LectureState; reason?: string; id?: string; startedAt?: number; locale?: string; room?: Room; subject?: string; topic?: string;
   duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean; audioMB?: number;
   /** Speech recognition: being prepared (first time: language download), ready, or not possible. */
   prep?: 'idle' | 'loading' | 'ready' | 'unavailable' | 'off'; progress?: number; level?: number; missedText?: boolean;
@@ -32,6 +32,7 @@ type Plugin = {
   current(): Promise<Lecture>;
   saved(): Promise<{ lessons: Lecture[] }>;
   transcribeAudio(o: { id: string }): Promise<Lecture>;
+  setTopic(o: { id: string; topic: string }): Promise<{ topic: string }>;
   remove(o: { id: string; audioOnly?: boolean }): Promise<void>;
   addListener(event: 'change', fn: (l: Lecture) => void): Promise<PluginListenerHandle>;
 };
@@ -61,6 +62,10 @@ export function lectureTitle(l: Pick<Lecture, 'startedAt'>) {
   const d = new Date(l.startedAt || Date.now());
   return `${t('Transkript')} ${d.toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+export function lectureDocumentTitle(l: Pick<Lecture, 'startedAt' | 'topic'>) {
+  const topic = l.topic?.trim();
+  return topic ? `${topic} – ${lectureTitle(l)}` : lectureTitle(l);
+}
 
 export type Paragraph = { start: number; text: string; marked: boolean };
 /** Passages grouped into readable paragraphs: a new one after a pause in speech or when it gets long. */
@@ -83,6 +88,7 @@ export function paragraphs(l: Pick<Lecture, 'passages' | 'markers'>): Paragraph[
 export function lectureText(l: Lecture, opts: { times: boolean; marks?: boolean }) {
   const end = l.startedAt ? timeOfDay(l.startedAt, l.duration) : '';
   const head = `${lectureTitle(l)}${end ? `–${end}` : ''}`;
+  const topic = l.topic?.trim();
   const body = paragraphs(l).map(p => `${opts.times ? `[${timeOfDay(l.startedAt, p.start)}] ` : ''}${p.marked && opts.marks !== false ? `${t('Wichtig:')} ` : ''}${p.text}`);
-  return [head, '', ...body.flatMap((b, i) => i ? ['', b] : [b])].join('\n').slice(0, 100000);
+  return [head, ...(topic ? ['', `${t('Thema')}: ${topic}`] : []), '', ...body.flatMap((b, i) => i ? ['', b] : [b])].join('\n').slice(0, 100000);
 }

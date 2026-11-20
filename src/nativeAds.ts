@@ -95,27 +95,34 @@ function prepareRewarded() {
 export const adsAvailable = () => Capacitor.isNativePlatform() || (import.meta.env.DEV && location.search.includes('ads'));
 
 /**
- * Shows a rewarded video after explicit consent and unlocks the requested action
- * only when Google reports the reward.
+ * Distinguishes a missing video from one dismissed before the reward. A missing
+ * video can use a short-ad fallback; dismissing a shown video cannot.
  */
-export async function showRewardedAd(): Promise<boolean> {
-  if (!(await initAds())) return false;
+export type RewardedAdResult = 'rewarded' | 'unavailable' | 'dismissed';
+export async function showRewardedAd(): Promise<RewardedAdResult> {
+  if (!(await initAds())) return 'unavailable';
   if (!rewardedReady) await Promise.race([prepareRewarded(), wait(4000)]);
-  if (!rewardedReady) return false;
-  let rewarded = false;
+  if (!rewardedReady) return 'unavailable';
+  let rewarded = false, shown = false, failed = false;
   try {
     const { AdMob, RewardAdPluginEvents } = await load();
     rewardedReady = false;
     let finish = () => {};
     const closed = new Promise<void>(resolve => { finish = resolve; });
-    const handles = await Promise.all([AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()), AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => finish()), AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { rewarded = true; })]);
-    const reward = await AdMob.showRewardVideoAd();
-    if (reward) rewarded = true;
+    const handles = await Promise.all([
+      AdMob.addListener(RewardAdPluginEvents.Showed, () => { shown = true; }),
+      AdMob.addListener(RewardAdPluginEvents.Dismissed, () => finish()),
+      AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => { failed = true; finish(); }),
+      AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { rewarded = true; }),
+    ]);
+    // The native promise resolves when the reward is earned, while the ad may
+    // still cover the app. Wait for its dismissal before starting the action.
+    void AdMob.showRewardVideoAd().then(() => { rewarded = true; }).catch(() => { failed = true; finish(); });
     await Promise.race([closed, wait(120000)]);
     await Promise.all(handles.map(h => h.remove()));
-  } catch { rewarded = false; }
+  } catch { failed = true; }
   void prepareRewarded();
-  return rewarded;
+  return rewarded ? 'rewarded' : failed || !shown ? 'unavailable' : 'dismissed';
 }
 
 /** Lets people change their ad consent later, as the GDPR requires. */

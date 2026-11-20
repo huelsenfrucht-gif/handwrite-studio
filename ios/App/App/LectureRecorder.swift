@@ -26,6 +26,7 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "current", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "saved", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "transcribeAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setTopic", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
     ]
 
@@ -90,6 +91,14 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    @objc func setTopic(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), var data = LectureStore.load(id) else { call.reject("Das Transkript wurde nicht gefunden."); return }
+        let topic = String((call.getString("topic") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        data["topic"] = topic
+        guard LectureStore.save(data, id: id) else { call.reject("Das Thema konnte nicht gespeichert werden."); return }
+        call.resolve(["topic": topic])
+    }
+
     @objc func remove(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), id != session.id else { call.reject("Diese Aufnahme läuft noch."); return }
         if call.getBool("audioOnly") == true {
@@ -112,9 +121,10 @@ enum LectureStore {
     }
     static func json(_ id: String) -> URL { folder.appendingPathComponent("\(id).json") }
     static func audio(_ id: String) -> URL { folder.appendingPathComponent("\(id).m4a") }
-    static func save(_ data: [String: Any], id: String) {
-        guard let bytes = try? JSONSerialization.data(withJSONObject: data) else { return }
-        try? bytes.write(to: json(id), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    @discardableResult static func save(_ data: [String: Any], id: String) -> Bool {
+        guard let bytes = try? JSONSerialization.data(withJSONObject: data) else { return false }
+        do { try bytes.write(to: json(id), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]); return true }
+        catch { return false }
     }
     static func load(_ id: String) -> [String: Any]? {
         guard let bytes = try? Data(contentsOf: json(id)) else { return nil }

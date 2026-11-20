@@ -35,7 +35,7 @@ export function SettingsSheet(props: {
       <header className="st-head"><h2 id="st-title">{t('Einstellungen')}</h2><button className="st-close" aria-label={t('Einstellungen schließen')} onClick={close}><X size={20} /></button></header>
       <div className="st-body">
       <nav className="st-nav" aria-label={t('Bereiche')}>{sections.map(sec => <button key={sec.id} className={active === sec.id ? 'on' : ''} onClick={() => jump(sec.id)}>{sec.icon}{sec.label}</button>)}
-        <p className="st-nav-foot">{saved ? t('Alles gespeichert') : t('Nicht gespeichert')}<br />Handwritten 1.0</p></nav>
+        <p className="st-nav-foot">{saved ? t('Alles gespeichert') : t('Nicht gespeichert')}<br />Handwritten 1.0<br />{t('Ein Service der pvh debt capital advisory GmbH')}</p></nav>
       <div className="st-scroll" ref={scroller} onScroll={onScroll}>
         <Group id="st-lang" title={t('Sprache')} footer={t('Die App startet dafür kurz neu. Deine Dokumente bleiben unverändert.')}>
           <label className="st-row st-select"><span className="st-icon"><Languages size={18} /></span><span className="st-label">{t('Sprache der App')}</span><select value={getLang()} onChange={e => { setLang(e.target.value as Lang); location.reload(); }}><option value="de">Deutsch</option><option value="en">English</option></select></label>
@@ -72,7 +72,7 @@ export function SettingsSheet(props: {
 
         <Group id="st-help" title={t('Hilfe & Rechtliches')}>
           <Row icon={<CircleHelp size={18} />} label="So funktioniert’s" onClick={props.onHelp} chevron />
-          {!native && <Row icon={<ShieldCheck size={18} />} label={t('Datenschutzerklärung')} onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />}
+          {<Row icon={<ShieldCheck size={18} />} label={t('Datenschutzerklärung')} onClick={() => window.open(`${SITE}datenschutz.html`, '_blank')} chevron />}
           <Row icon={<Mail size={18} />} label={t('Hilfe & Kontakt')} onClick={() => window.open(`${SITE}support.html`, '_blank')} chevron />
           <Row icon={<FileText size={18} />} label={t('Nutzungsbedingungen')} onClick={() => window.open(`${SITE}nutzungsbedingungen.html`, '_blank')} chevron />
           <Row icon={<Info size={18} />} label={t('Impressum')} onClick={() => window.open(`${SITE}impressum.html`, '_blank')} chevron />
@@ -82,7 +82,7 @@ export function SettingsSheet(props: {
           </details>
         </Group>
 
-        <p className="st-about">{saved ? t('Alles gespeichert') : t('Nicht gespeichert')} {t('· Deine Dokumente und Handschriften bleiben auf deinem Gerät')}<br />Handwritten 1.0</p>
+        <p className="st-about">{saved ? t('Alles gespeichert') : t('Nicht gespeichert')} {t('· Deine Dokumente und Handschriften bleiben auf deinem Gerät')}<br />Handwritten 1.0<br />{t('Ein Service der pvh debt capital advisory GmbH')}</p>
       </div>
       </div>
     </section>
