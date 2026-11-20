@@ -116,7 +116,7 @@ Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem 
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
-Die App läuft komplett offline auf dem Gerät, ohne Konto. Zum Testen: „Neues Dokument“ → Text eintippen → „In Handschrift verwandeln“ (nutzt die mitgelieferte Demo-Handschrift). Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Finger oder Apple Pencil schreiben. Werbung (Google AdMob) erscheint beim Umwandeln von Text; ab 4 Seiten kann der Nutzer statt einer kurzen Werbung freiwillig ein Belohnungsvideo wählen (Belohnung: 30 Minuten werbefrei). Bisher stand hier: wird vorher um Zustimmung für ein Belohnungsvideo gebeten.
+Die App benötigt für Werbung eine Internetverbindung; Texte, Handschriften und Aufnahmen bleiben auf dem Gerät. Keine Anmeldung. Zum Testen: „Neues Dokument“ → Text eingeben → „In Handschrift verwandeln“. Eigene Handschrift: „Handschriften“ → Namen eingeben → a–z/A–Z mit Apple Pencil schreiben. Vor normalen Aktionen erscheint eine kurze Anzeige. Ab drei handschriftlichen Seiten wird ein Belohnungsvideo angeboten, das erst nach Tippen auf „Video ansehen“ startet; „Abbrechen“ bricht auch die Aktion ab.
 ```
 
 ---

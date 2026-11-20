@@ -14,7 +14,7 @@ import { answerPrompt, distributeAnswers } from './worksheet';
 import { LibraryShell } from './Library';
 import { SettingsSheet } from './SettingsSheet';
 import { Slider, SliderRow } from './Slider';
-import { adFreeUntil, adsAvailable, initAds, REWARD_FROM_PAGES, showAdPrivacyOptions, showInterstitialAd, showRewardedAd } from './nativeAds';
+import { adsAvailable, initAds, REWARD_FROM_PAGES, showAdPrivacyOptions, showInterstitialAd } from './nativeAds';
 import { Capacitor } from '@capacitor/core';
 import { hasNative, takeSharedImages } from './native';
 import { t as tr, locale as uiLocale, getLang, setLang } from './i18n';
@@ -76,10 +76,8 @@ export default function App(){
  const createProfile=async()=>{if(!(await adBreak({kind:'profile'})))return;const name=profileName.trim()||tr('Meine Handschrift {n}',{n:(library?.profiles.length||0)+1});const p:Profile={id:uid(),name,created:new Date().toISOString(),glyphs:{},words:[]};setLibrary(l=>l?{...l,profiles:[...l.profiles,p]}:l);setProfileName('');setTrain(p.id);};
  const editProfile=(id:string,fn:(p:Profile)=>Profile)=>setLibrary(l=>l?{...l,profiles:l.profiles.map(p=>p.id===id?{...fn(p),updated:new Date().toISOString()}:p)}:l);
  const current=note;
- // Ads come when text is written (not on export): a full-screen ad, at most every two minutes;
- // for long texts (from REWARD_FROM_PAGES pages) a rewarded video the user agrees to first.
- const lastAd=useRef(0);
- const withAd=async(pages:number,run:()=>void)=>{if(!adsAvailable()||Date.now()<adFreeUntil()){run();return;}if(pages>=REWARD_FROM_PAGES){if(await adBreak({kind:'write',pages}))run();return;}await showInterstitialAd();lastAd.current=Date.now();run();};
+ // One or two pages use a short ad; three or more use an explicitly started rewarded video.
+ const withAd=async(pages:number,run:()=>void)=>{if(!adsAvailable()){run();return;}if(pages>=REWARD_FROM_PAGES){if(await adBreak({kind:'write',pages}))run();return;}await showInterstitialAd();run();};
  const generate=async(base?:Note)=>{const note=base||current;if(!note||generateBusy)return;if(!base&&Object.keys(note.edits).length&&!confirm(tr('Neu schreiben setzt deine verschobenen und radierten Buchstaben zurück. Fortfahren?')))return;
   if(profile){const originals=new Set((profile.words||[]).filter(w=>!w.synthetic).map(w=>w.text.toLocaleLowerCase('de-DE'))),newWords=note.text.normalize('NFC').match(/[\p{L}\p{N}]{2,24}/gu)?.filter(word=>!originals.has(word.toLocaleLowerCase('de-DE')))||[],needed=new Set(newWords.flatMap(word=>Array.from(word).filter(char=>/[A-Za-z]/.test(char)))),missing=[...needed].filter(char=>!profile.glyphs[char]?.some(g=>g.source==='pen'));if(missing.length){setTrain(profile.id);notify(tr('Für eine echte persönliche Schrift fehlen noch: {chars}. Schreibe jeden Buchstaben einmal; danach wird der Text sauber erzeugt.',{chars:missing.join(' ')}));return;}}
   const seed=Math.floor(Math.random()*2147483647);
@@ -115,7 +113,6 @@ export default function App(){
  const removeSelected=()=>{const edits={...note.edits};let drawings=[...(note.drawings||[])];for(const id of selected){if(id.startsWith('drawing:'))drawings=drawings.map(d=>d.id===id.slice(8)?{...d,deleted:true}:d);else edits[id]={...edits[id],deleted:true};}changeNote({...note,edits,drawings});setSelected([]);};
  const toggleBrowserFullscreen=async()=>{try{if(document.fullscreenElement){await document.exitFullscreen();setModal(null);return;}const root=document.documentElement as HTMLElement&{webkitRequestFullscreen?:()=>Promise<void>|void};if(root.requestFullscreen)await root.requestFullscreen();else if(root.webkitRequestFullscreen)await root.webkitRequestFullscreen();else throw new Error('unsupported');setModal(null);}catch{notify(tr('Safari unterstützt diesen Vollbildmodus auf diesem Gerät nicht. Nutze die empfohlene Home-Bildschirm-Version.'));setModal('display');}};
  const installToHome=async()=>{if(!installPrompt){notify('Auf iPhone/iPad: Teilen → Zum Home-Bildschirm. Safari erlaubt leider keinen automatischen Installationsknopf.');return;}await installPrompt.prompt();const result=await installPrompt.userChoice;if(result.outcome==='accepted'){setInstallPrompt(null);setModal(null);notify(tr('Handwritten wurde zum Home-Bildschirm hinzugefügt.'));}};
- // Long exports (from REWARD_FROM_PAGES pages) ask first and show a rewarded video, short ones a normal full-screen ad.
  const requestExport=(kind:'pdf'|'goodnotes'|'svg'|'backup')=>{void exportAction(kind);};
  const exportAction=async(kind:'pdf'|'goodnotes'|'svg'|'backup')=>{setExportBusy(true);try{if(kind==='backup'&&!(await adBreak({kind:'backup'})))return;await new Promise(r=>setTimeout(r,30));if(kind==='goodnotes'){const {exportGoodnotes}=await import('./goodnotes');const count=await exportGoodnotes(note,library.profiles);notify(tr('Alle {n} Seiten wurden in einer Notiz-App-Datei bereitgestellt.',{n:count}));}else{if(kind==='pdf')await exportPDF(note,library.profiles,activeTemplate);if(kind==='svg')await exportSVG(note,library.profiles,page,activeTemplate);if(kind==='backup')await exportBackup(library);notify(tr('Deine Datei wurde zum Download bereitgestellt.'));}}catch(e){notify(`Export fehlgeschlagen: ${(e as Error).message}`);}finally{setExportBusy(false);}};
  // A finished lesson becomes a normal document and is written in handwriting right away.
@@ -140,7 +137,7 @@ export default function App(){
 <li><span className="help-num">2</span><div><h3>{tr('Text in Handschrift verwandeln')}</h3><p>{tr('Handschrift wählen, Text eintippen oder aus PDF und Foto übernehmen, dann „In Handschrift verwandeln“. Tabellen schreibst du als „| Spalte | Spalte |“.')}</p></div></li>
 <li><span className="help-num">3</span><div><h3>{tr('Arbeitsblätter ausfüllen')}</h3><p>{tr('„Arbeitsblatt ausfüllen“ lädt ein Bild oder PDF. Leere Zeilen und Tabellenzellen werden als Felder erkannt; deine Antworten erscheinen darin in deiner Handschrift. Mit „Feld ziehen“ markierst du weitere Stellen.')}</p></div></li>
 <li><span className="help-num">4</span><div><h3>{tr('Ordnen und exportieren')}</h3><p>{tr('Dokument kurz gedrückt halten und auf einen Ordner ziehen, mit dem Stern zu Favoriten. Export als PDF, Bild oder Notiz-App-Datei.')}</p></div></li>
-<li><span className="help-num">5</span><div><h3>{tr('Unterricht transkribieren')}</h3><p>{tr('„Transkribieren“ nimmt den Unterricht auf, der Text erscheint live. Danach „Genau erkennen“ für das beste Ergebnis und den Text in Handschrift übernehmen.')}</p></div></li>
+<li><span className="help-num">5</span><div><h3>{tr('Unterricht transkribieren')}</h3><p>{tr('„Transkribieren“ nimmt den Unterricht auf, der Text erscheint live. Danach übernimmst du den Text in deine Handschrift.')}</p></div></li>
 </ol><div className="help-foot"><span>{tr('Deine Dokumente bleiben auf deinem Gerät.')}</span><button className="button primary" onClick={()=>{setModal(null);setView('profiles');}}>{tr('Handschrift einlernen')}<ArrowRight size={16}/></button></div></div>}
  </section></div>}
  {trainingProfile&&<LevelSheet key={trainingProfile.id} profile={trainingProfile} update={fn=>editProfile(trainingProfile.id,fn)} onClose={()=>setTrain(null)} onUse={()=>{setSetting('profileId',trainingProfile.id);setTrain(null);setView('studio');}}/>}

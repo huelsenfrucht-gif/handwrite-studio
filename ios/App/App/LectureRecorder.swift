@@ -3,7 +3,6 @@ import AVFoundation
 import Speech
 import Capacitor
 import UIKit
-import WhisperKit
 
 /// "Transkribieren": records from the microphone and turns speech into text
 /// entirely on the device. Keeps running while the app is in the background or the
@@ -28,15 +27,18 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "saved", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "transcribeAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "accurateStatus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "power", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "transcribeAccurate", returnType: CAPPluginReturnPromise),
     ]
 
     private var session: LectureSession { LectureSession.shared }
 
     public override func load() {
         session.onChange = { [weak self] payload in self?.notifyListeners("change", data: payload) }
+        // „Genau erkennen“ (a large speech model) was removed: free the space of a model downloaded earlier (about 0.6 GB).
+        DispatchQueue.global(qos: .utility).async {
+            let old = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Whisper", isDirectory: true)
+            if FileManager.default.fileExists(atPath: old.path) { try? FileManager.default.removeItem(at: old); log("Altes Sprachmodell gelöscht") }
+            UserDefaults.standard.removeObject(forKey: "whisperUsesGPU")
+        }
     }
 
     @objc func availability(_ call: CAPPluginCall) {
@@ -88,35 +90,9 @@ public class LectureRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func accurateStatus(_ call: CAPPluginCall) { call.resolve(AccurateRecognizer.shared.status()) }
-
-    /// Battery state, so the slow, power-hungry recognition can suggest the charger first.
-    @objc func power(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let d = UIDevice.current; d.isBatteryMonitoringEnabled = true
-            let charging = d.batteryState == .charging || d.batteryState == .full
-            call.resolve(["level": d.batteryLevel < 0 ? 1 : Double(d.batteryLevel), "charging": charging || d.batteryState == .unknown, "lowPower": ProcessInfo.processInfo.isLowPowerModeEnabled])
-        }
-    }
-
-    /// Recognises a saved recording again with a large Whisper model (downloaded once).
-    @objc func transcribeAccurate(_ call: CAPPluginCall) {
-        guard let id = call.getString("id") else { call.reject("Keine Aufnahme angegeben."); return }
-        guard id != session.id else { call.reject("Diese Aufnahme läuft noch."); return }
-        Task {
-            do {
-                let result = try await AccurateRecognizer.shared.transcribe(id: id) { [weak self] phase, fraction in
-                    self?.notifyListeners("accurate", data: ["phase": phase, "progress": fraction])
-                }
-                call.resolve(result)
-            } catch { call.reject(error.localizedDescription) }
-        }
-    }
-
     @objc func remove(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), id != session.id else { call.reject("Diese Aufnahme läuft noch."); return }
         if call.getBool("audioOnly") == true {
-            guard AccurateRecognizer.shared.activeId != id else { call.reject("Die genaue Erkennung braucht die Tonaufnahme gerade noch."); return }
             try? FileManager.default.removeItem(at: LectureStore.audio(id)); call.resolve(); return
         }
         LectureStore.remove(id: id); call.resolve()
@@ -151,7 +127,7 @@ enum LectureStore {
         let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         return files.filter { $0.pathExtension == "json" }.compactMap { load($0.deletingPathExtension().lastPathComponent) }
             .map { var d = $0; let id = d["id"] as? String ?? "", url = audio(id)
-                if id != running, id != AccurateRecognizer.shared.activeId, let a = try? fm.attributesOfItem(atPath: url.path), let date = a[.modificationDate] as? Date,
+                if id != running, let a = try? fm.attributesOfItem(atPath: url.path), let date = a[.modificationDate] as? Date,
                    Date().timeIntervalSince(date) > keepAudioDays * 86400 { try? fm.removeItem(at: url) }
                 let size = (try? fm.attributesOfItem(atPath: url.path))?[.size] as? NSNumber
                 d["hasAudio"] = size != nil; d["audioMB"] = (size?.doubleValue ?? 0) / 1_000_000
@@ -641,165 +617,4 @@ final class PassageBox {
 /// Diagnostics for the console (visible with `devicectl … --console` or in Xcode).
 func log(_ message: String) {
     print("[Transkribieren] \(message)"); fflush(stdout)
-}
-
-// MARK: - Genau erkennen (Whisper)
-
-/// A second, slower and more accurate pass over the finished recording with OpenAI's
-/// Whisper (large-v3 turbo, via WhisperKit on the Neural Engine). The model is downloaded
-/// once (about 0.6 GB) and then works offline; no audio ever leaves the iPad.
-final class AccurateRecognizer {
-    static let shared = AccurateRecognizer()
-    private var kit: WhisperKit?
-    private var busy = false
-    /// The lesson being transcribed right now (its recording must not be deleted meanwhile).
-    private(set) var activeId: String?
-    private let preferred = "openai_whisper-large-v3-v20240930_turbo_632MB"
-
-    private var base: URL {
-        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Whisper", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        var u = url; var values = URLResourceValues(); values.isExcludedFromBackup = true; try? u.setResourceValues(values)
-        return url
-    }
-    /// The best model this iPad can run comfortably.
-    private var variant: String {
-        let support = WhisperKit.recommendedModels()
-        return support.supported.contains(preferred) ? preferred : support.default
-    }
-    private var marker: URL { base.appendingPathComponent("\(variant).ready") }
-
-    func status() -> [String: Any] {
-        ["downloaded": FileManager.default.fileExists(atPath: marker.path), "model": variant, "sizeMB": variant.contains("632MB") ? 632 : 500, "busy": busy]
-    }
-
-    func transcribe(id: String, report: @escaping (String, Double) -> Void) async throws -> [String: Any] {
-        guard !busy else { throw LectureError.unavailable("Die genaue Erkennung läuft bereits.") }
-        busy = true; activeId = id; defer { busy = false; activeId = nil }
-        guard var data = LectureStore.load(id) else { throw LectureError.unavailable("Die Aufnahme wurde nicht gefunden.") }
-        let audio = LectureStore.audio(id)
-        guard FileManager.default.fileExists(atPath: audio.path) else { throw LectureError.unavailable("Zu diesem Transkript gibt es keine Tonaufnahme mehr.") }
-        // A few extra minutes if the app is sent to the background meanwhile.
-        let bg = await UIApplication.shared.beginBackgroundTask(withName: "Genau erkennen")
-        defer { Task { @MainActor in UIApplication.shared.endBackgroundTask(bg) } }
-
-        let kit = try await prepare(report: report)
-        report("transcribe", 0)
-        let language = String((data["locale"] as? String ?? "de-DE").prefix(2))
-        var options = DecodingOptions(task: .transcribe, language: language, temperatureFallbackCount: 3, skipSpecialTokens: true, chunkingStrategy: .vad)
-        // Subject words as a short prompt make names and technical terms more likely.
-        let terms = (data["terms"] as? [String] ?? []).prefix(40).joined(separator: ", ")
-        if !terms.isEmpty, let tokenizer = kit.tokenizer {
-            options.promptTokens = Array(tokenizer.encode(text: " " + terms).filter { $0 < tokenizer.specialTokens.specialTokenBegin }.prefix(120))
-        }
-        let poll = Task { while !Task.isCancelled { report("transcribe", kit.progress.fractionCompleted); try? await Task.sleep(nanoseconds: 500_000_000) } }
-        defer { poll.cancel() }
-        log("Genau erkennen: \(variant), Sprache \(language)")
-        let results = try await kit.transcribe(audioPath: audio.path, decodeOptions: options)
-        // Whisper sometimes "hears" sentences in silence or noise. Drop segments the model itself
-        // was unsure about, and those where the recording is (almost) silent.
-        let loudness = SegmentLoudness(url: audio)
-        let passages = results.flatMap { $0.segments }.compactMap { seg -> [String: Any]? in
-            let text = seg.text.replacingOccurrences(of: "<\\|[^|]*\\|>", with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
-            let rms = loudness?.rms(from: Double(seg.start), to: Double(seg.end)) ?? 1
-            let made = seg.noSpeechProb > 0.5 || seg.avgLogprob < -1.0 || seg.compressionRatio > 2.4 || rms < (loudness?.silence ?? 0)
-            log(String(format: "Abschnitt %.1f–%.1f s: noSpeech %.2f, logprob %.2f, ratio %.2f, Pegel %.4f%@", seg.start, seg.end, seg.noSpeechProb, seg.avgLogprob, seg.compressionRatio, rms, made ? " → verworfen" : ""))
-            return text.isEmpty || made ? nil : ["start": Double(seg.start), "end": Double(seg.end), "text": text]
-        }
-        guard !passages.isEmpty else { throw LectureError.unavailable("In der Tonaufnahme wurde keine Sprache gefunden.") }
-        data["passages"] = passages
-        data["accurate"] = true
-        data["missedText"] = false
-        data["state"] = "stopped"
-        LectureStore.save(data, id: id)
-        report("done", 1)
-        // Give the memory back right away (about 1 GB); the model loads again from the iPad next time.
-        await kit.unloadModels(); self.kit = nil
-        return data
-    }
-
-    private func prepare(report: @escaping (String, Double) -> Void) async throws -> WhisperKit {
-        if let kit { return kit }
-        let name = variant
-        var folder: URL
-        // Already on the iPad: use it directly, without asking the server (works offline, e.g. at school).
-        let folderKey = "whisperFolder.\(name)"
-        let standard = base.appendingPathComponent("models/argmaxinc/whisperkit-coreml/\(name)")
-        if FileManager.default.fileExists(atPath: marker.path), let saved = UserDefaults.standard.string(forKey: folderKey),
-           FileManager.default.fileExists(atPath: base.appendingPathComponent(saved).path) {
-            folder = base.appendingPathComponent(saved)
-        } else if FileManager.default.fileExists(atPath: marker.path), FileManager.default.fileExists(atPath: standard.appendingPathComponent("AudioEncoder.mlmodelc").path) {
-            folder = standard
-        } else {
-            do {
-                report("download", 0)
-                folder = try await WhisperKit.download(variant: name, downloadBase: base) { progress in report("download", progress.fractionCompleted) }
-            } catch {
-                throw LectureError.unavailable("Das Sprachmodell konnte nicht geladen werden. Für den einmaligen Download (ca. 0,6 GB) braucht das iPad Internet.")
-            }
-            FileManager.default.createFile(atPath: marker.path, contents: Data())
-            // Remember where it is, relative to the (stable) app folder.
-            if folder.path.hasPrefix(base.path) { UserDefaults.standard.set(String(folder.path.dropFirst(base.path.count + 1)), forKey: folderKey) }
-        }
-        // Compiling the model for this iPad takes a while the first time only.
-        report("load", 0)
-        // The Neural Engine is fastest, but compiling the large model for it can need more memory
-        // than iOS allows (the system then stops the compiler). Then the graphics chip is used,
-        // and remembered, so the next time it starts right away.
-        let key = "whisperUsesGPU"
-        func load(gpu: Bool) async throws -> WhisperKit {
-            log("Genau erkennen: Modell vorbereiten (\(gpu ? "Grafikchip" : "Neural Engine"))")
-            let compute = gpu ? ModelComputeOptions(melCompute: .cpuAndGPU, audioEncoderCompute: .cpuAndGPU, textDecoderCompute: .cpuAndGPU) : nil
-            let config = WhisperKitConfig(model: name, downloadBase: base, modelFolder: folder.path, computeOptions: compute, verbose: false, logLevel: .error, prewarm: true, load: true, download: false)
-            return try await WhisperKit(config)
-        }
-        let kit: WhisperKit
-        // The large models do not fit through the Neural Engine compiler on iPads (seen on M1).
-        if UserDefaults.standard.bool(forKey: key) || name.contains("large") {
-            kit = try await load(gpu: true)
-        } else {
-            do { kit = try await load(gpu: false) }
-            catch {
-                log("Genau erkennen: Neural Engine fehlgeschlagen (\(error.localizedDescription)), nehme Grafikchip")
-                UserDefaults.standard.set(true, forKey: key)
-                report("load", 0)
-                do { kit = try await load(gpu: true) }
-                catch { throw LectureError.unavailable("Das Sprachmodell konnte auf diesem iPad nicht vorbereitet werden. Starte das iPad neu und versuche es noch einmal.") }
-            }
-        }
-        self.kit = kit
-        return kit
-    }
-}
-
-
-/// Loudness of parts of a recording, to tell speech from silence (catches made-up Whisper text).
-final class SegmentLoudness {
-    private let file: AVAudioFile
-    /// Below this level a part counts as silent (relative to the loud parts of this recording).
-    let silence: Float
-    init?(url: URL) {
-        guard let f = try? AVAudioFile(forReading: url) else { return nil }
-        file = f
-        // Sample the recording in 1-second blocks (at most 600 spread over the file) and take the loud end as reference.
-        let rate = f.processingFormat.sampleRate, total = Double(f.length) / rate
-        let step = max(1, total / 600)
-        var levels: [Float] = []
-        var t = 0.0
-        while t < total { if let v = SegmentLoudness.read(f, from: t, to: min(total, t + 1)) { levels.append(v) }; t += step }
-        levels.sort()
-        let loud = levels.isEmpty ? 0 : levels[Int(Double(levels.count - 1) * 0.9)]
-        silence = loud * 0.08
-    }
-    func rms(from: Double, to: Double) -> Float? { SegmentLoudness.read(file, from: from, to: max(to, from + 0.2)) }
-    private static func read(_ f: AVAudioFile, from: Double, to: Double) -> Float? {
-        let rate = f.processingFormat.sampleRate
-        let start = AVAudioFramePosition(from * rate), count = AVAudioFrameCount(max(1, min(Double(f.length - start), (to - from) * rate)))
-        guard start >= 0, start < f.length, let buf = AVAudioPCMBuffer(pcmFormat: f.processingFormat, frameCapacity: count) else { return nil }
-        f.framePosition = start
-        guard (try? f.read(into: buf, frameCount: count)) != nil, let ch = buf.floatChannelData, buf.frameLength > 0 else { return nil }
-        var sum: Float = 0; let n = Int(buf.frameLength)
-        for i in 0..<n { let v = ch[0][i]; sum += v * v }
-        return (sum / Float(n)).squareRoot()
-    }
 }

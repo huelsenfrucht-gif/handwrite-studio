@@ -8,12 +8,13 @@ describe('legal and ad safeguards', () => {
     const store = readFileSync('appstore/APP-STORE.md', 'utf8'), keywords = store.match(/\*\*Keywords\*\*[\s\S]*?```\n(.*)\n```/)![1];
     expect(keywords.toLowerCase()).not.toContain('goodnotes');
   });
-  it('offers the rewarded video only as a free choice next to a normal ad, with a real reward', () => {
+  it('shows a video only from three handwritten pages and short ads elsewhere', () => {
     const choice = readFileSync('src/AdChoice.tsx', 'utf8'), ads = readFileSync('src/nativeAds.ts', 'utf8');
-    expect(choice).toContain('Kurze Werbung'); expect(choice).toContain('Video ansehen');
-    // The video is only shown when the user picked it.
-    expect(choice).toMatch(/choice === 'video'\) await showRewardedAd\(\); else await showInterstitialAd\(\)/);
-    expect(ads).toMatch(/RewardAdPluginEvents\.Rewarded, \(\) => \{[^}]*grantAdFree\(\)/);
+    expect(ads).toContain('REWARD_FROM_PAGES = 3');
+    expect(choice).toContain("reason.kind !== 'write'");
+    expect(choice).toContain('Video ansehen');
+    expect(choice).not.toContain("pick('short')");
+    expect(ads).not.toContain('hs-ad-free-until');
   });
   it('treats under-16 users without tracking prompt and with under-age tagging', async () => {
     const ads = readFileSync('src/nativeAds.ts', 'utf8');

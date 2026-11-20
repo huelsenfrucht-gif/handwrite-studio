@@ -10,8 +10,6 @@ export type Lecture = {
   duration: number; volatile?: string; passages: Passage[]; markers: number[]; hasAudio?: boolean; audioMB?: number;
   /** Speech recognition: being prepared (first time: language download), ready, or not possible. */
   prep?: 'idle' | 'loading' | 'ready' | 'unavailable' | 'off'; progress?: number; level?: number; missedText?: boolean;
-  /** Recognised again with the large Whisper model („Genau erkennen“). */
-  accurate?: boolean;
 };
 /** How far away the speaker is; decides how much the quiet, distant voice is lifted. */
 export type Room = 'near' | 'classroom' | 'hall';
@@ -27,7 +25,6 @@ type Plugin = {
   availability(o: { locale: string }): Promise<Availability>;
   requestAccess(): Promise<{ microphone: boolean; speech: boolean }>;
   start(o: { locale: string; room: Room; subject: string; terms: string[]; live?: boolean }): Promise<Lecture>;
-  power(): Promise<{ level: number; charging: boolean; lowPower: boolean }>;
   pause(): Promise<Lecture>;
   resume(): Promise<Lecture>;
   mark(): Promise<{ t: number }>;
@@ -36,10 +33,7 @@ type Plugin = {
   saved(): Promise<{ lessons: Lecture[] }>;
   transcribeAudio(o: { id: string }): Promise<Lecture>;
   remove(o: { id: string; audioOnly?: boolean }): Promise<void>;
-  accurateStatus(): Promise<{ downloaded: boolean; model: string; sizeMB: number; busy: boolean }>;
-  transcribeAccurate(o: { id: string }): Promise<Lecture>;
   addListener(event: 'change', fn: (l: Lecture) => void): Promise<PluginListenerHandle>;
-  addListener(event: 'accurate', fn: (p: { phase: 'download' | 'load' | 'transcribe' | 'done'; progress: number }) => void): Promise<PluginListenerHandle>;
 };
 
 /** Native recorder (iPad app only); everything happens on the device. */

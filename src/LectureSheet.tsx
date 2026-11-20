@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, AudioLines, Check, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Download, Lock, Mic, Pause, PenLine, Play, RotateCw, Save, Star, Trash2, X } from 'lucide-react';
+import { AlertTriangle, AudioLines, ChevronDown, ChevronLeft, ChevronRight, Download, Lock, Mic, Pause, PenLine, Play, RotateCw, Save, Star, Trash2, X } from 'lucide-react';
 import { download, safeName } from './export';
-import { adFreeUntil, adsAvailable } from './nativeAds';
+import { adsAvailable } from './nativeAds';
 import { adBreak } from './AdChoice';
 import { clock, LANGUAGES, LectureRecorder, lectureSupported, lectureText, lectureTitle, paragraphs, ROOMS, timeOfDay, type Availability, type Lecture, type Room } from './lecture';
 import { SUBJECTS, subjectTerms } from './subjects';
@@ -84,7 +84,7 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
       a = await LectureRecorder.availability({ locale }); setAvail(a);
     }
     // An ad break before the recording starts (the app is free); “Cancel” cancels the start.
-    if (adsAvailable() && Date.now() >= adFreeUntil()) { setBusy(t('Kurze Werbung …')); const go = await adBreak({ kind: 'record' }); setBusy(t('Wird gestartet …')); if (!go) return; }
+    if (adsAvailable()) { setBusy(t('Kurze Werbung …')); const go = await adBreak({ kind: 'record' }); setBusy(t('Wird gestartet …')); if (!go) return; }
     // The microphone normally starts at once; say so clearly if the system keeps it blocked.
     const slow = setTimeout(() => setError(t('Das Mikrofon startet gerade nicht. Schließe andere Apps, die das Mikrofon nutzen (z. B. Anrufe oder Sprachmemos), und versuche es erneut.')), 12000);
     // The built-in vocabulary is German: only useful when German is spoken.
@@ -108,25 +108,13 @@ export function LectureSheet({ onClose, onDocument, notify }: Props) {
   const dropAudio = async (l: Lecture) => { if (l.id && l.hasAudio !== false) await LectureRecorder.remove({ id: l.id, audioOnly: true }).catch(() => undefined); };
   const keep = () => { if (review && exported.current === review.id) void dropAudio(review); exported.current = null; onClose(); notify?.(t('Transkript gespeichert. Du findest es unter „Transkribieren“.')); };
   const deleteAudio = (l: Lecture) => { if (!confirm(t('Tonaufnahme löschen? Der Text bleibt erhalten, kann danach aber nicht mehr neu erkannt werden.'))) return; void run('', async () => { await LectureRecorder.remove({ id: l.id!, audioOnly: true }); setReview({ ...l, hasAudio: false, audioMB: 0 }); notify?.(t('Tonaufnahme gelöscht.')); }); };
-  const [accurate, setAccurate] = useState<{ phase: string; progress: number } | null>(null);
-  const fromWhisper = async (l: Lecture) => {
-    if (!l.id || l.hasAudio === false) return;
-    const pw = await LectureRecorder.power().catch(() => null);
-    if (pw && !pw.charging && (pw.level < 0.3 || pw.lowPower) && !confirm(t('Genau erkennen braucht einige Minuten viel Strom{battery}. Am besten schließt du das iPad vorher ans Ladekabel an.\n\nTrotzdem jetzt starten?', { battery: pw.level < 1 ? t(' (Akku {n} %)', { n: Math.round(pw.level * 100) }) : '' }))) return;
-    const st = await LectureRecorder.accurateStatus().catch(() => null);
-    if (st && !st.downloaded && !confirm(t('Für die genaue Erkennung lädt das iPad einmalig ein Sprachmodell (ca. {gb} GB). Am besten im WLAN. Das passiert nur einmal.\n\nJetzt laden?', { gb: (st.sizeMB / 1000).toLocaleString(uiLocale(), { maximumFractionDigits: 1 }) }))) return;
-    const sub = await LectureRecorder.addListener('accurate', p => setAccurate(p));
-    setAccurate({ phase: st?.downloaded ? 'load' : 'download', progress: 0 });
-    await run(t('Wird genau erkannt …'), async () => { setReview(await LectureRecorder.transcribeAccurate({ id: l.id! })); notify?.('Genau erkannt.'); });
-    void sub.remove(); setAccurate(null);
-  };
   const fromAudio = (l: Lecture) => run(t('Wird neu erkannt …'), async () => { if (l.id && l.hasAudio !== false) setReview(await LectureRecorder.transcribeAudio({ id: l.id })); });
 
   const err = error && <p className="tr-error" role="alert"><AlertTriangle size={16} />{error}</p>;
   if (native && live) return <Live live={live} busy={busy} error={err} onBack={onClose}
     onPause={() => run('', async () => setLive(await LectureRecorder.pause()))} onResume={() => run('', async () => setLive(await LectureRecorder.resume()))}
     onMark={() => run('', async () => { await LectureRecorder.mark(); setLive(await LectureRecorder.current()); })} onStop={stop} />;
-  if (native && review) return <Review lecture={review} busy={busy} error={err} onBack={keep} onSave={keep} onExport={o => exportText(review, o)} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} onWhisper={() => void fromWhisper(review)} onDeleteAudio={() => deleteAudio(review)} accurate={accurate} />;
+  if (native && review) return <Review lecture={review} busy={busy} error={err} onBack={keep} onSave={keep} onExport={o => exportText(review, o)} onUse={o => toDocument(review, o)} onDiscard={() => discard(review)} onAudio={() => fromAudio(review)} onDeleteAudio={() => deleteAudio(review)} />;
 
   return <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <section className="modal lv-sheet tr-sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
@@ -228,7 +216,7 @@ function Live(p: { live: Lecture; busy: string; error: ReactNode; onBack: () => 
   </div>;
 }
 
-function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: () => void; onSave: () => void; onExport: (o: { times: boolean; marks: boolean }) => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void; onWhisper: () => void; onDeleteAudio: () => void; accurate: { phase: string; progress: number } | null }) {
+function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: () => void; onSave: () => void; onExport: (o: { times: boolean; marks: boolean }) => void; onUse: (o: { times: boolean; marks: boolean }) => void; onDiscard: () => void; onAudio: () => void; onDeleteAudio: () => void }) {
   const l = p.lecture, items = paragraphs(l), empty = !items.length, canAudio = l.hasAudio !== false;
   const [times, setTimes] = useState(false), [marks, setMarks] = useState(true), [next, setNext] = useState(false);
   useEffect(() => { if (!next) return; const close = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest('.tr-next')) setNext(false); }; document.addEventListener('pointerdown', close); return () => document.removeEventListener('pointerdown', close); }, [next]);
@@ -250,23 +238,16 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
     <div className="tr-review">
       <main className="tr-text">
         <div className="tr-doc">
-          <div className="tr-doc-head"><h1>{t('Transkript')} · {shortDate(l)}</h1><span>{timeOfDay(l.startedAt, 0)}{end ? `–${end}` : ''} · {clock(l.duration)} · {empty ? t('noch kein Text') : (items.length === 1 ? t('1 Absatz') : t('{n} Absätze', { n: items.length }))}{l.markers.length ? ` · ${t('{n} markiert', { n: l.markers.length })}` : ''}{l.accurate ? ` · ${t('genau erkannt')}` : ''}</span></div>
-          {p.busy === t('Text wird erkannt …') ? <p className="tr-hidden">{t('Der Text wird gerade aus der Aufnahme erkannt. Das dauert meist nur wenige Sekunden.')}</p> : (empty || l.missedText) && canAudio && !l.accurate && <p className="tr-hidden">{empty ? t('Während der Aufnahme konnte noch kein Text erkannt werden.') : t('Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.')} {t('Tippe rechts auf „Genau erkennen“.')}</p>}
+          <div className="tr-doc-head"><h1>{t('Transkript')} · {shortDate(l)}</h1><span>{timeOfDay(l.startedAt, 0)}{end ? `–${end}` : ''} · {clock(l.duration)} · {empty ? t('noch kein Text') : (items.length === 1 ? t('1 Absatz') : t('{n} Absätze', { n: items.length }))}{l.markers.length ? ` · ${t('{n} markiert', { n: l.markers.length })}` : ''}</span></div>
+          {p.busy === t('Text wird erkannt …') ? <p className="tr-hidden">{t('Der Text wird gerade aus der Aufnahme erkannt. Das dauert meist nur wenige Sekunden.')}</p> : (empty || l.missedText) && canAudio && <p className="tr-hidden">{empty ? t('Während der Aufnahme konnte noch kein Text erkannt werden.') : t('Ein Teil wurde aufgenommen, bevor die Spracherkennung bereit war.')} {t('Tippe rechts auf „Neu erkennen“.')}</p>}
           {items.map((it, i) => <div key={i} className={`tr-para ${it.marked ? 'marked' : ''}`}><time>{timeOfDay(l.startedAt, it.start)}</time><p>{it.text}</p></div>)}
         </div>
       </main>
       <aside className="tr-aside">
         <section className={`tr-card ${canAudio ? '' : 'no-audio'}`}>
           <h3>{t('Text verbessern')}</h3>
-          <p className="tr-state">{!canAudio ? t('Tonaufnahme gelöscht: Der Text kann nicht mehr neu erkannt werden.') : l.accurate ? <><Check size={15} />{t('Mit dem großen Sprachmodell erkannt')}</> : empty ? t('Noch kein Text erkannt') : 'Jetzt: schnelle Erkennung des iPads'}</p>
-          {p.accurate ? <div className="tr-progress" role="status">
-            <strong>{{ download: t('Sprachmodell wird geladen'), load: t('Sprachmodell wird vorbereitet'), transcribe: t('Wird genau erkannt'), done: t('Fertig') }[p.accurate.phase] || t('Wird genau erkannt')}{p.accurate.phase !== 'load' ? ` · ${Math.round(p.accurate.progress * 100)} %` : ' …'}</strong>
-            <span className="tr-bar"><i style={{ width: `${p.accurate.phase === 'load' ? 100 : Math.max(3, p.accurate.progress * 100)}%` }} className={p.accurate.phase === 'load' ? 'busy' : ''} /></span>
-            <small>{p.accurate.phase === 'download' ? t('Nur beim ersten Mal.') : p.accurate.phase === 'load' ? t('Beim ersten Mal kann das ein paar Minuten dauern.') : t('Lass die App dabei geöffnet.')}</small>
-          </div> : <div className="tr-choices">
-            <button className="tr-redo strong" onClick={p.onWhisper} disabled={!!p.busy || !canAudio}><Sparkles size={17} /><span><strong>{t('Genau erkennen')}</strong><small>{t('Am genauesten, dauert einige Minuten')}</small></span></button>
-            <button className="tr-redo strong" onClick={p.onAudio} disabled={!!p.busy || !canAudio}><RotateCw size={17} /><span><strong>{t('Schnell neu erkennen')}</strong><small>{t('In wenigen Sekunden')}</small></span></button>
-          </div>}
+          <p className="tr-state">{!canAudio ? t('Tonaufnahme gelöscht: Der Text kann nicht mehr neu erkannt werden.') : empty ? t('Noch kein Text erkannt') : t('Erkannt mit der Spracherkennung des iPads')}</p>
+          <button className="tr-redo strong" onClick={p.onAudio} disabled={!!p.busy || !canAudio}><RotateCw size={17} /><span><strong>{t('Neu erkennen')}</strong><small>{t('Die ganze Aufnahme noch einmal erkennen, dauert nur wenige Sekunden')}</small></span></button>
         </section>
         <details className="tr-more">
           <summary><span>{t('Beim Übernehmen')}</span><small>{[times && t('Uhrzeiten'), marks && t('„Wichtig:“')].filter(Boolean).join(' · ') || t('nur Text')}</small><ChevronDown size={18} /></summary>
@@ -276,7 +257,7 @@ function Review(p: { lecture: Lecture; busy: string; error: ReactNode; onBack: (
           </div>
         </details>
         {canAudio && <div className="tr-audio">
-          <div className="tr-audio-head"><AudioLines size={17} /><strong>{t('Tonaufnahme')}{(l.audioMB || 0) >= 1 ? ` · ${Math.round(l.audioMB!)} MB` : ''}</strong><button className="tr-pillbtn" onClick={p.onDeleteAudio} disabled={!!p.busy || !!p.accurate}>{t('Löschen')}</button></div>
+          <div className="tr-audio-head"><AudioLines size={17} /><strong>{t('Tonaufnahme')}{(l.audioMB || 0) >= 1 ? ` · ${Math.round(l.audioMB!)} MB` : ''}</strong><button className="tr-pillbtn" onClick={p.onDeleteAudio} disabled={!!p.busy}>{t('Löschen')}</button></div>
           <small>{t('Wird gelöscht, sobald du übernimmst oder exportierst, sonst nach 7 Tagen. Der Text bleibt.')}</small>
         </div>}
         {p.error}

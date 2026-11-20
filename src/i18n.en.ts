@@ -123,6 +123,9 @@ export const EN: Record<string, string> = {
   'Kurze Werbung': 'Short ad',
   'Wie sonst auch, danach wird geschrieben': 'As usual, then the text is written',
   'Video ansehen': 'Watch a video',
+  'Video wird geladen …': 'Loading video …',
+  'Sieh dir das Video an, um diese Aktion freizuschalten.': 'Watch the video to unlock this action.',
+  'Das Video konnte nicht geladen werden. Bitte versuche es erneut.': 'The video could not be loaded. Please try again.',
   'Ca. 15–30 Sek. · danach 30 Minuten ohne Werbung': 'About 15–30 sec · then 30 minutes without ads',
   'Abbrechen': 'Cancel',
 
@@ -780,4 +783,10 @@ export const EN: Record<string, string> = {
   'Neue Handschrift': 'New handwriting',
   'Danach geht es direkt weiter': 'Then you continue right away',
   'Ca. 15–30 Sek. · danach 30 Minuten ganz ohne Werbung': 'About 15–30 sec · then 30 minutes with no ads at all',
+  // Recognise again
+  'Tippe rechts auf „Neu erkennen“.': 'Tap “Recognise again” on the right.',
+  'Erkannt mit der Spracherkennung des iPads': 'Recognised with the iPad’s speech recognition',
+  'Neu erkennen': 'Recognise again',
+  'Die ganze Aufnahme noch einmal erkennen, dauert nur wenige Sekunden': 'Recognise the whole recording again, takes only a few seconds',
+  '„Transkribieren“ nimmt den Unterricht auf, der Text erscheint live. Danach übernimmst du den Text in deine Handschrift.': '“Transcribe” records the lesson and the text appears live. Afterwards you turn the text into your handwriting.',
 };

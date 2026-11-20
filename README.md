@@ -19,7 +19,6 @@ open ios/App/App.xcodeproj
 ## Drittanbieter
 
 - Capacitor (MIT), React (MIT), lucide-react (ISC), pdf.js (Apache-2.0), jsPDF (MIT), JSZip (MIT/GPLv3)
-- WhisperKit / argmax-oss-swift (MIT) für „Genau erkennen“, Modell OpenAI Whisper large-v3 (MIT)
 - Google Mobile Ads SDK (AdMob) für Werbung
 
 Ausführlich: `site/lizenzen.html` und [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md).

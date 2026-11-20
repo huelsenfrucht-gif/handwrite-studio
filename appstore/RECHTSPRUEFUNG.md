@@ -50,7 +50,7 @@ Netzwerkzugriffe im Web-Code: nur eigene Modelldateien (`/models/…`) und – *
 | Platzierung | Bewertung |
 |---|---|
 | Vollbild beim Schreiben in Handschrift | Natürlicher Übergang, zulässig nach AdMob-Richtlinien (nicht beim App-Start, nicht unerwartet mitten in Eingaben). 🟡 Häufigkeit beobachten – AdMob rät von Interstitials bei jeder Aktion ab; ggf. Frequenzbegrenzung wieder einführen. |
-| Rewarded ab 4 Seiten | Jetzt freiwillig mit gleichwertiger Alternative und echter Belohnung. ✅ |
+| Rewarded ab 3 Seiten | Video startet erst nach Wahl; Abbrechen bricht die Aktion ab. Vor App-Store-Einreichung AdMob- und Apple-Richtlinien erneut prüfen. |
 | Vor neuer Handschrift | Zulässig. |
 | Beim Speichern/Laden einer Sicherung | 🟡 Vor der **Wiederherstellung** kann Werbung als Hürde bei Datenverlust empfunden werden; auf Wunsch des Betreibers beibehalten – Empfehlung: beim Laden entfernen. |
 | Altersfreigabe | Store-Fragebogen „4+“ ist mit Werbung möglich; Werbeinhalte auf „ParentalGuidance“ begrenzt. In AdMob zusätzlich sensible Kategorien blockieren. |

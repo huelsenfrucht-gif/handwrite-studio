@@ -1,5 +1,7 @@
 # Handwritten – Arbeitsanleitung für KI-Assistenten (Codex, Claude & Co.)
 
+Kanonisches Projekt für App und App Store: `/Users/hubertus/Entwicklung/handwrite-studio`. Ältere Kopien unter `Documents/Codex` sind keine Release-Quelle.
+
 Diese Datei beschreibt den **aktuellen** Stand. Bei Widersprüchen zu älteren Dateien (z. B. `docs/`, `ADSENSE_SETUP.md`) gilt diese Datei.
 
 ## Was ist Handwritten?
@@ -14,11 +16,11 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 ## Verbindliche Produktregeln
 
 1. **100 % kostenlos, nur durch Werbung finanziert** (Google AdMob). Kein Abo, keine In-App-Käufe, keine Bezahlversion.
-2. **Werbung lässt sich nicht abschalten.** Es gibt keinen Schalter dafür. An jeder Werbestelle (außer „In Handschrift verwandeln“ bei Texten unter 4 Seiten = direkt kurze Werbung) wählt der Nutzer in `src/AdChoice.tsx`: kurze Werbung oder Video mit Belohnung (30 Minuten ganz ohne Werbung). Stufe 4/5 wird einmalig per Video freigeschaltet. **Belohnungsvideos müssen laut AdMob-Richtlinien freiwillig gewählt werden** – nie erzwingen.
+2. **Werbung lässt sich nicht abschalten.** An normalen Werbestellen läuft eine kurze Werbung. Beim Erzeugen von mindestens 3 Seiten Handschrift wird in `src/AdChoice.tsx` ein Belohnungsvideo angeboten: „Video ansehen“ oder „Abbrechen“. Das Video startet nur nach ausdrücklicher Wahl; Abbrechen bricht die Aktion ab. Es gibt keine 30 Minuten werbefreie Zeit. Auch Stufe 4/5 wird mit einer kurzen Anzeige freigeschaltet.
 3. **Die App braucht eine Internetverbindung** (WLAN oder mobile Daten), damit Werbung geladen werden kann. Ohne Verbindung zeigt `src/OfflineGate.tsx` eine Sperre. Eine **laufende Aufnahme wird nie abgebrochen**, die Sperre kommt erst danach.
-4. **Inhalte bleiben auf dem iPad:** Texte, Handschriften, Fotos und Aufnahmen werden nur auf dem Gerät verarbeitet, nichts wird hochgeladen. Einzige Downloads: das Whisper-Sprachmodell (einmalig, Hugging Face) und Werbung.
+4. **Inhalte bleiben auf dem iPad:** Texte, Handschriften, Fotos und Aufnahmen werden nur auf dem Gerät verarbeitet, nichts wird hochgeladen. Einzige Downloads: Werbung (und Apples eigene Sprachpakete über das System).
 5. **Keine Markennamen in der Oberfläche**, außer wo technisch nötig (Dateiformat „.goodnotes“ im Export mit Marken-Hinweis).
-6. Werbung nie mitten beim Schreiben oder Aufnehmen. Werbestellen: vor „In Handschrift verwandeln“ (wahlweise kurzes Video), vor dem Start einer Transkription, vor einer neuen Handschrift, beim Speichern/Laden einer Sicherung.
+6. Werbung nie mitten beim Schreiben oder Aufnehmen. Werbestellen: vor „In Handschrift verwandeln“ (1–2 Seiten: kurze Werbung, ab 3 Seiten: Belohnungsvideo), vor dem Start einer Transkription, vor einer neuen Handschrift, beim Speichern/Laden einer Sicherung (jeweils kurze Werbung).
 7. Unter 16 (Schalter in den Einstellungen): nur nicht-personalisierte Werbung, keine Tracking-Abfrage.
 8. Design „Graphit & Papier“: Tinte `#1c1d21`, Seitenleiste `#202125`, Papier `#f4f3ef`, Linien `#e2dfd8`/`#cfccc4`, gedämpfter Text `#6e6c66`, Markierung `#f6dc6b`/`#fbf3d2`, Aufnahme-Rot `#e5484d` (nur dafür). Serifen-Überschriften (`--hs-serif`). Neue Farben aus dieser Palette nehmen, keine Blau-/Grüntöne.
 9. Immer im **iPad-Querformat** testen, Hochformat darf nicht kaputtgehen.
@@ -29,7 +31,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 |---|---|
 | `src/App.tsx` | Haupt-App: Studio (Text → Handschrift), Arbeitsblätter, Export, Modals. Sehr lange Zeilen. Übersetzungsfunktion heißt dort `tr()`. |
 | `src/Library.tsx` | Startseite/Bibliothek: Seitenleiste, Ordner (Name/Farbe oben auf der Ordnerseite), Drag & Drop (gedrückt halten), Menüs |
-| `src/LectureSheet.tsx` | Transkribieren: Startfenster, Live-Ansicht, Ergebnis („Genau erkennen“, „Schnell neu erkennen“, Tonaufnahme löschen) |
+| `src/LectureSheet.tsx` | Transkribieren: Startfenster, Live-Ansicht, Ergebnis („Neu erkennen“, Tonaufnahme löschen) |
 | `src/lecture.ts` | Typen und Capacitor-Plugin-Schnittstelle `LectureRecorder` |
 | `src/LevelSheet.tsx`, `src/Training.tsx`, `src/levels.ts` | Handschrift-Einrichtung in 5 Stufen. Nach jeder Stufe geht es ins Stufenmenü, nicht ins Studio. |
 | `src/SettingsSheet.tsx` | Einstellungen (Bereichsleiste links, Sprache, Sicherung, Werbung) |
@@ -39,7 +41,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 | `src/engine.ts` | Layout der Handschrift (Glyphen, Zeilen, Tabellen, Arbeitsblatt-Felder) |
 | `src/storage.ts` | IndexedDB-Speicher + Prüfung von Sicherungen (Obergrenzen großzügig, Sicherungen bis 500 MB) |
 | `src/theme.css` | Aktuelles Design (spätere Regeln überschreiben frühere; neue Regeln ans Ende) |
-| `ios/App/App/LectureRecorder.swift` | Native Aufnahme + Spracherkennung (Apple SpeechAnalyzer/SFSpeech), Mikrofonwahl (Rückseite, Richtwirkung), VoiceLift, Ablage, **WhisperKit** („Genau erkennen“, Modell `large-v3`, läuft auf iPads mit M1 über den Grafikchip, offline-fähig nach Download, Stille-Filter) |
+| `ios/App/App/LectureRecorder.swift` | Native Aufnahme + Spracherkennung (Apple SpeechAnalyzer/SFSpeech), Mikrofonwahl (Rückseite, Richtwirkung), VoiceLift, Ablage |
 | `ios/App/App/*.lproj/InfoPlist.strings` | Berechtigungstexte Deutsch/Englisch |
 | `ios/App/App/HandwriteNativePlugin.swift` | Apple-Texterkennung (Vision) für Fotos von Text und Tafelbildern |
 | `ios/App/ShareExtension/` | „Teilen mit Handwritten“ aus der Fotos-App |
@@ -82,7 +84,7 @@ xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
 xcrun devicectl device install app --device <IPAD-ID> build/DD/Build/Products/Debug-iphoneos/App.app
 ```
 
-Swift-Pakete: WhisperKit (`argmax-oss-swift` 1.1.1), Capacitor-Plugins über `CapApp-SPM`. Nach `npm install` eines Capacitor-Plugins immer `npx cap sync ios`.
+Swift-Pakete: nur die Capacitor-Plugins über `CapApp-SPM`. Nach `npm install` eines Capacitor-Plugins immer `npx cap sync ios`.
 
 ## Website veröffentlichen
 
@@ -119,16 +121,13 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 ## Native Schnittstellen (Capacitor-Plugins)
 
 - `LectureRecorder` (`ios/App/App/LectureRecorder.swift`, TS-Typen in `src/lecture.ts`):
-  `availability`, `requestAccess`, `start({locale, room, subject, terms, live})`, `pause`, `resume`, `mark`, `stop`, `current`, `saved`, `transcribeAudio` (schnell, Apple), `transcribeAccurate` (Whisper, Fortschritt per Event `accurate`), `accurateStatus`, `remove({id, audioOnly})`, `power` (Akku/Stromsparmodus). Live-Updates per Event.
+  `availability`, `requestAccess`, `start({locale, room, subject, terms, live})`, `pause`, `resume`, `mark`, `stop`, `current`, `saved`, `transcribeAudio` (ganze Aufnahme neu erkennen, Apple), `remove({id, audioOnly})`. Live-Updates per Event.
 - `HandwriteNative` (`HandwriteNativePlugin.swift`, `src/native.ts`): `recognizeText`, `recognizeDocument` (Vision), `takeSharedImages` (Share-Extension).
 - Community-Plugins: `@capacitor-community/admob`, `@capacitor/network`, `@capacitor/filesystem`, `@capacitor/share`.
 
 ## Wichtige Entscheidungen (und warum)
 
-- **Whisper statt Parakeet für „Genau erkennen“:** Die deutschtauglichen Parakeet-Modelle (FluidAudio v3/Ultra) liefern laut Dokumentation keine Satzzeichen – für Mitschriften ungeeignet.
-- **Großes Whisper-Modell über den Grafikchip** auf M1-iPads: Das Kompilieren für die Neural Engine überschreitet dort das Speicherlimit (iOS beendet den Compiler). Kleinere Modelle versuchen zuerst die Neural Engine und merken sich einen Fehlschlag.
-- **Modell wird nach dem Erkennen entladen** (Speicher), und vorhandene Modelle werden ohne Server-Anfrage geladen.
-- **Stille-Filter:** Whisper-Abschnitte mit hoher „no speech“-Wahrscheinlichkeit, schlechter Log-Wahrscheinlichkeit oder fast ohne Pegel werden verworfen (gegen erfundene Sätze).
+- **„Genau erkennen“ (Whisper large-v3 über WhisperKit) wurde entfernt:** Das große Modell brachte das iPad (M1) zum Absturz bzw. an die Speichergrenze. Die App löscht ein früher geladenes Modell beim Start (`Application Support/Whisper`). Nicht wieder einbauen, ohne es auf einem echten iPad mit langen Aufnahmen getestet zu haben. Parakeet (FluidAudio) wurde verworfen, weil es auf Deutsch keine Satzzeichen liefert.
 - **Mikrofon im Klassenraum:** Das iPad liegt mit dem Bildschirm zum Schüler; aufgenommen wird über das rückseitige Mikrofon mit Richtwirkung nach vorne, ohne System-Sprachaufbereitung (`.measurement`), Pegel per `VoiceLift`.
 - **Fachbegriffe** je Fach (`src/subjects.ts`) helfen der Erkennung, nur bei deutscher Aufnahmesprache.
 - **Arbeitsblätter:** Text steht auf der gedruckten Antwortlinie (Grundlinie unten im Feld), Tabellenzellen mittig.
@@ -140,7 +139,6 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 - Englisch testen: in der Browser-Konsole `localStorage.setItem('hs-lang','en'); location.reload()`. Fehlende Übersetzungen erscheinen im Dev-Modus als `[i18n] missing:` in der Konsole.
 - Simulator: Screenshots mit `xcrun simctl io <UDID> screenshot datei.png` (kommen im Querformat). Logs: `xcrun simctl launch --console-pty <UDID> com.handwritestudio.app`; native Meldungen beginnen mit `[Transkribieren]`.
 - Werbung im Simulator/Debug: Googles Test-Anzeigen („Test mode“), schließen über das X oben rechts.
-- Whisper braucht im Simulator mehrere GB freien Speicher auf dem Mac (beim ersten Vorbereiten).
 - Codex in der Cloud (Linux) kann `npm test`, `tsc` und den Web-Build ausführen, aber **keine iOS-Builds** – dafür braucht es einen Mac mit Xcode.
 
 ## Bekannte Probleme / Ideen
@@ -154,5 +152,5 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 - Eigene AdMob-IDs eintragen (aktuell Test-Anzeigen).
 - Impressum/Datenschutz mit echten Angaben füllen.
 - App-Store-Veröffentlichung (Texte und Screenshots in `appstore/`, Rechtsprüfung in `appstore/RECHTSPRUEFUNG.md`).
-- Transkribieren im echten Klassenraum weiter testen (Mikrofon über die Rückseite, „Genau erkennen“ auf dem iPad).
+- Transkribieren im echten Klassenraum weiter testen (Mikrofon über die Rückseite).
 - Internet-Sperre im Flugmodus auf dem echten iPad prüfen.
