@@ -73,7 +73,7 @@ export default function App(){
  const redoNote=()=>{const next=redo.current.pop();if(next&&note){undo.current.push(note);changeNote(next,false);setSelected([]);}};
  const createNote=(folderId?:string)=>{const n={...newNote(undefined,library?.defaults),folderId};setLibrary(l=>l?{...l,notes:[n,...l.notes],activeId:n.id}:l);setView('studio');setSidebar(false);};
  const openNote=(id:string)=>{setLibrary(l=>l?{...l,activeId:id}:l);setView('studio');setSidebar(false);};
- const createProfile=async()=>{if(!(await adBreak({kind:'profile'})))return;const name=profileName.trim()||tr('Meine Handschrift {n}',{n:(library?.profiles.length||0)+1});const p:Profile={id:uid(),name,created:new Date().toISOString(),glyphs:{},words:[]};setLibrary(l=>l?{...l,profiles:[...l.profiles,p]}:l);setProfileName('');setTrain(p.id);};
+ const createProfile=async()=>{(document.activeElement as HTMLElement|null)?.blur?.();if(!(await adBreak({kind:'profile'})))return;const name=profileName.trim()||tr('Meine Handschrift {n}',{n:(library?.profiles.length||0)+1});const p:Profile={id:uid(),name,created:new Date().toISOString(),glyphs:{},words:[]};setLibrary(l=>l?{...l,profiles:[...l.profiles,p]}:l);setProfileName('');setTrain(p.id);};
  const editProfile=(id:string,fn:(p:Profile)=>Profile)=>setLibrary(l=>l?{...l,profiles:l.profiles.map(p=>p.id===id?{...fn(p),updated:new Date().toISOString()}:p)}:l);
  const current=note;
  // One or two pages use a short ad; three or more use an explicitly started rewarded video.
