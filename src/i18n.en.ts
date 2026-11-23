@@ -799,4 +799,6 @@ export const EN: Record<string, string> = {
   '„Transkribieren“ nimmt den Unterricht auf, der Text erscheint live. Danach übernimmst du den Text in deine Handschrift.': '“Transcribe” records the lesson and the text appears live. Afterwards you turn the text into your handwriting.',
   'Ein Service der pvh debt capital advisory GmbH': 'A service of pvh debt capital advisory GmbH',
   'Werbung …': 'Ad …',
+  'Mit Werbung freischalten': 'Unlock with an ad',
+  'Sicherung fehlgeschlagen: {msg}': 'Backup failed: {msg}',
 };

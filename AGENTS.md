@@ -16,7 +16,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 ## Verbindliche Produktregeln
 
 1. **100 % kostenlos, nur durch Werbung finanziert** (Google AdMob). Kein Abo, keine In-App-Käufe, keine Bezahlversion.
-2. **Werbung lässt sich nicht abschalten.** Vor dem Schreiben in Handschrift, vor dem Start einer Transkription, vor einer neuen Handschrift und beim Speichern/Laden einer Sicherung läuft eine Vollbild-Werbung (Interstitial) **ohne Auswahl** (`adBreak` in `src/AdChoice.tsx`). **Jede Werbung startet stumm** (`mute()` in `src/nativeAds.ts`, vor jeder Anzeige erneut) – die App wird im Unterricht genutzt. Keine Belohnungsvideos erzwingen: Google erlaubt sie nur, wenn der Nutzer sie freiwillig wählt. Es gibt keine werbefreie Zeit. Stufe 4/5 wird nach einer Anzeige freigeschaltet.
+2. **Werbung lässt sich nicht abschalten.** Vor dem Schreiben in Handschrift, vor dem Start einer Transkription, vor einer neuen Handschrift und beim Speichern/Laden einer Sicherung versucht die App eine Vollbild-Werbung (Interstitial) **ohne Auswahl** zu zeigen (`adBreak` in `src/AdChoice.tsx`). Wenn AdMob keine Anzeige liefern kann, läuft die Aktion trotzdem weiter; das gilt auch für öffentliche Builds während der AdMob-Prüfung. Xcode- und TestFlight-Builds verwenden automatisch Google-Testanzeigen, die App-Store-Version echte (die App erkennt das selbst über `HandwriteNative.adContext()`, kein Schalter nötig). Wer in Googles Einwilligung ablehnt, wird nicht zusätzlich nach App-Tracking gefragt. **Jede Werbung startet stumm** (`mute()` in `src/nativeAds.ts`, vor jeder Anzeige erneut) – die App wird im Unterricht genutzt. Keine Belohnungsvideos erzwingen: Google erlaubt sie nur, wenn der Nutzer sie freiwillig wählt. Es gibt keine werbefreie Zeit. Stufe 4/5 wird nach einem Anzeigenversuch freigeschaltet.
 3. **Die App braucht eine Internetverbindung** (WLAN oder mobile Daten), damit Werbung geladen werden kann. Ohne Verbindung zeigt `src/OfflineGate.tsx` eine Sperre. Eine **laufende Aufnahme wird nie abgebrochen**, die Sperre kommt erst danach.
 4. **Inhalte bleiben auf dem iPad:** Texte, Handschriften, Fotos und Aufnahmen werden nur auf dem Gerät verarbeitet, nichts wird hochgeladen. Einzige Downloads: Werbung (und Apples eigene Sprachpakete über das System).
 5. **Keine Markennamen in der Oberfläche**, außer wo technisch nötig (Dateiformat „.goodnotes“ im Export mit Marken-Hinweis).
@@ -36,7 +36,7 @@ Eine **iPad-App** (Capacitor + React + TypeScript, Querformat), die getippten Te
 | `src/LevelSheet.tsx`, `src/Training.tsx`, `src/levels.ts` | Handschrift-Einrichtung in 5 Stufen. Nach jeder Stufe geht es ins Stufenmenü, nicht ins Studio. |
 | `src/SettingsSheet.tsx` | Einstellungen (Bereichsleiste links, Sprache, Sicherung, Werbung) |
 | `src/OfflineGate.tsx` | Internet-Pflicht (Capacitor Network) |
-| `src/nativeAds.ts` | AdMob: IDs, Einwilligung, Interstitial, Rewarded. **Noch Googles Test-IDs** – vor Veröffentlichung eigene IDs eintragen (+ `GADApplicationIdentifier` in `ios/App/App/Info.plist`). |
+| `src/nativeAds.ts` | AdMob: eigene App-/Interstitial-IDs, Einwilligung, stumme Vollbild-Werbung. TestFlight-Version 1.0 ist im AdMob-Konto im Testmodus; diesen erst zur öffentlichen Freigabe deaktivieren. |
 | `src/i18n.ts`, `src/i18n.en.ts` | Übersetzung (siehe unten) |
 | `src/engine.ts` | Layout der Handschrift (Glyphen, Zeilen, Tabellen, Arbeitsblatt-Felder) |
 | `src/storage.ts` | IndexedDB-Speicher + Prüfung von Sicherungen (Obergrenzen großzügig, Sicherungen bis 500 MB) |
@@ -149,7 +149,7 @@ Jeder Push auf `main` startet `.github/workflows/pages.yml`: `npm ci`, `npm test
 
 ## Offene Punkte
 
-- Eigene AdMob-IDs eintragen (aktuell Test-Anzeigen).
+- AdMob-App nach Veröffentlichung mit dem App-Store-Eintrag verknüpfen und für Live-Anzeigen prüfen lassen; Testmodus für Version 1.0 erst zur öffentlichen Freigabe deaktivieren.
 - Domain www.handwritten-app.de mit GitHub Pages verbinden, danach `SITE` in der App und die URLs in `appstore/APP-STORE.md` umstellen.
 - Apple-Entwicklerkonto als Organisation (D-U-N-S) anlegen, Händlerstatus (EU) angeben.
 - App-Store-Veröffentlichung (Texte und Screenshots in `appstore/`, Rechtsprüfung in `appstore/RECHTSPRUEFUNG.md`).

@@ -15,9 +15,30 @@ public class HandwriteNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "recognizeDocument", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeSharedImages", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "adContext", returnType: CAPPluginReturnPromise),
     ]
 
     static let sharePasteboard = "de.vonhuelsen.handwritten.share"
+
+    // MARK: Ads
+
+    /// Where this build comes from and what the user chose in Google's consent form.
+    /// - distribution: "debug" (Xcode), "testflight" (sandbox receipt) or "appstore". Test builds must only
+    ///   request Google's test ads, the App Store version real ones – decided here, so nobody can forget a switch.
+    /// - storageConsent: TCF purpose 1 ("store/access information on a device"); nil outside the EU form.
+    @objc func adContext(_ call: CAPPluginCall) {
+        var distribution = "appstore"
+        #if DEBUG
+        distribution = "debug"
+        #else
+        if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" { distribution = "testflight" }
+        #endif
+        var result: [String: Any] = ["distribution": distribution]
+        if let purposes = UserDefaults.standard.string(forKey: "IABTCF_PurposeConsents"), let first = purposes.first {
+            result["storageConsent"] = first == "1"
+        }
+        call.resolve(result)
+    }
 
     // MARK: Text recognition
 

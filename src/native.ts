@@ -7,6 +7,7 @@ interface HandwriteNativePlugin {
   recognizeText(options: { image: string; languages?: string[] }): Promise<{ lines: VisionLine[] }>;
   takeSharedImages(): Promise<{ images: string[] }>;
   recognizeDocument(options: { image: string }): Promise<{ blocks: DocBlock[] }>;
+  adContext(): Promise<{ distribution: 'debug' | 'testflight' | 'appstore'; storageConsent?: boolean }>;
 }
 
 /** The app's own Swift plugin (ios/App/App/HandwriteNativePlugin.swift). */

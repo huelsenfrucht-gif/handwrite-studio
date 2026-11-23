@@ -17,9 +17,17 @@ describe('legal and ad safeguards', () => {
     expect(ads).toMatch(/await mute\(\);\s*await AdMob\.showInterstitial\(\)/);
     expect(ads).not.toContain('hs-ad-free-until');
   });
+  it('uses real ads only in the App Store version and test ads everywhere else, decided by the app itself', () => {
+    const ads = readFileSync('src/nativeAds.ts', 'utf8'), swift = readFileSync('ios/App/App/HandwriteNativePlugin.swift', 'utf8');
+    expect(ads).toContain("TESTING = context?.distribution !== 'appstore'");
+    expect(ads).not.toContain('VITE_ADMOB_LIVE_ADS');
+    expect(swift).toContain('#if DEBUG'); expect(swift).toContain('"sandboxReceipt"');
+    // Declined in Google's form: no second question with Apple's tracking prompt.
+    expect(ads).toMatch(/!minor && !declined && tracking\.status === 'notDetermined'/);
+  });
   it('treats under-16 users without tracking prompt and with under-age tagging', async () => {
     const ads = readFileSync('src/nativeAds.ts', 'utf8');
-    expect(ads).toMatch(/if \(!minor && tracking\.status === 'notDetermined'\)/);
+    expect(ads).toMatch(/if \(!minor && !declined && tracking\.status === 'notDetermined'\)/);
     expect(ads).toContain('tagForUnderAgeOfConsent: minor');
     expect(ads).toContain('MaxAdContentRating.ParentalGuidance');
   });

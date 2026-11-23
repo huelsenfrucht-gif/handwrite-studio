@@ -5,7 +5,8 @@ import { GuideLines, GuideText } from './Guide';
 import { layout } from './engine';
 import { defaultSettings, isPunctuation, pathData, smooth, uid, type Glyph, type Note, type PairSample, type Point, type Profile, type Stroke } from './model';
 import { levels, measureRhythm, nextPairs, normalisePair, pairCoverage, PAIRS_CORE, RHYTHM_SENTENCES, SIGNS, splitPair, type LevelId } from './levels';
-import { adsAvailable, showInterstitialAd } from './nativeAds';
+import { adsAvailable } from './nativeAds';
+import { adBreak } from './AdChoice';
 import { t } from './i18n';
 
 type View = { kind: 'list' } | { kind: 'letters' } | { kind: 'signs' } | { kind: 'rhythm' } | { kind: 'pairs'; keys: string[]; level: 4 | 5 };
@@ -36,7 +37,7 @@ export function LevelSheet({ profile, update, onClose, onUse }: Props) {
     else if (id === 4) setView({ kind: 'pairs', level: 4, keys: PAIRS_CORE.filter(k => !profile.pairs?.[k]?.length).concat(PAIRS_CORE.every(k => profile.pairs?.[k]?.length) ? PAIRS_CORE.slice(0, 10) : []) });
     else { const keys = nextPairs(profile, 10); setView({ kind: 'pairs', level: 5, keys: keys.length ? keys : PAIRS_CORE.slice(0, 10) }); }
   };
-  const unlock = async () => { setUnlocking(true); try { await showInterstitialAd(); update(p => ({ ...p, unlocked: true })); } finally { setUnlocking(false); } };
+  const unlock = async () => { setUnlocking(true); try { if (await adBreak({ kind: 'profile' })) update(p => ({ ...p, unlocked: true })); } finally { setUnlocking(false); } };
   const coverage = Math.round(pairCoverage(profile) * 100);
   // Sorted view: the one stage to do now, what is finished, what comes later.
   const reached = list.filter(l => l.done).length, allDone = list.every(l => l.done);
@@ -59,7 +60,7 @@ export function LevelSheet({ profile, update, onClose, onUse }: Props) {
             {next.progress > 0 && <div className="lv-progress"><progress max={next.total} value={next.progress} /><span>{next.progress}/{next.total}</span></div>}
           </div>
           <div className="lv-action">
-            {next.locked ? <button className="button primary" disabled={unlocking} onClick={unlock}><Play size={15} />{unlocking ? t('Video läuft …') : adsAvailable() ? t('Mit Video freischalten') : t('Freischalten')}</button>
+            {next.locked ? <button className="button primary" disabled={unlocking} onClick={unlock}><Play size={15} />{unlocking ? t('Werbung …') : adsAvailable() ? t('Mit Werbung freischalten') : t('Freischalten')}</button>
               : <button className="button primary" onClick={() => start(next.id)}>{next.done ? (next.id === 5 ? 'Weitere 10' : t('Wiederholen')) : next.progress ? t('Fortsetzen') : t('Starten')}</button>}
           </div>
         </div>
