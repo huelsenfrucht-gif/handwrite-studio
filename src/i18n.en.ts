@@ -801,4 +801,8 @@ export const EN: Record<string, string> = {
   'Werbung …': 'Ad …',
   'Mit Werbung freischalten': 'Unlock with an ad',
   'Sicherung fehlgeschlagen: {msg}': 'Backup failed: {msg}',
+  'Latein': 'Latin',
+  'Sachunterricht': 'General studies (primary)',
+  'Sport': 'PE',
+  'Pädagogik / Psychologie': 'Education / psychology',
 };
