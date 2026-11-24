@@ -62,7 +62,7 @@ https://appstoreconnect.apple.com → **Apps → +  → Neue App**
 ### Händlerstatus (EU, Digital Services Act)
 Unter **App Store Connect → Business → Compliance** bzw. beim ersten Einreichen fragt Apple, ob du **Händler** bist. Für die GmbH: **Ja, Händler**. Apple zeigt diese Angaben auf der App-Seite in der EU an:
 - Adresse: Gartenstraße 11, 60594 Frankfurt am Main, Deutschland
-- Telefon: +49 69 13816018
+- Telefon: +49 177 4473637
 - E-Mail: kontakt@handwritten-app.de
 
 Apple prüft Telefon und E-Mail mit einem Bestätigungscode.
@@ -133,7 +133,7 @@ Unter **App-Datenschutz → Los geht’s**: „Ja, wir erheben Daten“ (wegen A
 Alles andere (Texte, Fotos, Kontakte …): **nicht erhoben** – bleibt auf dem Gerät.
 
 ### App-Review-Informationen
-- **Kontakt für die Prüfung:** Botho v. Hülsen, +49 69 13816018, kontakt@handwritten-app.de
+- **Kontakt für die Prüfung:** Botho v. Hülsen, +49 177 4473637, kontakt@handwritten-app.de
 - **Anmeldung erforderlich:** Nein
 - **Notizen für Review:**
 ```
