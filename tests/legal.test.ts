@@ -17,9 +17,9 @@ describe('legal and ad safeguards', () => {
     expect(ads).toMatch(/await mute\(\);\s*await AdMob\.showInterstitial\(\)/);
     expect(ads).not.toContain('hs-ad-free-until');
   });
-  it('uses real ads only in the App Store version and test ads everywhere else, decided by the app itself', () => {
+  it('uses test ads only in Xcode builds and real ads in every distributed build (no visible test ads in App Review)', () => {
     const ads = readFileSync('src/nativeAds.ts', 'utf8'), swift = readFileSync('ios/App/App/HandwriteNativePlugin.swift', 'utf8');
-    expect(ads).toContain("TESTING = context?.distribution !== 'appstore'");
+    expect(ads).toContain("TESTING = context?.distribution === 'debug'");
     expect(ads).not.toContain('VITE_ADMOB_LIVE_ADS');
     expect(swift).toContain('#if DEBUG'); expect(swift).toContain('"sandboxReceipt"');
     // Declined in Google's form: no second question with Apple's tracking prompt.

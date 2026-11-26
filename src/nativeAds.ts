@@ -5,7 +5,9 @@ import { HandwriteNative } from './native';
  * Google AdMob ads for the native iOS app (the website keeps using AdSense).
  *
  * AdMob app and interstitial IDs belong to Handwritten in the publisher account.
- * TestFlight testing must use AdMob test mode; never interact with live ads in a test build.
+ * Only Xcode (debug) builds use Google's test ads. TestFlight and App Review builds cannot be told apart
+ * and Apple rejects visible test ads as a beta feature, so they show real ads: the owner's own iPads are
+ * registered as test devices in AdMob instead. Never tap a live ad on an unregistered device.
  * The app ID is set in ios/App/App/Info.plist (GADApplicationIdentifier).
  *
  * Placement (no banners): a full-screen ad, without a choice, before writing in handwriting,
@@ -21,7 +23,7 @@ const store = (k: string, v?: string) => { try { if (v === undefined) return loc
 /** Users under 16 (set in the settings): no personalised ads, no tracking prompt (Art. 8 DSGVO). */
 export const isUnder16 = () => store('hs-under16') === '1';
 export const setUnder16 = (on: boolean) => { store('hs-under16', on ? '1' : '0'); };
-// Test builds (Xcode, TestFlight) request Google's test ads, the App Store version real ones.
+// Xcode builds request Google's test ads, every distributed build (TestFlight, App Review, App Store) real ones.
 // The app finds out itself where it comes from (HandwriteNative.adContext), so no build switch
 // can be forgotten. With isTesting the plugin replaces our ad unit with Google's test unit.
 let TESTING = true;
@@ -39,7 +41,7 @@ export function initAds(): Promise<boolean> {
     try {
       const { AdMob, AdmobConsentStatus } = await load();
       const context = await HandwriteNative.adContext().catch(() => null);
-      TESTING = context?.distribution !== 'appstore';
+      TESTING = context?.distribution === 'debug';
       const { MaxAdContentRating } = await load(), minor = isUnder16();
       const consent = await AdMob.requestConsentInfo({ tagForUnderAgeOfConsent: minor });
       const finalConsent = consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED

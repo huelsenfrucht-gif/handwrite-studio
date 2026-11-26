@@ -1,6 +1,6 @@
 /* Permission prompts in English */
-"NSMicrophoneUsageDescription" = "Handwritten only records when you start “Transcribe”. Audio and text stay on this iPad.";
-"NSSpeechRecognitionUsageDescription" = "Speech recognition turns your recording into text right on the iPad – without third-party servers.";
+"NSMicrophoneUsageDescription" = "Handwritten only uses the microphone when you start “Transcribe”: it records what is said in class and turns it into text on this iPad – for example your teacher’s explanation as notes you can then write out in your handwriting. Audio and text are never uploaded.";
+"NSSpeechRecognitionUsageDescription" = "Speech recognition turns your recording into text right on the iPad, for example a lesson into notes – without third-party servers.";
 "NSCameraUsageDescription" = "Handwritten uses the camera to photograph texts, boards and worksheets and turn them into your handwriting.";
 "NSPhotoLibraryAddUsageDescription" = "Handwritten saves exported pages to your Photos when you ask it to.";
 "NSPhotoLibraryUsageDescription" = "Handwritten reads photos of texts, boards and worksheets that you choose.";

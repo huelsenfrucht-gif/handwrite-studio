@@ -1,6 +1,6 @@
 /* Berechtigungsabfragen auf Deutsch */
-"NSMicrophoneUsageDescription" = "Handwritten nimmt nur auf, wenn du „Transkribieren“ startest. Ton und Text bleiben auf diesem iPad.";
-"NSSpeechRecognitionUsageDescription" = "Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um – ohne fremde Server.";
+"NSMicrophoneUsageDescription" = "Handwritten nutzt das Mikrofon nur, wenn du „Transkribieren“ startest: Die App nimmt dann auf, was im Unterricht gesagt wird, und wandelt es auf diesem iPad in Text um – zum Beispiel die Erklärung deiner Lehrkraft als Mitschrift, die du danach in deiner Handschrift übernehmen kannst. Ton und Text werden nicht hochgeladen.";
+"NSSpeechRecognitionUsageDescription" = "Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um, zum Beispiel eine Unterrichtsstunde in eine Mitschrift – ohne fremde Server.";
 "NSCameraUsageDescription" = "Handwritten nutzt die Kamera, um Texte, Tafelbilder und Arbeitsblätter zu fotografieren und in deine Handschrift zu übernehmen.";
 "NSPhotoLibraryAddUsageDescription" = "Handwritten speichert exportierte Seiten auf Wunsch in deinen Fotos.";
 "NSPhotoLibraryUsageDescription" = "Handwritten liest Fotos von Texten, Tafelbildern und Arbeitsblättern, die du auswählst.";

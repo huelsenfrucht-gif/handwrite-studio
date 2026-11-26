@@ -45,9 +45,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Handwritten nimmt nur auf, wenn du „Transkribieren“ startest. Ton und Text bleiben auf diesem iPad.</string>
+	<string>Handwritten nutzt das Mikrofon nur, wenn du „Transkribieren“ startest: Die App nimmt dann auf, was im Unterricht gesagt wird, und wandelt es auf diesem iPad in Text um – zum Beispiel die Erklärung deiner Lehrkraft als Mitschrift, die du danach in deiner Handschrift übernehmen kannst. Ton und Text werden nicht hochgeladen.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um – ohne fremde Server.</string>
+	<string>Die Spracherkennung wandelt deine Aufnahme direkt auf dem iPad in Text um, zum Beispiel eine Unterrichtsstunde in eine Mitschrift – ohne fremde Server.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
